@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -163,7 +163,23 @@ function extractMetadata(md: string): { title: string; description: string; tags
   return { title, description, tags: Array.from(tags) };
 }
 
-export default function UploadPage() {
+// Next 14 exige envolver useSearchParams() en <Suspense> para prerender
+// estático. UploadPage es client-only y se prerenderiza con loading shell.
+export default function UploadPageWrapper() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex h-full items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-700 border-t-accent" />
+        </main>
+      }
+    >
+      <UploadPage />
+    </Suspense>
+  );
+}
+
+function UploadPage() {
   const router = useRouter();
   const params = useSearchParams();
   const channel = params?.get('channel') ?? '';
