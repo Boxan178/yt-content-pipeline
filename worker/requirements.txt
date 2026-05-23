@@ -1,0 +1,3 @@
+# Worker es 100% stdlib (urllib + json). NO necesita pip install.
+# Este archivo existe solo por convención. Si en el futuro añades deps,
+# documéntalas aquí.

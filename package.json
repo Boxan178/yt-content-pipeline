@@ -1,0 +1,103 @@
+{
+  "name": "yt-content-pipeline",
+  "version": "0.1.0",
+  "private": true,
+  "description": "YouTube Content Pipeline App — ventana de supervisión para aprobar/rechazar artefactos del pipeline de contenido (miniaturas, guiones, audios, renders) que Claude genera en background.",
+  "author": "Pablo Navas <p.navas.04@gmail.com>",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev:next": "next dev -p 3001 --turbo",
+    "dev:electron": "wait-on http://localhost:3001 && tsc -p electron/tsconfig.json && cross-env NODE_ENV=development electron .",
+    "dev": "concurrently -k -n NEXT,ELECTRON -c blue,magenta \"npm:dev:next\" \"npm:dev:electron\"",
+    "build:next": "next build",
+    "build:electron": "tsc -p electron/tsconfig.json",
+    "build:postnext": "node scripts/postbuild-standalone.js",
+    "clean": "node scripts/clean-build.js",
+    "build": "npm run clean && npm run build:next && npm run build:postnext && npm run build:electron",
+    "start:electron": "cross-env NODE_ENV=production electron .",
+    "lint": "next lint",
+    "dist": "npm run build && electron-builder --win nsis portable --publish never",
+    "dist:nsis": "npm run build && electron-builder --win nsis --publish never",
+    "dist:portable": "npm run build && electron-builder --win portable --publish never",
+    "release": "npm run build && electron-builder --win nsis portable --publish always",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "dependencies": {
+    "canvas-confetti": "^1.9.3",
+    "electron-updater": "^6.3.9",
+    "next": "14.2.35",
+    "react": "^18",
+    "react-dom": "^18",
+    "react-markdown": "^9.0.1",
+    "remark-gfm": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10",
+    "concurrently": "^9",
+    "cross-env": "^7",
+    "electron": "^33",
+    "electron-builder": "^25.1.8",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5",
+    "wait-on": "^8"
+  },
+  "build": {
+    "appId": "io.ytcp.app",
+    "productName": "YT Content Pipeline",
+    "copyright": "Copyright © 2026 Pablo Navas",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist-electron/**/*",
+      "package.json",
+      "!**/*.{md,test.ts,spec.ts}",
+      "!STATUS-*.md",
+      "!AUDITORIA-*.md"
+    ],
+    "extraResources": [
+      {
+        "from": ".next/standalone",
+        "to": "standalone",
+        "filter": ["**/*"]
+      }
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "**/*.node"
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "artifactName": "${productName}-${version}-${arch}-${env.BUILD_KIND}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName}-Portable-${version}.${ext}"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Boxan178",
+        "repo": "yt-content-pipeline",
+        "releaseType": "release"
+      }
+    ]
+  }
+}
