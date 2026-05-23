@@ -188,6 +188,16 @@ function showClaudeMissingDialog(reason: string) {
   });
 }
 
+function resolveAppIcon(): string | undefined {
+  // En dev cargamos desde `build/icon.png` (raíz del proyecto). En producción
+  // electron-builder ya copia el icono al .exe vía `win.icon` (package.json).
+  // Si el archivo no existe, devolvemos undefined y Electron usa el default.
+  const candidate = isDev
+    ? path.join(__dirname, '..', 'build', 'icon.png')
+    : path.join(process.resourcesPath, 'build', 'icon.png');
+  return existsSync(candidate) ? candidate : undefined;
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -197,6 +207,7 @@ function createWindow() {
     title: 'YouTube Content Pipeline',
     backgroundColor: '#0b0b0e',
     autoHideMenuBar: true,
+    icon: resolveAppIcon(),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { STATE_LABEL, STATE_ORDER, type VideoState } from '@/lib/channels';
+import type { VideoState } from '@/lib/channels';
 import { VideoCard, type VideoCardData } from '@/components/VideoCard';
 import { VideoDetailModal } from '@/components/VideoDetailModal';
 import { NewCompilationModal } from '@/components/NewCompilationModal';
@@ -35,6 +35,7 @@ export default function ChannelPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [showScheduled, setShowScheduled] = useState(true);
   const [batchArchiving, setBatchArchiving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [selected, setSelected] = useState<VideoCardData | null>(null);
@@ -100,8 +101,23 @@ export default function ChannelPage() {
     setTimeout(() => setToast((cur) => (cur === msg ? null : cur)), 4000);
   }, []);
 
+  // VisualState = VideoState + 'scheduled' (columna virtual, no estado físico).
+  // Un vídeo con scheduledUpload pendiente/subiendo se mueve VISUALMENTE a
+  // 'scheduled' aunque físicamente esté en `ready` o `production`.
+  type VisualState = VideoState | 'scheduled';
+  const VISUAL_LABEL: Record<VisualState, string> = {
+    pending_locution: 'Pendiente locución',
+    production: 'En producción',
+    ready: 'Listos para subir',
+    scheduled: '📅 Programados',
+    uploaded: 'Subidos',
+    archived: 'Archivados',
+  };
+
   const grouped = useMemo(() => {
-    const g: Record<VideoState, VideoCardData[]> = { pending_locution: [], production: [], ready: [], uploaded: [], archived: [] };
+    const g: Record<VisualState, VideoCardData[]> = {
+      pending_locution: [], production: [], ready: [], scheduled: [], uploaded: [], archived: [],
+    };
     const q = search.trim().toLowerCase();
     for (const v of data?.videos ?? []) {
       // Filtros
@@ -109,20 +125,31 @@ export default function ChannelPage() {
       if (filterMode === 'compilation' && !v.isCompilation) continue;
       if (filterMode === 'working' && (!v.activeJobs || v.activeJobs.length === 0)) continue;
       if (filterMode === 'incomplete' && v.progress.percent === 100) continue;
-      // Si hay un job claude activo sobre este vídeo, lo mostramos visualmente
-      // en "En producción" sin importar su estado físico en el filesystem.
-      // Cuando el job termine, vuelve solo a su columna real en el siguiente refresh.
-      const targetState: VideoState =
-        v.activeJobs && v.activeJobs.length > 0 ? 'production' : v.state;
+      // Override visual: hay JERARQUÍA de prioridad.
+      //  1. Job claude activo → 'production' (rojo, está currando).
+      //  2. Subida programada pending/uploading → 'scheduled' (azul).
+      //  3. Su estado físico real.
+      let targetState: VisualState;
+      if (v.activeJobs && v.activeJobs.length > 0) {
+        targetState = 'production';
+      } else if (v.scheduledUpload) {
+        targetState = 'scheduled';
+      } else {
+        targetState = v.state;
+      }
       g[targetState].push(v);
     }
     return g;
   }, [data, search, filterMode]);
 
-  const visibleStates: VideoState[] = useMemo(
-    () => STATE_ORDER.filter((s) => s !== 'archived' || showArchived),
-    [showArchived],
-  );
+  const visibleStates: VisualState[] = useMemo(() => {
+    const order: VisualState[] = ['pending_locution', 'production', 'ready', 'scheduled', 'uploaded', 'archived'];
+    return order.filter((s) => {
+      if (s === 'archived') return showArchived;
+      if (s === 'scheduled') return showScheduled;
+      return true;
+    });
+  }, [showArchived, showScheduled]);
 
   const archiveAllUploaded = async () => {
     const uploaded = grouped.uploaded;
@@ -169,11 +196,18 @@ export default function ChannelPage() {
   const handleCloseModal = useCallback(() => setSelected(null), []);
 
   // ── Drag & drop entre columnas ─────────────────────────────────────
-  const [dragOverState, setDragOverState] = useState<VideoState | null>(null);
+  const [dragOverState, setDragOverState] = useState<VisualState | null>(null);
   const handleDropOnColumn = useCallback(
-    async (e: React.DragEvent, toState: VideoState) => {
+    async (e: React.DragEvent, toState: VisualState) => {
       e.preventDefault();
       setDragOverState(null);
+      // 'scheduled' es una columna VIRTUAL — no se mueve físicamente nada al
+      // soltar ahí. Para programar una subida hay que usar el botón Subir
+      // del modal de detalle. Si arrastran aquí avisamos sin tocar disco.
+      if (toState === 'scheduled') {
+        flashToast('Para programar una subida usa el botón 📤 del vídeo, no arrastrando.');
+        return;
+      }
       const raw = e.dataTransfer.getData('text/x-ytcp-video');
       if (!raw) return;
       let payload: { channel: string; title: string; fromState: VideoState };
@@ -222,6 +256,7 @@ export default function ChannelPage() {
               {data.counts.production} en producción
               {' · '}
               {data.counts.ready} listos
+              {grouped.scheduled.length > 0 && ` · ${grouped.scheduled.length} programados`}
               {' · '}
               {data.counts.uploaded} subidos
               {data.counts.archived > 0 && ` · ${data.counts.archived} archivados`}
@@ -237,6 +272,15 @@ export default function ChannelPage() {
           >
             📚 Nueva recopilación
           </button>
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-muted">
+            <input
+              type="checkbox"
+              checked={showScheduled}
+              onChange={(e) => setShowScheduled(e.target.checked)}
+              className="h-4 w-4 cursor-pointer rounded border-border bg-bg"
+            />
+            Mostrar programados
+          </label>
           <label className="flex cursor-pointer items-center gap-2 text-sm text-muted">
             <input
               type="checkbox"
@@ -337,7 +381,7 @@ export default function ChannelPage() {
             >
               <header className="mb-3 flex items-center justify-between gap-2">
                 <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-300">
-                  {STATE_LABEL[state]}
+                  {VISUAL_LABEL[state]}
                 </h2>
                 <div className="flex items-center gap-2">
                   {state === 'uploaded' && grouped.uploaded.length > 0 && (
@@ -348,6 +392,15 @@ export default function ChannelPage() {
                     >
                       {batchArchiving ? 'Archivando…' : 'Archivar todos'}
                     </button>
+                  )}
+                  {state === 'scheduled' && grouped.scheduled.length > 0 && (
+                    <Link
+                      href="/scheduled"
+                      className="rounded border border-border bg-bg px-2 py-0.5 text-[11px] text-muted transition hover:border-accent/60 hover:text-white"
+                      title="Ver todas las subidas programadas"
+                    >
+                      ver lista →
+                    </Link>
                   )}
                   <span className="rounded-full bg-bg px-2 py-0.5 text-xs text-muted">
                     {grouped[state].length}

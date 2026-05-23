@@ -203,16 +203,71 @@ export const ACHIEVEMENTS: Achievement[] = [
   },
 ];
 
-// ── Títulos según nivel ───────────────────────────────────────────────
+// ── Títulos según nivel — basados en la jerarquía formal del Jedi Order
+// (Wookieepedia, canon Disney + Legends). Bloque A puro (7 rangos canónicos)
+// + intercalado con un sub-rango Sentinel a mitad de Knight para tener 8
+// escalones distribuidos. NO se inventa nada — todos son nombres canónicos.
+// Más info: lib/gamification-types.ts → JEDI_RANKS_REFERENCE.
 
-const TITLES: Array<{ minLevel: number; title: string }> = [
-  { minLevel: 1, title: 'Aprendiz estoico' },
-  { minLevel: 3, title: 'Pasante' },
-  { minLevel: 5, title: 'Productor' },
-  { minLevel: 8, title: 'Editor' },
-  { minLevel: 12, title: 'Director' },
-  { minLevel: 16, title: 'Maestro' },
-  { minLevel: 20, title: 'Marco Aurelio' },
+export interface JediRank {
+  minLevel: number;
+  /** Título mostrado en UI (es). */
+  title: string;
+  /** Nombre original en inglés. */
+  titleEn: string;
+  /** Descripción breve canon-correct para tooltip / vista perfil. */
+  description: string;
+}
+
+const TITLES: JediRank[] = [
+  {
+    minLevel: 1,
+    title: 'Iniciado',
+    titleEn: 'Jedi Initiate',
+    description: 'Force-sensible recién llegado al Templo. Vives en un clan de younglings, aprendiendo los fundamentos. Espera la Reunión en Ilum para conseguir tu cristal kyber.',
+  },
+  {
+    minLevel: 2,
+    title: 'Padawan',
+    titleEn: 'Padawan',
+    description: 'Has superado los Initiate Trials y un Caballero o Maestro te ha tomado como aprendiz. Llevas la trenza Padawan. Empiezas a acompañar misiones reales.',
+  },
+  {
+    minLevel: 4,
+    title: 'Caballero Jedi',
+    titleEn: 'Jedi Knight',
+    description: 'Has superado los Jedi Trials (Skill, Courage, Flesh, Spirit, Insight). Tu trenza Padawan se corta. La mayoría de Jedi permanecen Knight toda su vida.',
+  },
+  {
+    minLevel: 7,
+    title: 'Centinela Jedi',
+    titleEn: 'Jedi Sentinel',
+    description: 'Knight especializado en el equilibrio: combate moderado + habilidades no-Force (sigilo, investigación, demolición). Eres la rama versátil de la Orden.',
+  },
+  {
+    minLevel: 10,
+    title: 'Maestro Jedi',
+    titleEn: 'Jedi Master',
+    description: 'Has entrenado a un Padawan hasta Knighthood. Reconocimiento formal de tu dominio de la Fuerza. Prerequisito para entrar en cualquiera de los cuatro Consejos.',
+  },
+  {
+    minLevel: 14,
+    title: 'Miembro del Consejo',
+    titleEn: 'Council Member',
+    description: 'Has sido elegido para uno de los cuatro Consejos. El Alto Consejo (12 miembros) es el órgano supremo. Tu voto guía a la Orden entera.',
+  },
+  {
+    minLevel: 18,
+    title: 'Maestro de la Orden',
+    titleEn: 'Master of the Order',
+    description: 'Presides las reuniones del Alto Consejo y gestionas la administración del Templo. Eres la voz de la Orden ante el Senado. Mace Windu ostentaba este cargo durante las Guerras Clon.',
+  },
+  {
+    minLevel: 22,
+    title: 'Gran Maestro Jedi',
+    titleEn: 'Grand Jedi Master',
+    description: 'Cabeza espiritual de toda la Orden. Marcas la dirección general y supervisas a los younglings cerrando el círculo del entrenamiento. Yoda en las precuelas, Luke post-RotJ.',
+  },
 ];
 
 export function titleForLevel(level: number): string {
@@ -222,6 +277,25 @@ export function titleForLevel(level: number): string {
   }
   return title;
 }
+
+/**
+ * Devuelve el rank entero (título + en + descripción) correspondiente al nivel
+ * actual + el siguiente rank (para mostrar "siguiente nivel desbloquea …").
+ */
+export function rankInfoForLevel(level: number): { current: JediRank; next: JediRank | null } {
+  let current = TITLES[0];
+  let next: JediRank | null = null;
+  for (let i = 0; i < TITLES.length; i++) {
+    if (level >= TITLES[i].minLevel) {
+      current = TITLES[i];
+      next = TITLES[i + 1] ?? null;
+    }
+  }
+  return { current, next };
+}
+
+/** Lista entera de rangos para mostrar en vista perfil. */
+export const JEDI_RANKS = TITLES;
 
 // ── Stats vacío (defaults) ────────────────────────────────────────────
 

@@ -75,6 +75,28 @@ export const CHANNELS: Channel[] = [
     ],
     scriptsRoot: 'Y:/04_DEV/J.A.R.V.I.S/youtube-os/youtube/moderno-estoico/guiones',
   },
+  {
+    // Canal nuevo de historias narrativas cortas (sleep stories, micro-historias,
+    // narraciones). Posible reciclaje del canal YouTube "TheBowMan" existente —
+    // Pablo decide si retoma o crea uno nuevo. La carpeta física no tiene por
+    // qué existir todavía; cuando exista, marcar `enabled: true`.
+    slug: 'the-bow-man',
+    name: 'The Bow Man',
+    enabled: true,
+    rootPath: 'H:/YOUTUBE/THE BOW MAN',
+    stateFolders: {
+      pending_locution: '_PENDIENTE LOCUCION',
+      production: '_EN PRODUCCIÓN',
+      ready: '_LISTOS PARA SUBIR',
+      uploaded: '_SUBIDOS',
+      archived: '_ARCHIVO',
+    },
+    ignoreFolders: [
+      'PENDIENTE DE REVISAR',
+      'Biblioteca de Brutos',
+    ],
+    scriptsRoot: 'Y:/04_DEV/J.A.R.V.I.S/youtube-os/youtube/the-bow-man/guiones',
+  },
   { slug: 'vaultman',         name: 'Vaultman',         enabled: false, rootPath: '', stateFolders: { pending_locution: '', production: '', ready: '', uploaded: '', archived: '' }, ignoreFolders: [] },
   { slug: 'dailydog',         name: 'Daily Dog',        enabled: false, rootPath: 'H:/YOUTUBE/DAILY DOG', stateFolders: { pending_locution: '', production: '', ready: '', uploaded: '', archived: '' }, ignoreFolders: [] },
   { slug: 'tail-tales',       name: 'Tail Tales',       enabled: false, rootPath: 'H:/YOUTUBE/TAIL TALES_EN', stateFolders: { pending_locution: '', production: '', ready: '', uploaded: '', archived: '' }, ignoreFolders: [] },

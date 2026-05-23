@@ -46,13 +46,15 @@ export function AvatarBadge() {
         </span>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/api/avatar"
+          src={lv ? `/api/avatar?level=${lv.level}` : '/api/avatar'}
           alt=""
           onLoad={() => setImgOk(true)}
           onError={() => setImgOk(false)}
           className={`absolute inset-0 h-full w-full object-cover transition-opacity ${
             imgOk ? 'opacity-100' : 'opacity-0'
           }`}
+          // pixelated rendering por si el archivo es sprite pixel-art
+          style={{ imageRendering: 'pixelated' }}
         />
         {lv && (
           <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-bg bg-amber-500 text-[9px] font-bold text-zinc-900 shadow">

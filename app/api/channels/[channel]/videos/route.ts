@@ -5,6 +5,7 @@ import { getChannel, type VideoState } from '@/lib/channels';
 import { computeProgress, type Progress } from '@/lib/progress';
 import { listActiveJobsForFolder, type ClaudeJob } from '@/lib/claude-jobs';
 import { diffAndUpdate, type Transition } from '@/lib/seen-states';
+import { readSchedule, type ScheduledUpload } from '@/lib/upload-schedule';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,6 +28,13 @@ interface VideoDTO {
   isCompilation: boolean;
   /** Si es recopilación, número de historias fuente. */
   compilationSources?: number;
+  /** Si tiene una subida programada (pending/uploading), su info. */
+  scheduledUpload?: {
+    id: string;
+    scheduledFor: string;
+    status: 'pending' | 'uploading';
+    privacyOnPublish: 'public' | 'unlisted' | 'private';
+  };
 }
 
 const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp']);
@@ -187,6 +195,30 @@ export async function GET(
       for (const r of results) if (r) allVideos.push(r);
     }),
   );
+
+  // Cruce con subidas programadas. Para cada vídeo, buscamos en el scheduler
+  // una entrada PENDING o UPLOADING cuyo videoFolder coincida (normalizado a /).
+  try {
+    const schedule = readSchedule();
+    const activeByFolder = new Map<string, ScheduledUpload>();
+    for (const item of schedule.items) {
+      if (item.status === 'pending' || item.status === 'uploading') {
+        activeByFolder.set(item.videoFolder.replace(/\\/g, '/'), item);
+      }
+    }
+    for (const v of allVideos) {
+      const key = v.folderPath.replace(/\\/g, '/');
+      const upl = activeByFolder.get(key);
+      if (upl) {
+        v.scheduledUpload = {
+          id: upl.id,
+          scheduledFor: upl.scheduledFor,
+          status: upl.status === 'pending' ? 'pending' : 'uploading',
+          privacyOnPublish: upl.privacyOnPublish,
+        };
+      }
+    }
+  } catch {}
 
   allVideos.sort((a, b) => (a.mtime < b.mtime ? 1 : -1));
 

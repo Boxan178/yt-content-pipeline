@@ -4,9 +4,12 @@ import { useEffect, useState } from 'react';
 import { fetchStats } from '@/lib/gamification-client';
 import {
   ACHIEVEMENTS,
+  JEDI_RANKS,
   XP_BY_EVENT,
   deriveLevel,
+  rankInfoForLevel,
   titleForLevel,
+  xpForLevel,
   type Stats,
   type XPEventKind,
 } from '@/lib/gamification-types';
@@ -72,6 +75,7 @@ export default function PerfilPage() {
 
   const lv = deriveLevel(stats.xp);
   const title = titleForLevel(lv.level);
+  const { current: currentRank, next: nextRank } = rankInfoForLevel(lv.level);
   const unlockedIds = new Set(stats.achievements.map((a) => a.id));
 
   return (
@@ -93,7 +97,8 @@ export default function PerfilPage() {
           </div>
           <div className="min-w-0 flex-1">
             <h2 className="text-xl font-semibold text-white">{title}</h2>
-            <p className="text-sm text-muted">
+            <p className="text-[11px] uppercase tracking-wider text-amber-300/70">{currentRank.titleEn}</p>
+            <p className="mt-1 text-sm text-muted">
               Nivel {lv.level} · {lv.intoLevel.toLocaleString('es-ES')}/{lv.needed.toLocaleString('es-ES')} XP al nivel {lv.level + 1}
             </p>
             <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-zinc-800">
@@ -104,6 +109,7 @@ export default function PerfilPage() {
             </div>
             <p className="mt-1 text-[10px] text-zinc-500">
               {stats.xp.toLocaleString('es-ES')} XP totales acumuladas
+              {nextRank && <> · Próximo rango: <span className="text-amber-300/80">{nextRank.title}</span> (nivel {nextRank.minLevel})</>}
             </p>
           </div>
           {stats.streak.current > 0 && (
@@ -131,6 +137,56 @@ export default function PerfilPage() {
         <CounterCard label="Checklist resueltos" value={stats.counters.checklist_resolved} icon="✅" />
         <CounterCard label="Rechazos" value={stats.counters.jobs_rejected} icon="👎" />
         <CounterCard label="Total acciones" value={Object.values(stats.counters).reduce((s, v) => s + v, 0)} icon="📊" />
+      </section>
+
+      {/* Camino del Templo Jedi — todos los rangos en orden */}
+      <section className="mb-6">
+        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">
+          Camino del Templo Jedi
+        </h3>
+        <div className="space-y-2">
+          {JEDI_RANKS.map((rank) => {
+            const reached = lv.level >= rank.minLevel;
+            const isCurrent = rank.minLevel === currentRank.minLevel;
+            return (
+              <div
+                key={rank.titleEn}
+                className={`flex items-start gap-3 rounded-lg border px-3 py-2.5 transition ${
+                  isCurrent
+                    ? 'border-amber-500/60 bg-amber-500/10 shadow-inner'
+                    : reached
+                    ? 'border-emerald-500/30 bg-emerald-500/5'
+                    : 'border-border bg-bg/40 opacity-60'
+                }`}
+              >
+                <span
+                  className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg text-sm font-bold ${
+                    isCurrent
+                      ? 'bg-amber-500 text-zinc-900'
+                      : reached
+                      ? 'bg-emerald-500/40 text-emerald-100'
+                      : 'bg-zinc-800 text-zinc-500'
+                  }`}
+                  title={`Requiere nivel ${rank.minLevel} (~${xpForLevel(rank.minLevel).toLocaleString('es-ES')} XP)`}
+                >
+                  {rank.minLevel}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className={`text-sm font-semibold ${isCurrent ? 'text-amber-100' : reached ? 'text-white' : 'text-muted'}`}>
+                    {rank.title}
+                    <span className="ml-2 text-[10px] font-mono uppercase tracking-wider text-amber-300/60">
+                      {rank.titleEn}
+                    </span>
+                    {isCurrent && <span className="ml-2 rounded bg-amber-500/20 px-1.5 text-[9px] uppercase text-amber-200">tú estás aquí</span>}
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-snug text-muted">
+                    {rank.description}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </section>
 
       {/* Logros */}

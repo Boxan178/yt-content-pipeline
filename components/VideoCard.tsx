@@ -27,6 +27,12 @@ export interface VideoCardData {
   activeJobs?: ActiveJob[];
   isCompilation?: boolean;
   compilationSources?: number;
+  scheduledUpload?: {
+    id: string;
+    scheduledFor: string;
+    status: 'pending' | 'uploading';
+    privacyOnPublish: 'public' | 'unlisted' | 'private';
+  };
 }
 
 interface Props {
@@ -143,6 +149,16 @@ export function VideoCard({ video, onArchived, onOpen, celebrate }: Props) {
             {activeJobs.length > 1 && (
               <span className="ml-1 rounded bg-white/20 px-1 text-[9px]">+{activeJobs.length - 1}</span>
             )}
+          </div>
+        )}
+        {!isWorking && video.scheduledUpload && (
+          <div
+            className={`absolute top-1.5 right-1.5 flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white shadow-lg ${
+              video.scheduledUpload.status === 'uploading' ? 'bg-orange-500' : 'bg-sky-500/90'
+            }`}
+            title={`Programado para ${new Date(video.scheduledUpload.scheduledFor).toLocaleString('es-ES')} · privacy ${video.scheduledUpload.privacyOnPublish}`}
+          >
+            📅 {video.scheduledUpload.status === 'uploading' ? 'subiendo' : 'prog'}
           </div>
         )}
       </div>
