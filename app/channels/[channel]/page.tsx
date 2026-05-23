@@ -7,6 +7,7 @@ import type { VideoState } from '@/lib/channels';
 import { VideoCard, type VideoCardData } from '@/components/VideoCard';
 import { VideoDetailModal } from '@/components/VideoDetailModal';
 import { NewCompilationModal } from '@/components/NewCompilationModal';
+import { BulkEnqueueModal } from '@/components/BulkEnqueueModal';
 import { awardOnce } from '@/lib/gamification-client';
 
 interface Transition {
@@ -41,6 +42,7 @@ export default function ChannelPage() {
   const [selected, setSelected] = useState<VideoCardData | null>(null);
   const [celebrating, setCelebrating] = useState<Set<string>>(new Set());
   const [showCompilation, setShowCompilation] = useState(false);
+  const [showBulkEnqueue, setShowBulkEnqueue] = useState(false);
   const [search, setSearch] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'compilation' | 'working' | 'incomplete'>('all');
   const lastLoad = useRef(0);
@@ -266,6 +268,13 @@ export default function ChannelPage() {
 
         <div className="flex items-center gap-3">
           <button
+            onClick={() => setShowBulkEnqueue(true)}
+            className="rounded-md border border-border bg-bg px-3 py-1.5 text-sm text-zinc-200 transition hover:border-accent/60 hover:text-white"
+            title="Encolar la misma skill sobre varios vídeos en serie"
+          >
+            📋 Encolar lote
+          </button>
+          <button
             onClick={() => setShowCompilation(true)}
             className="rounded-md border border-accent/30 bg-accent/10 px-3 py-1.5 text-sm text-accent transition hover:bg-accent/20"
             title="Crear una recopilación de varias historias"
@@ -442,6 +451,16 @@ export default function ChannelPage() {
             flashToast(`📚 Recopilación creada: ${info.folderName}`);
             load();
           }}
+        />
+      )}
+
+      {showBulkEnqueue && data && (
+        <BulkEnqueueModal
+          channelSlug={channelSlug}
+          channelName={data.name}
+          videos={data.videos}
+          onClose={() => setShowBulkEnqueue(false)}
+          onEnqueued={(count) => flashToast(`📋 Encolados ${count} item(s) — ver /queue`)}
         />
       )}
     </main>

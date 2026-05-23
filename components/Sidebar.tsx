@@ -17,6 +17,7 @@ const NAV: NavItem[] = [
   { href: '/', icon: '📺', label: 'Canales', isActive: (p) => p === '/' || p.startsWith('/channels') },
   { href: '/sleep-stories', icon: '🌙', label: 'Sleep Stories', isActive: (p) => p.startsWith('/sleep-stories') },
   { href: '/queue', icon: '📋', label: 'Cola', isActive: (p) => p.startsWith('/queue') },
+  { href: '/visual-lab', icon: '🎨', label: 'Visual Lab', isActive: (p) => p.startsWith('/visual-lab') },
   { href: '/scheduled', icon: '📅', label: 'Subidas programadas', isActive: (p) => p.startsWith('/scheduled') },
   { href: '/jobs', icon: '⚙️', label: 'Jobs activos', isActive: (p) => p.startsWith('/jobs') },
   { href: '/chats', icon: '💬', label: 'Historial de chats', isActive: (p) => p.startsWith('/chats') },

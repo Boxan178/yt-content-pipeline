@@ -11,7 +11,7 @@ import { ShortsGrid } from './ShortsGrid';
 import { ClaudeRunButton } from './ClaudeRunButton';
 import { ThumbnailsPanel } from './ThumbnailsPanel';
 import { parseChecklists } from '@/lib/parse-checkboxes';
-import { buildElenaAudit, buildSaraResume, buildAmeliaAudit, buildMarcusReview, buildLuisRender, buildCaliopeFullAudio, buildMarcosTitles, buildUploadToYoutube, type VideoContext } from '@/lib/prompts';
+import { buildElenaAudit, buildSaraResume, buildAmeliaAudit, buildMarcusReview, buildLuisRender, buildCaliopeFullAudio, buildMarcosTitles, buildUploadToYoutube, buildMarioStrategy, buildTest72hPostMortem, type VideoContext } from '@/lib/prompts';
 
 interface FileEntry {
   name: string;
@@ -322,6 +322,17 @@ export function VideoDetailModal({ video, onClose }: Props) {
               const caliope = buildCaliopeFullAudio(ctx);
               const marcos = buildMarcosTitles(ctx);
               const upload = buildUploadToYoutube(ctx);
+              const mario = buildMarioStrategy(ctx);
+              // Calcular horas desde publicación si está en estado 'uploaded'
+              const hoursSincePublished = video.state === 'uploaded'
+                ? Math.round((Date.now() - new Date(video.mtime).getTime()) / 3600000)
+                : 0;
+              const test72h = buildTest72hPostMortem(ctx, hoursSincePublished);
+              const test72hDisabled = video.state !== 'uploaded'
+                ? 'Solo aplica a vídeos ya subidos (estado uploaded).'
+                : hoursSincePublished < 72
+                ? `Espera al menos 72h desde la publicación. Llevan ~${hoursSincePublished}h.`
+                : undefined;
               const hasRender = !!detail.renderPrincipal;
               const hasAnyAudio = (detail.audios?.length ?? 0) > 0;
               const det = video.progress.details;
@@ -419,6 +430,35 @@ export function VideoDetailModal({ video, onClose }: Props) {
                       model={caliope.model}
                       variant="subtle"
                     />
+                    <ClaudeRunButton
+                      label="🎯 Diagnóstico estratégico (MARIO)"
+                      hint="MARIO valida topic + busca outliers + estima targets CTR/AVD + da veredicto GO/PIVOT/STOP. Útil antes de empezar producción."
+                      prompt={mario.prompt}
+                      cwd={mario.cwd}
+                      videoFolder={detail.folderPath.replace(/\\/g, '/')}
+                      skill="mario"
+                      jobLabel="MARIO"
+                      timeoutMs={mario.timeoutMs}
+                      model={mario.model}
+                      loop={mario.loop}
+                      variant="subtle"
+                    />
+                    {video.state === 'uploaded' && (
+                      <ClaudeRunButton
+                        label="🔍 Post-mortem 72h (test-72h)"
+                        hint="Pull de YouTube Analytics + comparativa vs target + propuestas de iteración (title v2 / thumb v2). Solo aplica >72h post-publicación."
+                        prompt={test72h.prompt}
+                        cwd={test72h.cwd}
+                        videoFolder={detail.folderPath.replace(/\\/g, '/')}
+                        skill="test-72h"
+                        jobLabel="test-72h"
+                        timeoutMs={test72h.timeoutMs}
+                        model={test72h.model}
+                        loop={test72h.loop}
+                        disabledReason={test72hDisabled}
+                        variant="subtle"
+                      />
+                    )}
                     <ClaudeRunButton
                       label="📝 Proponer títulos con MARCOS"
                       hint="MARCOS genera 4 rutas de título (curiosidad / search / tensión / híbrido) y recomienda una. 1-3 min."

@@ -402,3 +402,78 @@ Sigue tu metodología:
 Formato de salida: markdown con tabla o lista clara. Termina con un bloque "RECOMENDADO:" en negrita.`,
   };
 }
+
+// ── MARIO — Estratega YouTube faceless (diagnóstico previo) ─────────────
+
+export function buildMarioStrategy(v: VideoContext): BuiltPrompt {
+  return {
+    cwd: JARVIS_ROOT,
+    timeoutMs: LONG_TIMEOUT_MS,
+    model: 'sonnet',
+    prompt: `MARIO, hazme un diagnóstico estratégico para el vídeo "${v.title}" del canal ${v.channel}.
+
+Carpeta del proyecto: ${v.folderPath}
+Packaging.md (si existe): ${v.folderPath.replace(/\\/g, '/')}/_PACKAGING/packaging.md
+
+Aplica tu metodología completa:
+
+1. **Topic validation** — ¿el topic está saturado en el nicho? Busca con Algrow/vidIQ outliers recientes del nicho del canal (${v.channel}). ¿Hay demanda real o estamos remando contra corriente?
+
+2. **Outliers de referencia** — Identifica 3-5 vídeos outliers (>5x views vs el avg del canal de origen) sobre el mismo topic en los últimos 90 días. Para cada uno: título, canal, views, CTR estimado, qué hizo diferente.
+
+3. **Targets de performance** — Dado el canal ${v.channel} y su histórico (subs, avg views, AVD típico), estima:
+   - CTR objetivo (mínimo viable + ideal)
+   - AVD% objetivo (mínimo viable + ideal)
+   - Browse vs Search vs Suggested split esperado
+
+4. **Risks y wedges** — ¿Qué riesgos veo en este topic concreto en este canal? ¿Hay un wedge (ángulo único defendible) o estamos copiando lo que ya hicieron otros?
+
+5. **Veredicto final** — Una de estas tres opciones:
+   - 🟢 GO: el topic merece la producción completa, este es el ángulo concreto.
+   - 🟡 PIVOT: la idea base sirve pero hay que cambiar X (ángulo / título / posicionamiento).
+   - 🔴 STOP: descártalo, este topic no tiene tracción suficiente, propón estos 2-3 topics alternativos del nicho con outliers recientes.
+
+Devuelve markdown claro con secciones. Si veredicto es STOP, deja los 2-3 topics alternativos en negrita al final.${LOOP_INSTRUCTION}`,
+    loop: { successMarker: '<<<DONE>>>', maxRetries: 2 },
+  };
+}
+
+// ── test-72h — Post-mortem 72h post-publicación ─────────────────────────
+
+export function buildTest72hPostMortem(v: VideoContext, hoursSincePublished?: number): BuiltPrompt {
+  return {
+    cwd: JARVIS_ROOT,
+    timeoutMs: LONG_TIMEOUT_MS,
+    model: 'sonnet',
+    prompt: `Hazme un post-mortem ventana 72-96h del vídeo "${v.title}" del canal ${v.channel} usando la skill \`test-72h\`.
+
+Carpeta del proyecto: ${v.folderPath}
+${hoursSincePublished ? `Tiempo desde publicación: ~${hoursSincePublished}h` : 'Tiempo desde publicación: estimar a partir de YouTube Analytics'}
+
+Aplica tu flujo estándar:
+
+1. **Métricas reales** — Pull de YouTube Analytics (vía OAuth / vidIQ / Algrow): CTR, AVD%, views, retention curve, traffic sources, audience retention.
+
+2. **Comparativa vs target** — Lo que MARIO predijo / lo que se acordó en packaging.md vs lo que ha pasado realmente. ¿Hit, near-miss, miss grande?
+
+3. **Diagnóstico de fallos** — Si está rindiendo por debajo:
+   - ¿Es CTR (problema de title/thumb)?
+   - ¿Es AVD (problema de hook/structure)?
+   - ¿Es traffic source (mal posicionamiento)?
+   - ¿Es timing (publicado mal hora/día)?
+   - ¿Es audience (no es nuestro viewer-persona)?
+
+4. **Iteraciones propuestas** — Si tiene sentido iterar:
+   - **Title v2** — propón 2-3 variantes con argumento (puedes invocar a MARCOS si es necesario).
+   - **Thumb v2** — propón concepto visual nuevo (puedes invocar a NORA/IRIS).
+   - **End screen / chapters** — ajustes menores que aún tienen impacto.
+
+5. **Veredicto final**:
+   - ✅ HIT: dejarlo. Documenta qué funcionó.
+   - 🔄 ITERATE: cambia título/thumb (puedo aplicarlo desde la app después).
+   - ☠️ KILL: no merece más iteración, archivar y aprender.
+
+Formato: markdown estructurado por secciones. Si hay variantes propuestas para A/B, listarlas claras al final.${LOOP_INSTRUCTION}`,
+    loop: { successMarker: '<<<DONE>>>', maxRetries: 2 },
+  };
+}

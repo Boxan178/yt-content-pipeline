@@ -11,6 +11,9 @@ out/
 dist-electron/
 release/
 
+# prompts temporales para generación visual (no commitear)
+.tmp-prompts/
+
 # env
 .env.local
 .env*.local
