@@ -3,7 +3,7 @@
   "version": "0.3.1",
   "private": true,
   "description": "YouTube Content Pipeline App — ventana de supervisión para aprobar/rechazar artefactos del pipeline de contenido (miniaturas, guiones, audios, renders) que Claude genera en background.",
-  "author": "Pablo Navas <p.navas.04@gmail.com>",
+  "author": "Pablo Navas",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev:next": "next dev -p 3001 --turbo",
