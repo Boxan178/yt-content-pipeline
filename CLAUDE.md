@@ -17,6 +17,7 @@ Este proyecto **vive en `C:\dev\yt-content-pipeline\`** (SSD local), NO en `Y:\0
 - **Jobs persistentes**: cada botón de skill spawna proceso con persistencia en `<videoFolder>/.claude-jobs/`. La UI polleia (o usa SSE) el estado. Sobrevive a cerrar modal y cerrar Electron.
 - **Canales** en `lib/channels.ts`. Tres habilitados (`moderni-stoici`, `moderno-estoico`, `vaultman`). Para activar otro, completar `rootPath`, `scriptsRoot` y nombres exactos de las carpetas de estado.
 - **Paths absolutos** centralizados en `lib/config.ts`. Exporta `JARVIS_ROOT`, `YOUTUBE_OS_ROOT`, `LAB_ROOT`, `KIE_BRIDGE_PY`, `TTS_JOBS_ES/EN`, `normalizeAllowedPath()`, `channelScriptsRoot()`. **Nota anti-NFT**: `H:/YOUTUBE` NO se exporta como const (rompe `next build` porque webpack/NFT recorre `_RECURSOS/` y encuentra `.mp4` problemáticos). En `lib/channels.ts` los `rootPath` son literales completos hasta el folder concreto.
+- **`/lab` (solo dev)** — wizard de 5 pasos para crear canales nuevos a partir de un canal de referencia (style-engine), validar el nicho (MARIO+Algrow), bootstrappear en disco (B1-B7 de state 16 + `bootstrap_channel.py`) y arrancar el primer vídeo. Persistencia JSON en `~/.yt-content-pipeline/lab/{channels,ideas,research}.json`. Visibilidad gated por `window.electronAPI.isDev` — en el `.exe` instalado NO aparece la entrada en sidebar, las rutas siguen accesibles por URL directa. Archivos clave: `lib/lab/`, `app/lab/`, `components/lab/`, `app/api/lab/`.
 
 ## Cosas que NO debes hacer (lecciones aprendidas)
 
@@ -85,6 +86,7 @@ Cada `<vídeo>/` tiene `01_BRUTOS/`, `RENDER/`, `_PACKAGING/`. Los 6 hitos de pr
 
 ## Referencias
 
+- `LAB-PLAN-2026-05-25.md` — plan del módulo `/lab` (decisiones, fases, archivos)
 - `ESTABILIZACION-2026-05-24.md` — auditoría actual (LEER PRIMERO)
 - `STATUS-2026-05-22.md` — cierre de sesión anterior, contexto histórico
 - `AUDITORIA-2026-05-22.md` — auditoría previa (3 bugs ya arreglados)
