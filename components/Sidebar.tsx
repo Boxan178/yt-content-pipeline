@@ -29,11 +29,19 @@ const NAV: NavItem[] = [
 export function Sidebar() {
   const pathname = usePathname() ?? '/';
   const [unread, setUnread] = useState(0);
+  const [isDev, setIsDev] = useState(false);
 
   useEffect(() => {
     const refresh = () => setUnread(countUnread());
     refresh();
     return onChange(refresh);
+  }, []);
+
+  // LAB: visible solo en modo dev (electron .). En el .exe instalado NO se pinta.
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsDev(window.electronAPI?.isDev === true);
+    }
   }, []);
 
   return (
@@ -76,6 +84,24 @@ export function Sidebar() {
           );
         })}
       </nav>
+
+      {/* LAB — solo en dev */}
+      {isDev && (
+        <Link
+          href="/lab"
+          title="Lab (solo dev)"
+          className={`group relative mt-2 flex h-10 w-10 items-center justify-center rounded-lg border text-lg transition ${
+            pathname.startsWith('/lab')
+              ? 'border-amber-500/60 bg-amber-500/10 text-amber-300'
+              : 'border-amber-700/30 text-amber-400 hover:border-amber-500/60 hover:bg-amber-500/5'
+          }`}
+        >
+          <span>🧪</span>
+          <span className="pointer-events-none absolute left-12 z-50 hidden whitespace-nowrap rounded border border-border bg-panel px-2 py-1 text-[11px] text-white shadow-lg group-hover:block">
+            Lab (solo dev)
+          </span>
+        </Link>
+      )}
 
       {/* Footer: avatar + versión */}
       <div className="mt-2 flex flex-col items-center gap-1.5">
