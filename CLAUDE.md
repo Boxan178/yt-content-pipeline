@@ -2,7 +2,7 @@
 
 App de escritorio que sirve como **ventana de supervisión + riendas** sobre el proceso de producción de YouTube de Pablo. Visualiza vídeos por canal en kanban, abre detalle por vídeo con todo el material (render, miniaturas, packaging, checklist), y permite **disparar skills** del equipo (SARA, ELENA, AMELIA, MARCUS HALE, LUIS, NORA+IRIS) directamente desde la UI via `claude -p` local.
 
-> **Antes de tocar nada, lee `STATUS-2026-05-22.md`** en este mismo directorio. Es el documento de cierre de sesión que contiene: estado de cada feature, arquitectura clave, bug crítico actual, próximos pasos. NO empieces a programar sin leerlo, evitarás repetir tests ya descartados.
+> **Antes de tocar nada, lee `ESTABILIZACION-2026-05-24.md`** (auditoría más reciente). Estado de salud, código que ya se eliminó como durmiente, riesgos latentes, próximos pasos. Sustituye al antiguo `STATUS-2026-05-22.md`, que mantiene contexto histórico pero ya no refleja el estado actual.
 
 ## Dónde vive y por qué
 
@@ -12,16 +12,11 @@ Este proyecto **vive en `C:\dev\yt-content-pipeline\`** (SSD local), NO en `Y:\0
 
 - **Stack**: Electron 33 + Next.js 14 (App Router) + Tailwind + xterm/node-pty para terminal embebida.
 - **Vista principal**: `/channels/[slug]` con kanban (filesystem-driven, lee `H:\YOUTUBE\<canal>\`).
-- **Vista detalle**: modal al click en card, con reproductores, packaging.md renderizado, galería miniaturas, checklist, **botones de skills** (SARA/ELENA/AMELIA/MARCUS/LUIS/NORA+IRIS).
+- **Vista detalle**: modal al click en card, con reproductores, packaging.md renderizado, galería miniaturas, checklist, **botones de skills** (SARA/ELENA/AMELIA/MARCUS/LUIS/NORA+IRIS/MARIO/test-72h).
 - **Terminal embebida**: panel derecho persistente (siempre visible, redimensionable). `claude` o shell, vive en `layout.tsx` para que sobreviva a navegación.
-- **Jobs persistentes**: cada botón de skill spawna proceso detached con persistencia en `<videoFolder>/.claude-jobs/`. La UI polleia el estado. Sobrevive a cerrar modal y cerrar Electron.
-- **Canales** en `lib/channels.ts`. Solo `moderni-stoici` está `enabled: true`. Para activar otro, completar `rootPath`, `scriptsRoot` y nombres exactos de las carpetas de estado.
-
-## Bug crítico actual (PRIORIDAD 1)
-
-**`claude -p` spawneado detached con stdin desde file descriptor queda colgado** (~8s de CPU en 7+ min). Bloquea TODOS los botones de skills. La terminal interactiva (con node-pty) NO está afectada.
-
-Detalles completos + soluciones a probar en `STATUS-2026-05-22.md` sección "BUG CRÍTICO ACTUAL".
+- **Jobs persistentes**: cada botón de skill spawna proceso con persistencia en `<videoFolder>/.claude-jobs/`. La UI polleia (o usa SSE) el estado. Sobrevive a cerrar modal y cerrar Electron.
+- **Canales** en `lib/channels.ts`. Tres habilitados (`moderni-stoici`, `moderno-estoico`, `vaultman`). Para activar otro, completar `rootPath`, `scriptsRoot` y nombres exactos de las carpetas de estado.
+- **Paths absolutos** centralizados en `lib/config.ts`. Exporta `JARVIS_ROOT`, `YOUTUBE_OS_ROOT`, `LAB_ROOT`, `KIE_BRIDGE_PY`, `TTS_JOBS_ES/EN`, `normalizeAllowedPath()`, `channelScriptsRoot()`. **Nota anti-NFT**: `H:/YOUTUBE` NO se exporta como const (rompe `next build` porque webpack/NFT recorre `_RECURSOS/` y encuentra `.mp4` problemáticos). En `lib/channels.ts` los `rootPath` son literales completos hasta el folder concreto.
 
 ## Cosas que NO debes hacer (lecciones aprendidas)
 
@@ -29,10 +24,11 @@ Detalles completos + soluciones a probar en `STATUS-2026-05-22.md` sección "BUG
 - **No fusionar `lib/progress-types.ts` con `lib/progress.ts`**: separación browser-safe vs server-only es necesaria para que el build de Next no falle con `UnhandledSchemeError`.
 - **No re-introducir `shell: true` en `lib/claude-jobs.ts`**: rompe stdin propagation. Ya descartado.
 - **No usar `claude.cmd` directo con shell:false**: Node 18+ devuelve EINVAL.
+- **No usar `detached: true` en `spawn` de claude en Windows**: abre ventanas CMD aunque `windowsHide` esté. Usa `detached: false` + `stdio: ['ignore', fd, fd]`.
+- **No hardcodear `Y:/04_DEV/J.A.R.V.I.S` ni `H:/YOUTUBE`** en archivos nuevos. Importa desde `lib/config.ts`. Si centralizar duele, el path no debería existir.
 - **No automatizar Flow con Playwright**: descartado 2026-05-14 por fricción con la UI.
 - **No usar API key de Anthropic**: subscription Pro siempre.
 - **No mover el proyecto al NAS**: 40-60s de arranque.
-- **No borrar archivos durmientes** (`components/RenderPanel.tsx`, `app/api/channels/.../render/`, `lib/render.ts`, `app/api/claude/run/route.ts`) sin antes confirmar que el flujo nuevo funciona en producción.
 
 ## Cómo levantar la app
 
@@ -85,12 +81,16 @@ Cada `<vídeo>/` tiene `01_BRUTOS/`, `RENDER/`, `_PACKAGING/`. Los 6 hitos de pr
 - Sin auth todavía. RLS abierta en Supabase. Si la app se expone fuera del PC, meter auth antes.
 - No subir `.env.local` (ya está en `.gitignore`).
 - Next.js dev en :3001 (youtube-dashboard usa :3000 si lo tienes activo).
-- Skills viven en `Y:\04_DEV\J.A.R.V.I.S\.claude\skills\` y son detectadas automáticamente cuando spawneamos `claude` con CWD en `Y:\04_DEV\J.A.R.V.I.S`.
+- Skills viven físicamente en `Y:\04_DEV\J.A.R.V.I.S\.claude\skills\`. Desde este proyecto son accesibles vía **symlink** en `C:\dev\yt-content-pipeline\.claude\skills` → `\\Servidornas\naspablo\04_DEV\J.A.R.V.I.S\.claude\skills`. **No editar skills desde aquí** — edita en J.A.R.V.I.S. y se ven al instante. El symlink se recrea desde PowerShell admin si se rompe: `New-Item -ItemType SymbolicLink -Path "C:\dev\yt-content-pipeline\.claude\skills" -Target "\\Servidornas\naspablo\04_DEV\J.A.R.V.I.S\.claude\skills"`. Cuando spawneamos `claude -p` con CWD en `Y:\04_DEV\J.A.R.V.I.S` (jobs de skills), también las ve por la ruta original — los dos caminos coexisten.
 
 ## Referencias
 
-- `STATUS-2026-05-22.md` — estado completo y próximos pasos (LEER PRIMERO)
+- `ESTABILIZACION-2026-05-24.md` — auditoría actual (LEER PRIMERO)
+- `STATUS-2026-05-22.md` — cierre de sesión anterior, contexto histórico
+- `AUDITORIA-2026-05-22.md` — auditoría previa (3 bugs ya arreglados)
+- `PROPUESTAS-2026-05-23.md` — propuestas TIER 1-3 (algunas ya en v0.4.0)
 - `README.md` — versión pública (puede estar desactualizado respecto al estado real)
+- `lib/config.ts` — single source of truth para paths absolutos
 - `Y:\04_DEV\J.A.R.V.I.S\.claude\skills\sara\SKILL.md` — orquestadora del pipeline
 - `Y:\04_DEV\J.A.R.V.I.S\.claude\skills\nano-banana-iris\SKILL.md` — generación imagen (ejecuta kie-bridge directo)
 - `Y:\04_DEV\J.A.R.V.I.S\lab\kie-bridge\` — wrapper Python para API Kie.ai

@@ -5,7 +5,6 @@ import { PackagingSections } from './PackagingSections';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { VideoCardData } from './VideoCard';
-import { RenderPanel } from './RenderPanel';
 import { ChecklistPanel } from './ChecklistPanel';
 import { ShortsGrid } from './ShortsGrid';
 import { ClaudeRunButton } from './ClaudeRunButton';
@@ -514,6 +513,9 @@ export function VideoDetailModal({ video, onClose }: Props) {
                   folderPath: detail.folderPath,
                   progress: video.progress,
                 }}
+                thumbnailOptions={detail.images
+                  .filter((img) => /(^|\/)_PACKAGING\/MINIATURAS\//i.test(img.relPath))
+                  .map((img) => ({ name: img.name, url: mediaUrl(img.relPath) }))}
                 onResolved={reloadDetail}
               />
             )}

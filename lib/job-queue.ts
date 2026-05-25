@@ -11,7 +11,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { startJob, readJob, jobsDirFor, isPidAlive } from './claude-jobs';
+import { startJob, readJob, jobsDirFor, isPidAlive, cancelJob } from './claude-jobs';
 
 const DIR = path.join(os.homedir(), '.yt-content-pipeline');
 const FILE = path.join(DIR, 'queue.json');
@@ -231,10 +231,8 @@ export function cancelItem(id: string): boolean {
     return true;
   }
   if (item.status === 'running' && item.jobId) {
-    // Cancelar via claude-jobs
     try {
-      const { cancelJob, jobsDirFor: jdir } = require('./claude-jobs') as typeof import('./claude-jobs');
-      const jobPath = path.join(jdir(item.videoFolder), `${item.jobId}.json`);
+      const jobPath = path.join(jobsDirFor(item.videoFolder), `${item.jobId}.json`);
       cancelJob(jobPath);
     } catch {}
     item.status = 'cancelled';

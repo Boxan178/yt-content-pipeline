@@ -8,10 +8,13 @@ import { ChecklistItemRow } from './ChecklistItemRow';
 interface Props {
   items: ChecklistItem[];
   ctx: VideoContext;
+  /** Miniaturas disponibles en _PACKAGING/MINIATURAS/ — se cascade al DecisionModal
+   *  cuando un item tipa como `thumbnail_pick`. */
+  thumbnailOptions?: Array<{ name: string; url: string }>;
   onResolved?: () => void;
 }
 
-export function ChecklistPanel({ items, ctx, onResolved }: Props) {
+export function ChecklistPanel({ items, ctx, thumbnailOptions, onResolved }: Props) {
   const folder = ctx.folderPath.replace(/\\/g, '/');
   const [order, setOrder] = useState<string[] | null>(null);
   const [draggedKey, setDraggedKey] = useState<string | null>(null);
@@ -123,6 +126,7 @@ export function ChecklistPanel({ items, ctx, onResolved }: Props) {
               <ChecklistItemRow
                 item={item}
                 ctx={ctx}
+                thumbnailOptions={thumbnailOptions}
                 onResolved={onResolved}
               />
             </li>

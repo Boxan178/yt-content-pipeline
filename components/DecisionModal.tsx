@@ -61,7 +61,7 @@ export function DecisionModal({ itemText, videoFolder, thumbnailOptions, onClose
   };
 
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 p-6">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-6 backdrop-blur-sm">
       <div className="flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-border bg-panel shadow-2xl">
         <header className="flex items-center justify-between border-b border-border px-5 py-3">
           <h2 className="text-lg font-semibold text-white">Tu decisión</h2>

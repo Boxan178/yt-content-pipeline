@@ -39,3 +39,6 @@ worker/*.pyc
 # typescript build cache
 *.tsbuildinfo
 next-env.d.ts
+
+# claude code workspace (symlink a skills + scheduled-tasks local)
+.claude/

@@ -6,6 +6,7 @@ import { JobOptionsPicker, type ClaudeModel, type ClaudeEffort } from './JobOpti
 import { JobChatPanel } from './JobChatPanel';
 import { addNotification } from '@/lib/notifications';
 import { awardOnce } from '@/lib/gamification-client';
+import { JARVIS_ROOT } from '@/lib/config';
 import type { StreamEvent } from '@/lib/stream-events';
 
 interface Props {
@@ -319,7 +320,7 @@ export function ClaudeRunButton({
           videoFolder,
           videoTitle: videoTitle ?? videoFolder.split('/').pop() ?? '?',
           prompt,
-          cwd: cwd ?? 'Y:/04_DEV/J.A.R.V.I.S',
+          cwd: cwd ?? JARVIS_ROOT,
           timeoutMs: timeoutMs ?? 10 * 60 * 1000,
           model: effectiveModel,
           effort: effectiveEffort,

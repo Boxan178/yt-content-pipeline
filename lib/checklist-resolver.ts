@@ -4,6 +4,7 @@
 
 import type { ChecklistItem } from './parse-checkboxes';
 import type { VideoContext } from './prompts';
+import { JARVIS_ROOT } from './config';
 
 export type ResolverPlan =
   | {
@@ -20,7 +21,6 @@ export type ResolverPlan =
       reason: string;
     };
 
-const JARVIS_ROOT = 'Y:/04_DEV/J.A.R.V.I.S';
 const TIMEOUT_SHORT = 5 * 60 * 1000;
 const TIMEOUT_MED = 10 * 60 * 1000;
 const TIMEOUT_LONG = 30 * 60 * 1000;

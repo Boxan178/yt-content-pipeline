@@ -1,33 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { startJob, listJobsForFolder, listActiveJobsForFolder } from '@/lib/claude-jobs';
+import { JARVIS_ROOT, normalizeAllowedPath } from '@/lib/config';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const ALLOWED_CWD_PREFIXES = [
-  'Y:/04_DEV/J.A.R.V.I.S',
-  'H:/YOUTUBE',
-];
-const DEFAULT_CWD = 'Y:/04_DEV/J.A.R.V.I.S';
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
 // Spawn es detached, el endpoint devuelve inmediatamente. Subimos el límite
 // del timeoutMs propio del job para skills largas como LUIS (render 25 min +
 // audit + AMELIA + MARCUS + mover = ~35-40 min en el peor caso).
 const MAX_TIMEOUT_MS = 60 * 60 * 1000;
-
-function normalizeCwd(input?: string): string {
-  if (!input) return DEFAULT_CWD;
-  const norm = input.replace(/\\/g, '/').replace(/\/+$/, '');
-  if (ALLOWED_CWD_PREFIXES.some((p) => norm === p || norm.startsWith(p + '/'))) return norm;
-  return DEFAULT_CWD;
-}
-
-function normalizeVideoFolder(input?: string): string | undefined {
-  if (!input) return undefined;
-  const norm = input.replace(/\\/g, '/').replace(/\/+$/, '');
-  if (norm.startsWith('H:/YOUTUBE/') || norm.startsWith('Y:/04_DEV/J.A.R.V.I.S')) return norm;
-  return undefined;
-}
 
 interface StartBody {
   skill: string;
@@ -60,8 +42,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing skill' }, { status: 400 });
   }
 
-  const cwd = normalizeCwd(body.cwd);
-  const videoFolder = normalizeVideoFolder(body.videoFolder);
+  const cwd = normalizeAllowedPath(body.cwd) ?? JARVIS_ROOT;
+  const videoFolder = normalizeAllowedPath(body.videoFolder) ?? undefined;
   const requested = typeof body.timeoutMs === 'number' && body.timeoutMs > 0
     ? body.timeoutMs : DEFAULT_TIMEOUT_MS;
   const timeoutMs = Math.min(requested, MAX_TIMEOUT_MS);
@@ -95,7 +77,7 @@ export async function GET(req: NextRequest) {
   const folderParam = url.searchParams.get('videoFolder');
   const onlyActive = url.searchParams.get('onlyActive') === '1';
 
-  const videoFolder = normalizeVideoFolder(folderParam ?? undefined);
+  const videoFolder = normalizeAllowedPath(folderParam);
   if (!videoFolder) {
     return NextResponse.json({ error: 'Missing or invalid videoFolder' }, { status: 400 });
   }

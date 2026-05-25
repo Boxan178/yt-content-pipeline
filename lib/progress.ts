@@ -6,6 +6,7 @@ import 'server-only';
 import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import type { ProgressDetails, Progress } from './progress-types';
+import { TTS_JOBS_ES, TTS_JOBS_EN } from './config';
 
 export type { ProgressDetails, Progress } from './progress-types';
 export { HIT_LABELS, HIT_ORDER } from './progress-types';
@@ -43,9 +44,7 @@ async function sleepStoryHasScript(videoFolder: string): Promise<boolean> {
   const folderName = path.basename(videoFolder).normalize('NFC');
   if (!folderName.startsWith('story-')) return false;
   const isSpanish = folderName.endsWith('-es');
-  const ttsJobsPath = isSpanish
-    ? 'Y:/04_DEV/J.A.R.V.I.S/youtube-os/proyectos/sleep-stories-stoic/content/tts-jobs-es.json'
-    : 'Y:/04_DEV/J.A.R.V.I.S/youtube-os/proyectos/sleep-stories-stoic/content/tts-jobs-en.json';
+  const ttsJobsPath = isSpanish ? TTS_JOBS_ES : TTS_JOBS_EN;
   try {
     const raw = await readFile(ttsJobsPath, 'utf-8');
     const parsed = JSON.parse(raw) as { jobs?: Array<{ outputDir?: string; chunks?: Array<{ text?: string }> }> };

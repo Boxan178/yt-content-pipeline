@@ -1,16 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import path from 'node:path';
-import { cancelJob, jobsDirFor, findJob } from '@/lib/claude-jobs';
+import { cancelJob, findJob } from '@/lib/claude-jobs';
+import { normalizeAllowedPath } from '@/lib/config';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-function normalizeVideoFolder(input?: string): string | undefined {
-  if (!input) return undefined;
-  const norm = input.replace(/\\/g, '/').replace(/\/+$/, '');
-  if (norm.startsWith('H:/YOUTUBE/') || norm.startsWith('Y:/04_DEV/J.A.R.V.I.S')) return norm;
-  return undefined;
-}
 
 /**
  * POST /api/claude/jobs/[jobId]/cancel?videoFolder=...
@@ -21,7 +14,7 @@ export async function POST(
 ) {
   const url = new URL(req.url);
   const folderParam = url.searchParams.get('videoFolder');
-  const videoFolder = normalizeVideoFolder(folderParam ?? undefined);
+  const videoFolder = normalizeAllowedPath(folderParam);
   if (!videoFolder) {
     return NextResponse.json({ error: 'Missing or invalid videoFolder' }, { status: 400 });
   }

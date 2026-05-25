@@ -5,14 +5,12 @@ import { writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { KIE_BRIDGE_PY } from '@/lib/config';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Paths a kie-bridge y al directorio de outputs. JARVIS_ROOT desofuscado
-// para que NFT no lo trace como dependencia.
-const JARVIS_ROOT = ['Y:', '04_DEV', 'J.A.R.V.I.S'].join('/');
-const KIE_PY = path.join(JARVIS_ROOT.replace(/\//g, path.sep), 'lab', 'kie-bridge', 'kie.py');
+const KIE_PY = KIE_BRIDGE_PY;
 const OUTPUT_DIR = path.join(os.homedir(), '.yt-content-pipeline', 'visual-lab');
 const TMP_PROMPT_DIR = path.join(os.homedir(), '.yt-content-pipeline', 'visual-lab', '.prompts');
 
@@ -41,6 +39,12 @@ export async function POST(req: NextRequest) {
   }
   if (!body.prompt?.trim()) {
     return NextResponse.json({ ok: false, error: 'prompt vacío' }, { status: 400 });
+  }
+  if (!existsSync(KIE_PY)) {
+    return NextResponse.json({
+      ok: false,
+      error: `kie-bridge no disponible en ${KIE_PY}. Visual Lab requiere que el NAS (Y:) esté montado y que kie-bridge esté instalado.`,
+    }, { status: 503 });
   }
   const model = (body.model ?? 'nano-banana-2').trim();
   const aspect = (body.aspect ?? '16:9').trim();

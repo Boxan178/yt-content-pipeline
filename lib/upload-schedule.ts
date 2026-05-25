@@ -10,12 +10,11 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { startJob, readJob, jobsDirFor } from './claude-jobs';
+import { startJob, readJob, jobsDirFor, cancelJob } from './claude-jobs';
+import { JARVIS_ROOT } from './config';
 
 const DIR = path.join(os.homedir(), '.yt-content-pipeline');
 const FILE = path.join(DIR, 'scheduled-uploads.json');
-
-const JARVIS_ROOT = ['Y:', '04_DEV', 'J.A.R.V.I.S'].join('/');
 
 export type UploadStatus = 'pending' | 'uploading' | 'done' | 'failed' | 'cancelled';
 export type Privacy = 'public' | 'unlisted' | 'private';
@@ -119,7 +118,6 @@ export function cancelUpload(id: string): boolean {
   }
   if (item.status === 'uploading' && item.jobId) {
     try {
-      const { cancelJob } = require('./claude-jobs') as typeof import('./claude-jobs');
       const jobPath = path.join(jobsDirFor(item.videoFolder), `${item.jobId}.json`);
       cancelJob(jobPath);
     } catch {}

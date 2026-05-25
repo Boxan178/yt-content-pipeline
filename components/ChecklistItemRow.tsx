@@ -12,6 +12,9 @@ import { DecisionModal } from './DecisionModal';
 interface Props {
   item: ChecklistItem;
   ctx: VideoContext;
+  /** Miniaturas disponibles en _PACKAGING/MINIATURAS/ — se inyectan al
+   *  `DecisionModal` cuando el item tipa como `thumbnail_pick`. */
+  thumbnailOptions?: Array<{ name: string; url: string }>;
   onResolved?: () => void;
 }
 
@@ -34,7 +37,7 @@ interface JobShape {
 
 const POLL_MS = 3000;
 
-export function ChecklistItemRow({ item, ctx, onResolved }: Props) {
+export function ChecklistItemRow({ item, ctx, thumbnailOptions, onResolved }: Props) {
   const plan: ResolverPlan = inferResolver(item, ctx);
   const [job, setJob] = useState<JobShape | null>(null);
   const [tail, setTail] = useState<string>('');
@@ -158,6 +161,7 @@ export function ChecklistItemRow({ item, ctx, onResolved }: Props) {
           <DecisionModal
             itemText={item.text}
             videoFolder={ctx.folderPath.replace(/\\/g, '/')}
+            thumbnailOptions={thumbnailOptions}
             onClose={() => setDecisionOpen(false)}
             onResolved={() => {
               setDecisionOpen(false);

@@ -2,6 +2,8 @@
 // están aquí preparados para activarse cuando definamos su rootPath y mapping
 // de estados.
 
+import { channelScriptsRoot } from './config';
+
 export type VideoState =
   | 'pending_locution'
   | 'production'
@@ -55,7 +57,7 @@ export const CHANNELS: Channel[] = [
       'Biblioteca de Brutos',
       '_REFERENCIA-THUMBNAILS-YOUTUBE',
     ],
-    scriptsRoot: 'Y:/04_DEV/J.A.R.V.I.S/youtube-os/youtube/moderni-stoici/guiones',
+    scriptsRoot: channelScriptsRoot('moderni-stoici'),
   },
   // Placeholders — completar rootPath y stateFolders cuando se activen.
   {
@@ -73,7 +75,7 @@ export const CHANNELS: Channel[] = [
     ignoreFolders: [
       'PENDIENTE DE REVISAR',
     ],
-    scriptsRoot: 'Y:/04_DEV/J.A.R.V.I.S/youtube-os/youtube/moderno-estoico/guiones',
+    scriptsRoot: channelScriptsRoot('moderno-estoico'),
   },
   {
     // Canal de historias narrativas cortas. Reciclaje del canal YouTube
@@ -94,7 +96,7 @@ export const CHANNELS: Channel[] = [
       'PENDIENTE DE REVISAR',
       'Biblioteca de Brutos',
     ],
-    scriptsRoot: 'Y:/04_DEV/J.A.R.V.I.S/youtube-os/youtube/vaultman/guiones',
+    scriptsRoot: channelScriptsRoot('vaultman'),
   },
   { slug: 'dailydog',         name: 'Daily Dog',        enabled: false, rootPath: 'H:/YOUTUBE/DAILY DOG', stateFolders: { pending_locution: '', production: '', ready: '', uploaded: '', archived: '' }, ignoreFolders: [] },
   { slug: 'tail-tales',       name: 'Tail Tales',       enabled: false, rootPath: 'H:/YOUTUBE/TAIL TALES_EN', stateFolders: { pending_locution: '', production: '', ready: '', uploaded: '', archived: '' }, ignoreFolders: [] },

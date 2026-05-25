@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { normalizeAllowedPath } from '@/lib/config';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -11,12 +12,6 @@ interface DecisionRequest {
   itemText: string;     // texto exacto del item del checklist
   decision: string;     // respuesta de Pablo
   rationale?: string;   // explicación opcional
-}
-
-function normalizeFolder(p: string): string | null {
-  const norm = p.replace(/\\/g, '/').replace(/\/+$/, '');
-  if (norm.startsWith('H:/YOUTUBE/') || norm.startsWith('Y:/04_DEV/J.A.R.V.I.S')) return norm;
-  return null;
 }
 
 /**
@@ -35,7 +30,7 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ ok: false, error: 'Invalid JSON' }, { status: 400 });
   }
-  const folder = normalizeFolder(body.folder ?? '');
+  const folder = normalizeAllowedPath(body.folder ?? '');
   if (!folder) {
     return NextResponse.json({ ok: false, error: 'folder inválido' }, { status: 400 });
   }

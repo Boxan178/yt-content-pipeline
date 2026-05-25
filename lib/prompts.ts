@@ -7,8 +7,8 @@
 // - timeoutMs solo si la skill puede tardar > 10 min (SARA, LUIS, etc.)
 
 import type { ProgressDetails } from './progress-types';
+import { JARVIS_ROOT, YOUTUBE_OS_ROOT, KIE_BRIDGE_PY, TTS_JOBS_ES, TTS_JOBS_EN } from './config';
 
-const JARVIS_ROOT = 'Y:/04_DEV/J.A.R.V.I.S';
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
 const LONG_TIMEOUT_MS = 30 * 60 * 1000;
 const VERY_LONG_TIMEOUT_MS = 45 * 60 * 1000;
@@ -87,7 +87,7 @@ export function buildElenaAudit(v: VideoContext): BuiltPrompt {
     ? `
 
 ATENCIÓN — es una **sleep story**. El guion NO vive en _PACKAGING/packaging.md. El texto canónico está en:
-  Y:/04_DEV/J.A.R.V.I.S/youtube-os/proyectos/sleep-stories-stoic/content/tts-jobs-${isSpanish ? 'es' : 'en'}.json
+  ${isSpanish ? TTS_JOBS_ES : TTS_JOBS_EN}
   Filtra el array jobs por outputDir === "${folderName}" y audita el text del chunk 1.
   (También puedes consultar el master limpio en youtube-os/proyectos/sleep-stories-stoic/content/100-stories-master-clean.md y la versión raw en 100-stories-master.md.)`
     : '';
@@ -208,8 +208,8 @@ export function buildCaliopeFullAudio(v: VideoContext): BuiltPrompt {
   // Para sleep stories el tts-jobs.json vive en el proyecto compartido
   const ttsJobsHint = isStoic
     ? `Si este vídeo es una sleep story (slug empieza por "story-"), busca el tts-jobs.json en:
-- Inglés (Moderni Stoici): Y:/04_DEV/J.A.R.V.I.S/youtube-os/proyectos/sleep-stories-stoic/content/tts-jobs-en.json
-- Español (Moderno Estoico): Y:/04_DEV/J.A.R.V.I.S/youtube-os/proyectos/sleep-stories-stoic/content/tts-jobs-es.json
+- Inglés (Moderni Stoici): ${TTS_JOBS_EN}
+- Español (Moderno Estoico): ${TTS_JOBS_ES}
 Filtra los jobs cuya outputDir coincida con el slug de este vídeo.
 
 Si NO es sleep story, busca el tts-jobs.json del vídeo (típicamente en _PACKAGING/ o en el folder del proyecto generado por CICERÓN previamente).`
@@ -271,7 +271,7 @@ ${isStoic ? '3. **MARCUS HALE** (gate viewer-persona) — review rápido del con
 Usa la **Ruta A — Ejecución directa vía kie-bridge** que ya está en tu skill. NO pongas el prompt en el portapapeles, NO menciones Flow. Genera la imagen directamente en disco invocando kie-bridge con \`nano-banana-2\`:
 
 \`\`\`powershell
-python Y:/04_DEV/J.A.R.V.I.S/lab/kie-bridge/kie.py \`
+python ${KIE_BRIDGE_PY} \`
   --model nano-banana-2 \`
   --prompt-file <archivo_temporal_con_prompt_principal> \`
   --aspect 16:9 \`
@@ -309,7 +309,7 @@ Carpeta del proyecto: ${v.folderPath}
 
 Aplica tu flujo end-to-end completo (skill luis):
 
-1. STATE 1 — Captura y validación. Verifica que existen guion (en Y:/04_DEV/J.A.R.V.I.S/youtube-os/youtube/${v.channel}/guiones/<slug>/guion-v2.md o guion.md como fallback), locución (01_BRUTOS/_LOCUCION/ con al menos 3 MP3s), biblioteca de brutos del canal y biblioteca de música.
+1. STATE 1 — Captura y validación. Verifica que existen guion (en ${YOUTUBE_OS_ROOT}/youtube/${v.channel}/guiones/<slug>/guion-v2.md o guion.md como fallback), locución (01_BRUTOS/_LOCUCION/ con al menos 3 MP3s), biblioteca de brutos del canal y biblioteca de música.
 2. STATE 2 — Si el proyecto está en _PENDIENTE LOCUCION/ y la locución está hecha, muévelo a _EN PRODUCCIÓN/ antes de renderizar.
 3. STATE 3 — Lanza el render en background con tools/render_project.py. Monitoriza el log. Tiempo típico 18-25 min para long-form.
 4. STATE 4 — Auto-audit visual con /watch sobre el MP4 final (24 frames). Verifica capa oscura, subs 1 línea, sin asteriscos visibles, último frame limpio.
@@ -340,7 +340,7 @@ export function buildMarcoAurelioRewrite(
     prompt: `MARCO AURELIO, reescribe el guion del vídeo "${v.title}" del canal ${v.channel}.
 
 Carpeta del proyecto: ${v.folderPath}
-El guion actual debería estar en Y:/04_DEV/J.A.R.V.I.S/youtube-os/youtube/${v.channel}/guiones/<slug>/guion-v2.md (o guion.md como fallback). El slug está en el packaging.md del proyecto.
+El guion actual debería estar en ${YOUTUBE_OS_ROOT}/youtube/${v.channel}/guiones/<slug>/guion-v2.md (o guion.md como fallback). El slug está en el packaging.md del proyecto.
 
 ${ref}
 
