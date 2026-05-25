@@ -130,6 +130,88 @@ export function parseVisualsJob(text: string): ParsedVisuals {
   };
 }
 
+// ── Bootstrap (STATE 16 / Pantalla 5) ─────────────────────────────────────
+
+export interface NameProposal {
+  index: number;
+  name: string;
+  handle: string;
+  rationale: string;
+}
+
+export interface DescriptionVariant {
+  version: 'A' | 'B' | 'C';
+  body: string;
+}
+
+export interface ParsedBootstrap {
+  nameProposals?: NameProposal[];
+  descriptions?: DescriptionVariant[];
+  logoPrompt?: string;
+  bannerPrompt?: string;
+  finalSummary?: string;
+}
+
+const NAME_LINE_RE = /^(\d+)\.\s*([^·]+?)\s*·\s*@(\S+)\s*[—\-]\s*(.+)$/;
+
+export function parseBootstrapJob(text: string): ParsedBootstrap {
+  const nameBlock = extractBlock(text, 'NOMBRES PROPUESTOS');
+  const nameProposals: NameProposal[] = [];
+  if (nameBlock) {
+    for (const line of nameBlock.split(/\r?\n/)) {
+      const m = line.trim().match(NAME_LINE_RE);
+      if (m) {
+        nameProposals.push({
+          index: parseInt(m[1], 10),
+          name: m[2].trim(),
+          handle: m[3].trim(),
+          rationale: m[4].trim(),
+        });
+      }
+    }
+  }
+
+  // Las descripciones pueden venir con bloques individuales A/B/C o con un
+  // bloque global DESCRIPCIONES + secciones. Probamos ambos patrones.
+  const descriptions: DescriptionVariant[] = [];
+  for (const v of ['A', 'B', 'C'] as const) {
+    const body =
+      extractBlock(text, `DESCRIPCIÓN ${v}`) ??
+      extractBlock(text, `Versión ${v}`) ??
+      extractBlock(text, `VERSIÓN ${v}`);
+    if (body) descriptions.push({ version: v, body });
+  }
+
+  // Si no encontramos bloques A/B/C separados, intentamos extraer todo el
+  // bloque "DESCRIPCIONES DEL CANAL" como string crudo.
+  if (descriptions.length === 0) {
+    const all = extractBlock(text, 'DESCRIPCIONES DEL CANAL') ?? extractBlock(text, 'DESCRIPCIONES');
+    if (all) descriptions.push({ version: 'A', body: all });
+  }
+
+  const logoPrompt =
+    extractBlock(text, 'LOGO PROMPT (EN — Nano Banana Pro)') ??
+    extractBlock(text, 'LOGO PROMPT') ??
+    undefined;
+  const bannerPrompt =
+    extractBlock(text, 'BANNER PROMPT (EN — Nano Banana Pro)') ??
+    extractBlock(text, 'BANNER PROMPT') ??
+    undefined;
+  const finalSummary =
+    extractBlock(text, '✅ CANAL BOOTSTRAP\'EADO') ??
+    extractBlock(text, 'CANAL BOOTSTRAP\'EADO') ??
+    extractBlock(text, 'RESUMEN FINAL') ??
+    undefined;
+
+  return {
+    nameProposals: nameProposals.length > 0 ? nameProposals : undefined,
+    descriptions: descriptions.length > 0 ? descriptions : undefined,
+    logoPrompt,
+    bannerPrompt,
+    finalSummary,
+  };
+}
+
 /**
  * Filtra los eventos NDJSON emitidos por `claude -p --output-format stream-json`
  * y devuelve el texto concatenado del último mensaje assistant.

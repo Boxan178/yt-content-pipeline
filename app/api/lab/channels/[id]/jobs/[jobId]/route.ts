@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { findJob, tailLog } from '@/lib/claude-jobs';
 import { parseStreamLog } from '@/lib/stream-events';
 import { ensureDraftDiskPath, getDraft } from '@/lib/lab/drafts';
-import { extractAssistantText, parseAnalysisJob, parseVisualsJob } from '@/lib/lab/parse-engine-output';
+import { extractAssistantText, parseAnalysisJob, parseBootstrapJob, parseVisualsJob } from '@/lib/lab/parse-engine-output';
 import { parseValidationResult } from '@/lib/lab/niche-validator';
 
 export const runtime = 'nodejs';
@@ -48,6 +48,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
   if (parseMode === 'analyze') parsed = parseAnalysisJob(assistantText);
   else if (parseMode === 'visuals') parsed = parseVisualsJob(assistantText);
   else if (parseMode === 'validate') parsed = parseValidationResult(assistantText);
+  else if (parseMode === 'bootstrap') parsed = parseBootstrapJob(assistantText);
 
   const durationMs =
     new Date(job.finishedAt ?? new Date().toISOString()).getTime() -
