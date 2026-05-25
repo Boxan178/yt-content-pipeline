@@ -14,7 +14,7 @@ interface JobStatusResponse {
 interface StyleEngineJobViewProps {
   draftId: string;
   jobId: string;
-  parseMode: 'analyze' | 'visuals' | 'none';
+  parseMode: 'analyze' | 'visuals' | 'validate' | 'bootstrap' | 'none';
   /** Callback con la response cuando el job pasa a `done`. Se llama una sola vez. */
   onDone?: (resp: JobStatusResponse) => void;
 }

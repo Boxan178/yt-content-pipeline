@@ -4,7 +4,8 @@ import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { WizardStepLayout } from '@/components/lab/WizardStepLayout';
 import { StyleEngineJobView } from '@/components/lab/StyleEngineJobView';
-import type { ChannelDraft, WizardStep } from '@/lib/lab/types';
+import { ValidationReportView } from '@/components/lab/ValidationReport';
+import type { ChannelDraft, ValidationReport, WizardStep } from '@/lib/lab/types';
 
 interface Props {
   initialDraft: ChannelDraft;
@@ -381,22 +382,121 @@ function Step3Visuals({ draft, persist, onNext, onBack }: StepProps) {
   );
 }
 
-// ── STEP 4 (stub for Fase B; full UI lands in Fase C) ─────────────────────
+// ── STEP 4 — Validación de nicho ──────────────────────────────────────────
 
-function Step4Validation({ draft, onNext, onBack }: StepProps) {
+function Step4Validation({ draft, persist, onNext, onBack }: StepProps) {
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [launching, setLaunching] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const report = draft.validation;
+
+  async function launch() {
+    setErr(null);
+    setLaunching(true);
+    try {
+      const r = await fetch(`/api/lab/channels/${draft.id}/validate`, { method: 'POST' });
+      const j = await r.json();
+      if (!r.ok || !j.ok) throw new Error(j.error ?? `HTTP ${r.status}`);
+      setJobId(j.job.jobId);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLaunching(false);
+    }
+  }
+
+  const handleDone = useCallback(
+    async (resp: { parsed?: unknown }) => {
+      const parsed = resp.parsed as ValidationReport | null;
+      if (!parsed) {
+        setErr('MARIO terminó pero no pude parsear el bloque VALIDATION_JSON. Revisa el log.');
+        return;
+      }
+      try {
+        await persist({ validation: parsed, currentStep: 4 });
+      } catch (e) {
+        setErr(e instanceof Error ? e.message : String(e));
+      }
+    },
+    [persist],
+  );
+
   return (
     <WizardStepLayout
       step={4}
       title="4. Validación de nicho"
-      subtitle="MARIO + Algrow MCP. Veredicto 🟢/🟡/🔴 + informe."
+      subtitle="MARIO + Algrow MCP. Veredicto 🟢/🟡/🔴 + scores demand/saturation + wedges + risks."
       prevHref={`/lab/drafts/${draft.id}?step=3`}
-      nextHref={`/lab/drafts/${draft.id}?step=5`}
+      nextHref={report ? '#' : null}
+      nextDisabled={!report || report.verdict === 'red'}
       nextLabel="Siguiente: bootstrap →"
-      onNext={onNext}
+      onNext={() => onNext()}
     >
-      <div className="mx-auto max-w-3xl rounded-md border border-amber-700/40 bg-amber-900/10 p-4 text-sm text-amber-200">
-        Pantalla pendiente (Fase C del LAB-PLAN). Por ahora, puedes saltar a
-        bootstrap o volver atrás.
+      <div className="mx-auto max-w-4xl space-y-5">
+        {report ? (
+          <>
+            <ValidationReportView report={report} />
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={launch}
+                disabled={launching}
+                className="rounded-md border border-border bg-panel px-3 py-1.5 text-xs text-zinc-300 hover:border-zinc-500"
+              >
+                {launching ? 'Re-lanzando…' : 'Re-validar'}
+              </button>
+              <button
+                type="button"
+                onClick={() => onBack()}
+                className="rounded-md border border-border bg-panel px-3 py-1.5 text-xs text-zinc-400"
+              >
+                ← Volver al paso 2 (re-investigar nicho)
+              </button>
+              {report.verdict === 'red' && (
+                <button
+                  type="button"
+                  onClick={() => onNext()}
+                  className="rounded-md border border-red-700/40 bg-red-900/20 px-3 py-1.5 text-xs text-red-200 hover:bg-red-900/30"
+                  title="Pablo eligió permitir crear pese al rojo"
+                >
+                  Crear canal pese al rojo →
+                </button>
+              )}
+            </div>
+          </>
+        ) : jobId ? (
+          <StyleEngineJobView
+            draftId={draft.id}
+            jobId={jobId}
+            parseMode="validate"
+            onDone={handleDone}
+          />
+        ) : (
+          <div className="rounded-md border border-amber-700/40 bg-amber-900/10 p-4">
+            <h3 className="text-sm font-semibold text-amber-200">
+              Lanzar MARIO + Algrow
+            </h3>
+            <p className="mt-1 text-xs text-amber-100/80">
+              MARIO usará las herramientas Algrow (resolve_url, channel_trends,
+              search_viral_videos, search_longform_channels) y devolverá un
+              veredicto JSON con scores y wedges defendibles. ~5-15 min.
+            </p>
+            <button
+              type="button"
+              onClick={launch}
+              disabled={launching}
+              className="mt-3 rounded-md border border-accent/60 bg-accent/20 px-4 py-2 text-sm font-semibold text-accent hover:bg-accent/30"
+            >
+              {launching ? 'Lanzando…' : '🚀 Lanzar validación'}
+            </button>
+          </div>
+        )}
+
+        {err && (
+          <div className="rounded border border-red-700/60 bg-red-900/20 p-3 text-sm text-red-300">
+            Error: {err}
+          </div>
+        )}
       </div>
     </WizardStepLayout>
   );
