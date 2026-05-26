@@ -8,6 +8,15 @@ export const dynamic = 'force-dynamic';
 
 const CLAUDE_DIR = path.join(os.homedir(), '.claude', 'projects');
 
+// Filtro de workspace: solo se muestran chats cuyo proyecto pertenezca al
+// workspace YouTube OS (`Y:/04_DEV/J.A.R.V.I.S/youtube-os/` y subdirectorios).
+// Claude Code escribe el dirname reemplazando `/`, `\`, `:`, `.` por `-`,
+// así que el prefix queda como `Y--04-DEV-J-A-R-V-I-S-youtube-os`.
+// Decisión 2026-05-25 (Pablo): los chats de otros workspaces (lab, biblioteca,
+// pdf-farming, sandbox, C:/dev/yt-content-pipeline, etc.) NO interesan en
+// esta app — es una ventana sobre la producción YouTube.
+const YOUTUBE_OS_PROJECT_PREFIX = 'Y--04-DEV-J-A-R-V-I-S-youtube-os';
+
 interface ChatSummary {
   sessionId: string;
   project: string;        // dirname del cwd (claude code lo guarda con / → -)
@@ -39,6 +48,8 @@ export async function GET() {
   const summaries: ChatSummary[] = [];
 
   for (const project of projects) {
+    // Saltar todo lo que no sea workspace YouTube OS.
+    if (!project.startsWith(YOUTUBE_OS_PROJECT_PREFIX)) continue;
     const projDir = path.join(CLAUDE_DIR, project);
     const ps = await tryStat(projDir);
     if (!ps?.isDirectory()) continue;
