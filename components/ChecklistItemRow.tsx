@@ -146,17 +146,19 @@ export function ChecklistItemRow({ item, ctx, thumbnailOptions, onResolved }: Pr
   if (plan.kind === 'manual') {
     return (
       <>
-        <li className="flex items-start gap-2 rounded border border-yellow-500/20 bg-yellow-500/5 px-2.5 py-1.5 text-xs text-zinc-200">
-          <span className="mt-0.5 text-yellow-400">○</span>
+        <div className="group flex items-start gap-2.5 rounded-2xl border border-yellow-500/20 bg-yellow-500/5 px-3 py-2 text-xs text-zinc-200 transition hover:bg-yellow-500/10">
+          <span className="mt-0.5 shrink-0 text-yellow-400">
+            <IconCircleEmpty />
+          </span>
           <span className="flex-1 leading-snug">{item.text}</span>
           <button
             onClick={() => setDecisionOpen(true)}
-            className="shrink-0 rounded border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[9px] text-accent transition hover:bg-accent/20"
+            className="shrink-0 rounded-full border border-accent/40 bg-accent/10 px-2.5 py-0.5 text-[10px] font-medium text-accent transition hover:bg-accent/20"
             title={plan.reason}
           >
             decidir →
           </button>
-        </li>
+        </div>
         {decisionOpen && (
           <DecisionModal
             itemText={item.text}
@@ -185,40 +187,63 @@ export function ChecklistItemRow({ item, ctx, thumbnailOptions, onResolved }: Pr
     : tail;
 
   return (
-    <li className={`rounded border ${isRunning ? 'border-red-500/50 bg-red-500/5' : 'border-yellow-500/20 bg-yellow-500/5'}`}>
-      <div className="flex items-start gap-2 px-2.5 py-1.5 text-xs text-zinc-200">
-        <span className={`mt-0.5 ${isRunning ? 'animate-pulse text-red-400' : 'text-yellow-400'}`}>○</span>
+    <div className={`overflow-hidden rounded-2xl border transition ${
+      isRunning
+        ? 'border-red-500/50 bg-red-500/5'
+        : 'border-yellow-500/20 bg-yellow-500/5 hover:bg-yellow-500/10'
+    }`}>
+      <div className="flex items-start gap-2.5 px-3 py-2 text-xs text-zinc-200">
+        <span className={`mt-0.5 shrink-0 ${isRunning ? 'animate-pulse text-red-400' : 'text-yellow-400'}`}>
+          <IconCircleEmpty />
+        </span>
         <span className="flex-1 leading-snug">{item.text}</span>
         <div className="flex shrink-0 items-center gap-1">
           {(tail || isRunning) && (
             <button
               onClick={() => setExpanded((v) => !v)}
-              className="rounded border border-border bg-bg px-1.5 py-0.5 text-[9px] text-muted hover:text-white"
+              className="flex h-5 w-5 items-center justify-center rounded-full border border-white/10 bg-white/5 text-zinc-400 transition hover:bg-white/10 hover:text-white"
               title={expanded ? 'Ocultar log' : 'Mostrar log'}
             >
-              {expanded ? '▾' : '▸'}
+              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={expanded ? 'rotate-90 transition' : 'transition'}>
+                <path d="M9 6l6 6-6 6" />
+              </svg>
             </button>
           )}
           {isRunning ? (
             <>
-              <span className="rounded border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 text-[9px] text-red-300">
+              <span className="nums rounded-full border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-300">
                 {plan.label} · {formatDuration(durationMs)}
               </span>
               <button
                 onClick={cancel}
-                className="rounded border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 text-[9px] text-red-300 hover:bg-red-500/20"
+                className="flex h-5 w-5 items-center justify-center rounded-full border border-red-500/40 bg-red-500/10 text-red-300 transition hover:bg-red-500/20"
                 title="Cancelar job"
               >
-                ✕
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
               </button>
             </>
           ) : (
             <button
               onClick={run}
-              className="rounded border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[9px] text-accent hover:bg-accent/20"
+              className="rounded-full border border-accent/40 bg-accent/10 px-2.5 py-0.5 text-[10px] font-medium text-accent transition hover:bg-accent/20"
               title={plan.hint}
             >
-              {isDone ? '✓ ' : isFailed ? '↻ ' : ''}
+              {isDone && (
+                <span className="mr-0.5">
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="inline">
+                    <path d="M20 6L9 17l-5-5" />
+                  </svg>
+                </span>
+              )}
+              {isFailed && (
+                <span className="mr-0.5">
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline">
+                    <path d="M3 12a9 9 0 1 0 9-9M3 4v5h5" />
+                  </svg>
+                </span>
+              )}
               {plan.label}
             </button>
           )}
@@ -226,33 +251,41 @@ export function ChecklistItemRow({ item, ctx, thumbnailOptions, onResolved }: Pr
       </div>
 
       {startError && (
-        <div className="border-t border-yellow-500/20 px-2.5 py-1.5">
-          <p className="text-[10px] text-red-300">⚠ {startError}</p>
+        <div className="border-t border-yellow-500/20 px-3 py-1.5">
+          <p className="text-[10px] text-red-300">{startError}</p>
         </div>
       )}
 
       {expanded && (tail || error) && (
-        <div className="border-t border-yellow-500/20 px-2.5 py-2">
+        <div className="border-t border-yellow-500/20 px-3 py-2">
           {error && (
             <p className="mb-1 text-[10px] text-red-300">polling: {error}</p>
           )}
-          <div className="mb-1 flex items-center justify-between text-[9px] text-muted">
+          <div className="mb-1 flex items-center justify-between text-[10px] text-zinc-500">
             <span>
               {isRunning && 'Trabajando…'}
-              {isDone && '✓ Terminó OK · packaging.md actualizado'}
-              {isFailed && `✗ ${job?.status}`}
+              {isDone && 'Terminó OK · packaging.md actualizado'}
+              {isFailed && job?.status}
             </span>
-            <span>{formatDuration(durationMs)}</span>
+            <span className="nums">{formatDuration(durationMs)}</span>
           </div>
           {outputOnly ? (
-            <div className="prose-tg max-h-72 overflow-auto rounded border border-border bg-bg/60 p-2 text-[11px]">
+            <div className="prose-tg max-h-72 overflow-auto rounded-xl border border-white/10 bg-black/20 p-2 text-[11px]">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{outputOnly}</ReactMarkdown>
             </div>
           ) : (
-            <p className="text-[10px] text-muted">Esperando output…</p>
+            <p className="text-[10px] text-zinc-500">Esperando output…</p>
           )}
         </div>
       )}
-    </li>
+    </div>
+  );
+}
+
+function IconCircleEmpty() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+    </svg>
   );
 }
