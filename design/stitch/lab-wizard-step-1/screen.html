@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>YTCP - Crear canal nuevo - Step 1</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Sora:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        bg: "#0b0b0e",
+                        panel: "#13131a",
+                        border: "#26262e",
+                        accent: "#c9a96a",
+                        success: "#22c55e",
+                        danger: "#ef4444",
+                        warning: "#facc15",
+                        info: "#3b82f6",
+                        muted: "#5a5a66",
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.25rem",
+                        lg: "0.5rem",
+                        xl: "0.75rem",
+                        full: "9999px"
+                    },
+                    fontFamily: {
+                        headline: ["Sora", "sans-serif"],
+                        display: ["Sora", "sans-serif"],
+                        body: ["Inter", "sans-serif"],
+                        label: ["Inter", "sans-serif"],
+                        mono: ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", "monospace"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #0b0b0e;
+            color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        h1, h2, h3, h4, h5, h6, .font-headline, .font-display {
+            font-family: 'Sora', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0b0e;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #26262e;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #5a5a66;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+<!-- Lab Banner -->
+<div class="h-[36px] bg-amber-500/5 border-b border-amber-500/20 flex items-center justify-center text-amber-500/90 font-label text-[11px] tracking-wider uppercase">
+<span class="material-symbols-outlined text-[14px] mr-2">science</span>
+        Modo experimental — Estás viendo el Lab. Las features de esta zona NO están disponibles en el .exe instalado.
+    </div>
+<!-- TopAppBar -->
+<header class="h-[56px] bg-bg border-b border-border flex items-center justify-between px-6 shrink-0 z-50">
+<!-- Breadcrumb -->
+<div class="flex items-center space-x-2 text-muted">
+<span class="font-headline font-semibold text-[18px]">Lab</span>
+<span class="material-symbols-outlined text-[18px]">chevron_right</span>
+<span class="font-headline font-semibold text-[18px] text-white">Crear canal nuevo</span>
+</div>
+<!-- Right Actions -->
+<div class="flex items-center space-x-6">
+<button class="text-sm text-muted hover:text-white transition-colors duration-200">Guardar borrador</button>
+<button class="text-sm text-muted hover:text-danger transition-colors duration-200">Descartar</button>
+<div class="w-px h-6 bg-border"></div>
+<!-- WorkingModeToggle -->
+<div class="flex items-center px-3 py-1 bg-success/10 border border-success/30 rounded-full text-success text-xs font-medium">
+<span class="w-2 h-2 rounded-full bg-success mr-2 animate-pulse"></span>
+                En el PC
+            </div>
+<!-- XPBar -->
+<div class="relative group cursor-pointer flex items-center w-[200px] h-[32px] bg-panel rounded-full border border-border overflow-hidden">
+<div class="absolute inset-y-0 left-0 bg-accent/20" style="width: 65%;"></div>
+<div class="relative w-full px-3 flex justify-between items-center text-xs">
+<span class="font-medium text-white z-10">Caballero Jedi</span>
+<span class="text-accent font-bold z-10">6</span>
+</div>
+</div>
+<!-- Avatar -->
+<div class="relative">
+<img alt="Avatar" class="w-10 h-10 rounded-full border-2 border-border object-cover" data-alt="A small, circular avatar portrait of a professional male user, set against a dark background. The image has a clean, high-contrast, modern UI look, with a slight charcoal tint overlay to blend perfectly into a dark mode dashboard. The lighting is crisp and the features are sharp, conveying a sense of focused, technical proficiency." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDpVyxJSVksmPNs4zUqqg32rDmO7R6BkIxQ-32BeG6ddCnvMHP-eaDSIUIti26_gUxMH73reIm3t2i-AaYTjU9j-Cfc-mPhf9U8FgHK6NQHDoKNHlCHqQ_wW5FoFA3_mgfrxUCmQn3SS4fOvf5KrnKd3DQs41UUl2rLu1sv8zTELGrr6tV02mPXEVwMl5u0buqysHxCJSJ1WDZ-hJZhszXbU8rmYTryG9DR1Wn65PZYAEsb46YIu4nQS3Q1sE7mXGPgpeXvIr9x4A"/>
+</div>
+<!-- Notification -->
+<button class="relative text-muted hover:text-white transition-colors duration-200">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute -top-1 -right-1 w-2 h-2 bg-danger rounded-full border border-bg"></span>
+</button>
+</div>
+</header>
+<!-- Progress Bar Row -->
+<div class="sticky top-0 h-[64px] bg-panel border-b border-border flex items-center justify-center z-40">
+<div class="w-full max-w-[720px] flex items-center justify-between px-4">
+<!-- Step 1: Active -->
+<div class="flex flex-col items-center space-y-1 relative group cursor-pointer w-1/5">
+<div class="w-full flex items-center absolute top-1/2 -z-10 left-1/2">
+<div class="h-[2px] w-full bg-border"></div>
+</div>
+<div class="w-8 h-8 rounded-full bg-accent text-bg flex items-center justify-center font-bold text-sm relative border-2 border-bg ring-2 ring-accent/30 shadow-[0_0_15px_rgba(201,169,106,0.3)]">
+                    1
+                    <span class="absolute -bottom-1 right-0 w-2.5 h-2.5 bg-success rounded-full border-2 border-bg animate-pulse"></span>
+</div>
+<span class="font-label text-[11px] uppercase tracking-wider text-accent mt-2">Referencia</span>
+</div>
+<!-- Step 2: Locked -->
+<div class="flex flex-col items-center space-y-1 relative group w-1/5">
+<div class="w-full flex items-center absolute top-1/2 -z-10 left-1/2">
+<div class="h-[2px] w-full bg-border"></div>
+</div>
+<div class="w-8 h-8 rounded-full bg-panel border-2 border-border text-muted flex items-center justify-center text-sm">
+                    2
+                </div>
+<span class="font-label text-[11px] uppercase tracking-wider text-muted mt-2">Análisis</span>
+</div>
+<!-- Step 3: Locked -->
+<div class="flex flex-col items-center space-y-1 relative group w-1/5">
+<div class="w-full flex items-center absolute top-1/2 -z-10 left-1/2">
+<div class="h-[2px] w-full bg-border"></div>
+</div>
+<div class="w-8 h-8 rounded-full bg-panel border-2 border-border text-muted flex items-center justify-center text-sm">
+                    3
+                </div>
+<span class="font-label text-[11px] uppercase tracking-wider text-muted mt-2">Identidad</span>
+</div>
+<!-- Step 4: Locked -->
+<div class="flex flex-col items-center space-y-1 relative group w-1/5">
+<div class="w-full flex items-center absolute top-1/2 -z-10 left-1/2">
+<div class="h-[2px] w-full bg-border"></div>
+</div>
+<div class="w-8 h-8 rounded-full bg-panel border-2 border-border text-muted flex items-center justify-center text-sm">
+                    4
+                </div>
+<span class="font-label text-[11px] uppercase tracking-wider text-muted mt-2">Assets</span>
+</div>
+<!-- Step 5: Locked -->
+<div class="flex flex-col items-center space-y-1 relative group w-1/5">
+<div class="w-8 h-8 rounded-full bg-panel border-2 border-border text-muted flex items-center justify-center text-sm">
+                    5
+                </div>
+<span class="font-label text-[11px] uppercase tracking-wider text-muted mt-2">Lanzamiento</span>
+</div>
+</div>
+</div>
+<!-- Main Content Area -->
+<main class="flex-1 overflow-y-auto pb-[100px]"> <!-- Padding bottom for sticky footer -->
+<div class="w-full max-w-[720px] mx-auto pt-10 pb-16 px-6">
+<!-- Header -->
+<div class="mb-10">
+<h1 class="font-headline text-[32px] font-semibold text-white mb-3">Canal de referencia</h1>
+<p class="text-zinc-400 text-[15px] leading-relaxed">
+                    Pega el link del canal de YouTube cuyo estilo quieres replicar. Necesitamos también 2-3 transcripts de vídeos completos para que la skill extraiga el Style DNA.
+                </p>
+</div>
+<!-- Form Section -->
+<div class="space-y-10">
+<!-- Field 1: Canal YouTube -->
+<div class="space-y-3">
+<label class="font-label text-[11px] uppercase tracking-wider text-muted block">URL del Canal</label>
+<div class="relative">
+<span class="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-muted">link</span>
+<input class="w-full bg-panel/40 border border-border rounded-lg py-4 pl-12 pr-4 text-white font-mono text-sm focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-colors" readonly="" type="text" value="https://www.youtube.com/@mrbeast"/>
+</div>
+<!-- Validation Badge -->
+<div class="flex items-center space-x-2 text-success/90 bg-success/5 border border-success/20 rounded-md px-3 py-2 text-sm mt-2 w-fit">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+<span>Canal encontrado — @Mr.Beast · 326M subs · last upload hace 4 días</span>
+</div>
+</div>
+<!-- Field 2: Idioma -->
+<div class="space-y-3">
+<label class="font-label text-[11px] uppercase tracking-wider text-muted block">Idioma Principal</label>
+<div class="flex flex-wrap gap-2">
+<button class="px-4 py-2 bg-accent/10 border border-accent/40 rounded-lg text-accent font-medium text-sm hover:bg-accent/20 transition-colors">Inglés</button>
+<button class="px-4 py-2 bg-panel border border-border rounded-lg text-zinc-300 font-medium text-sm hover:bg-panel/80 transition-colors">Español</button>
+<button class="px-4 py-2 bg-panel border border-border rounded-lg text-zinc-300 font-medium text-sm hover:bg-panel/80 transition-colors">Portugués</button>
+<button class="px-4 py-2 bg-panel border border-border rounded-lg text-zinc-300 font-medium text-sm hover:bg-panel/80 transition-colors">Italiano</button>
+<button class="px-4 py-2 bg-panel border border-border rounded-lg text-zinc-300 font-medium text-sm hover:bg-panel/80 transition-colors">Francés</button>
+</div>
+</div>
+<!-- Field 3: Plataformas -->
+<div class="space-y-3">
+<label class="font-label text-[11px] uppercase tracking-wider text-muted block">Plataformas Objetivo</label>
+<div class="flex flex-wrap gap-3">
+<div class="flex items-center space-x-2 px-3 py-2 bg-accent/10 border border-accent/40 rounded-full text-accent cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[18px]">smart_display</span>
+<span class="text-sm font-medium">YouTube long-form</span>
+</div>
+<div class="flex items-center space-x-2 px-3 py-2 bg-accent/10 border border-accent/40 rounded-full text-accent cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[18px]">play_circle</span>
+<span class="text-sm font-medium">YouTube Shorts</span>
+</div>
+<div class="flex items-center space-x-2 px-3 py-2 bg-panel border border-border rounded-full text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[18px]">photo_camera</span>
+<span class="text-sm font-medium">Instagram Reels</span>
+</div>
+<div class="flex items-center space-x-2 px-3 py-2 bg-panel border border-border rounded-full text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[18px]">music_video</span>
+<span class="text-sm font-medium">TikTok</span>
+</div>
+<div class="flex items-center space-x-2 px-3 py-2 bg-panel border border-border rounded-full text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[18px]">close</span>
+<span class="text-sm font-medium">X</span>
+</div>
+</div>
+</div>
+<!-- Field 4: Tema -->
+<div class="space-y-4">
+<label class="font-label text-[11px] uppercase tracking-wider text-muted block">Tema Principal</label>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Option A (Selected) -->
+<div class="relative bg-accent/5 border-2 border-accent/40 rounded-xl p-5 cursor-pointer">
+<div class="flex items-start">
+<div class="flex-shrink-0 mt-0.5">
+<span class="material-symbols-outlined fill text-accent">radio_button_checked</span>
+</div>
+<div class="ml-3">
+<span class="block text-white font-medium text-sm mb-2">Ya tengo un tema concreto</span>
+<textarea class="w-full bg-panel/50 border border-border rounded-md p-3 text-zinc-300 text-sm focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/50 resize-none h-24" placeholder="Describe el tema...">How I survived 100 days alone in the woods with $0</textarea>
+</div>
+</div>
+</div>
+<!-- Option B -->
+<div class="relative bg-panel border border-border rounded-xl p-5 cursor-pointer hover:border-zinc-500 transition-colors">
+<div class="flex items-start">
+<div class="flex-shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-muted">radio_button_unchecked</span>
+</div>
+<div class="ml-3">
+<span class="block text-zinc-300 font-medium text-sm">Que la skill genere 5 ideas</span>
+<p class="text-zinc-500 text-xs mt-1 leading-relaxed">Basado en el análisis del canal de referencia, Claude propondrá ángulos de alto rendimiento.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Field 5: Transcripts -->
+<div class="space-y-3">
+<div class="flex items-center justify-between mb-2">
+<label class="font-label text-[11px] uppercase tracking-wider text-muted block">Transcripts de Referencia (Min 2)</label>
+<span class="text-xs text-zinc-500">2/3 completados</span>
+</div>
+<div class="space-y-2">
+<!-- Slot 1 -->
+<div class="flex items-center justify-between p-4 bg-panel border border-border rounded-lg group hover:border-border/80 transition-colors">
+<div class="flex items-center space-x-4">
+<span class="material-symbols-outlined fill text-success text-[20px]">check_circle</span>
+<div>
+<span class="block text-sm font-medium text-white mb-0.5">Transcript 1</span>
+<span class="text-xs text-zinc-500">5.412 palabras · 18 min</span>
+</div>
+</div>
+<button class="text-sm font-medium text-accent opacity-0 group-hover:opacity-100 transition-opacity">Editar</button>
+</div>
+<!-- Slot 2 -->
+<div class="flex items-center justify-between p-4 bg-panel border border-border rounded-lg group hover:border-border/80 transition-colors">
+<div class="flex items-center space-x-4">
+<span class="material-symbols-outlined fill text-success text-[20px]">check_circle</span>
+<div>
+<span class="block text-sm font-medium text-white mb-0.5">Transcript 2</span>
+<span class="text-xs text-zinc-500">4.890 palabras · 16 min</span>
+</div>
+</div>
+<button class="text-sm font-medium text-accent opacity-0 group-hover:opacity-100 transition-opacity">Editar</button>
+</div>
+<!-- Slot 3 (Empty) -->
+<button class="w-full flex flex-col items-center justify-center p-6 bg-transparent border-2 border-dashed border-border rounded-lg text-muted hover:text-zinc-300 hover:border-zinc-500 hover:bg-panel/30 transition-all group">
+<span class="material-symbols-outlined mb-2 group-hover:scale-110 transition-transform">add_circle</span>
+<span class="text-sm font-medium">+ Añadir transcript opcional</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer Sticky Bottom Bar -->
+<footer class="fixed bottom-0 left-0 w-full h-[80px] bg-panel border-t border-border flex items-center justify-between px-8 z-50">
+<!-- Left Action -->
+<button class="flex items-center space-x-2 text-zinc-400 hover:text-white transition-colors text-sm font-medium">
+<span class="material-symbols-outlined text-[18px]">arrow_back</span>
+<span>Cancelar y volver al Lab</span>
+</button>
+<!-- Right Action -->
+<div class="flex flex-col items-end">
+<button class="px-6 py-2.5 bg-accent text-bg font-bold rounded-lg hover:opacity-90 active:scale-95 transition-all shadow-[0_0_20px_rgba(201,169,106,0.15)] flex items-center space-x-2">
+<span>Siguiente</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+<span class="ml-1 opacity-80 text-sm">Análisis</span>
+</button>
+<p class="text-[11px] text-zinc-500 mt-2">
+                Esto lanzará un job de claude (style-engine, ~3-5 min). Puedes cerrar la ventana y volver — el progreso se guarda.
+            </p>
+</div>
+</footer>
+</body></html>

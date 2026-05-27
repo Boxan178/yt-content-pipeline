@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Miguel Ángel - Modal Detalle</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;family=Sora:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #000; /* Backdrop behind the modal */
+        }
+        .font-headline {
+            font-family: 'Sora', sans-serif;
+        }
+        .font-mono-custom {
+             font-family: 'JetBrains Mono', monospace;
+        }
+        
+        /* Custom Scrollbar for the modal and inner areas */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0b0e;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #26262e;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #5a5a66;
+        }
+        
+        /* Gold scrollbar specific class */
+        .scrollbar-gold::-webkit-scrollbar-thumb {
+            background: #c9a96a;
+        }
+        .scrollbar-gold::-webkit-scrollbar-thumb:hover {
+            background: #a88a4e;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        background: '#0b0b0e',
+                        panel: '#13131a',
+                        border: '#26262e',
+                        gold: '#c9a96a',
+                        'gold-dim': 'rgba(201, 169, 106, 0.1)',
+                        green: '#22c55e',
+                        red: '#ef4444',
+                        yellow: '#facc15',
+                        blue: '#3b82f6',
+                        muted: '#5a5a66',
+                        'zinc-300': '#d4d4d8',
+                        'zinc-400': '#a1a1aa',
+                        'zinc-500': '#71717a',
+                        'zinc-600': '#52525b',
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    fontFamily: {
+                        "headline": ["Sora"],
+                        "display": ["Sora"],
+                        "body": ["Inter"],
+                        "label": ["Inter"],
+                        "mono": ["JetBrains Mono"]
+                    },
+                },
+            },
+        }
+    </script>
+</head>
+<body class="h-screen w-full flex items-center justify-center p-4">
+<!-- Modal Backdrop overlay -->
+<div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 flex items-center justify-center p-4 md:p-8">
+<!-- Modal Container -->
+<div class="bg-panel border border-border rounded-[16px] w-full max-w-[1280px] max-h-[901px] flex flex-col shadow-2xl overflow-hidden z-50">
+<!-- Sticky Header -->
+<div class="bg-background border-b border-border h-[72px] shrink-0 flex items-center justify-between px-6 sticky top-0 z-10">
+<!-- Left: Title & Breadcrumb -->
+<div class="flex flex-col flex-1 min-w-0 pr-4">
+<div class="flex items-center gap-2 mb-0.5">
+<span class="text-[11px] text-muted uppercase tracking-wider font-medium">production · <span class="text-yellow">_EN PRODUCCIÓN</span></span>
+</div>
+<div class="flex items-center gap-3">
+<h1 class="font-headline text-[22px] font-semibold text-white truncate leading-tight">
+                            Never Chase. Never Beg. Never Explain. — The Stoic Triple Rule
+                        </h1>
+</div>
+<div class="flex items-center gap-1.5 mt-0.5">
+<button class="bg-panel hover:bg-border/50 border border-border rounded-md px-2 py-0.5 flex items-center gap-1.5 text-muted transition-colors group max-w-full">
+<span class="font-mono text-[11px] truncate">H:/YOUTUBE/CANALES ESTOICISMO/MODERNI STOICI/_EN PRODUCCIÓN/Never Chase...</span>
+<span class="material-symbols-outlined text-[14px] group-hover:text-zinc-300">content_copy</span>
+</button>
+</div>
+</div>
+<!-- Right: Actions -->
+<div class="flex items-center gap-3 shrink-0">
+<button class="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-panel text-zinc-300 hover:bg-background transition-colors text-sm font-medium">
+<span class="material-symbols-outlined text-[18px]">folder_open</span>
+                        Abrir carpeta
+                    </button>
+<button class="flex items-center gap-2 px-4 py-2 rounded-lg border border-gold/20 bg-gold/5 text-gold/50 cursor-not-allowed text-sm font-medium">
+<span class="material-symbols-outlined text-[18px]">upload</span>
+                        Subir
+                    </button>
+<button class="flex items-center justify-center w-10 h-10 rounded-lg text-muted hover:text-white hover:bg-border transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+</div>
+<!-- Modal Body (Scrollable) -->
+<div class="flex-1 overflow-y-auto p-6 flex flex-col md:flex-row gap-6">
+<!-- Left Column (66%) -->
+<div class="flex-1 flex flex-col gap-6 md:w-2/3 min-w-0">
+<!-- Render Principal -->
+<section class="flex flex-col gap-2">
+<h2 class="text-[11px] text-muted uppercase tracking-wider font-medium font-label">RENDER PRINCIPAL</h2>
+<div class="w-full aspect-video bg-black rounded-lg border border-border overflow-hidden relative group flex items-center justify-center" data-alt="A sleek dark-mode video player interface within a high-end dashboard. The player window is a stark, absolute black rectangle with subtle rounded corners, enclosed by a delicate, almost invisible dark grey border. In the center, a minimalist semi-transparent white play button icon softly glows, inviting interaction. The overall aesthetic is professional, technical, and heavily inspired by advanced IDEs and aviation cockpits, utilizing deep charcoal tones and a stark, uncluttered layout.">
+<!-- Placeholder for Video -->
+<button class="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center border border-white/20 backdrop-blur-sm group-hover:bg-white/20 transition-all group-hover:scale-105">
+<span class="material-symbols-outlined text-white text-3xl" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</button>
+</div>
+<div class="text-[11px] text-muted font-mono mt-1">Never Chase...autoedit.mp4 · 490.3 MB</div>
+</section>
+<!-- Miniaturas -->
+<section class="flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<h2 class="text-[11px] text-muted uppercase tracking-wider font-medium font-label">MINIATURAS (3)</h2>
+</div>
+<div class="flex gap-4 overflow-x-auto pb-2 scrollbar-gold">
+<!-- Card 1: Actual -->
+<div class="shrink-0 flex flex-col gap-2 w-[240px]">
+<div class="w-full aspect-video rounded-lg border-2 border-gold relative overflow-hidden bg-background" data-alt="A high-contrast YouTube thumbnail graphic displayed inside a dark dashboard interface. The thumbnail features an imposing, statuesque figure of a Roman Stoic philosopher set against a moody, shadowed background. A vibrant gold pill badge with the word 'ACTUAL' is pinned to the top left corner. The framing uses a precise, 2-pixel matte gold border. The design conveys serious, intense philosophical content with a highly technical, digital presentation style.">
+<div class="absolute top-2 left-2 bg-gold text-black text-[10px] font-bold px-2 py-0.5 rounded-full z-10">ACTUAL</div>
+</div>
+<div class="flex flex-col">
+<span class="font-mono text-[11px] text-zinc-300 truncate">thumb_vfinal_01.png</span>
+<span class="font-mono text-[10px] text-muted">1.9 MB · hace 12 min</span>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="shrink-0 flex flex-col gap-2 w-[240px]">
+<div class="w-full aspect-video rounded-lg border border-border relative overflow-hidden bg-background opacity-70 hover:opacity-100 transition-opacity cursor-pointer" data-alt="An alternative YouTube thumbnail graphic for a Stoic philosophy video, shown within a dark technical UI. The graphic shows a minimalist marble column emerging from dense, dark fog. The image is slightly dimmed, indicating it is an inactive or alternative option. It is bordered by a thin, dark grey line. The surrounding interface is deep charcoal black, emphasizing the image content without distracting gradients.">
+</div>
+<div class="flex flex-col">
+<span class="font-mono text-[11px] text-zinc-400 truncate">thumb_alt_dark.png</span>
+<span class="font-mono text-[10px] text-muted">2.1 MB · hace 45 min</span>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="shrink-0 flex flex-col gap-2 w-[240px]">
+<div class="w-full aspect-video rounded-lg border border-border relative overflow-hidden bg-background opacity-70 hover:opacity-100 transition-opacity cursor-pointer" data-alt="Another alternative YouTube thumbnail graphic featuring a solitary figure walking away on a desolate path under a stormy sky. This image is displayed in a dark-mode dashboard context. The thumbnail is slightly transparent to denote an unselected state. A subtle dark border encases the 16:9 rectangle. The overall mood is austere, technical, and focused, aligning with the surrounding charcoal-toned workspace.">
+</div>
+<div class="flex flex-col">
+<span class="font-mono text-[11px] text-zinc-400 truncate">thumb_concept_c.png</span>
+<span class="font-mono text-[10px] text-muted">1.7 MB · hace 2 hrs</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Packaging.md -->
+<section class="flex flex-col gap-2 mt-2">
+<h2 class="text-[11px] text-muted uppercase tracking-wider font-medium font-label">packaging.md</h2>
+<div class="bg-white/5 rounded-lg border border-border p-6 font-body text-sm text-zinc-300 leading-relaxed">
+<h3 class="text-white text-lg font-headline font-semibold mb-4 border-b border-border pb-2"># Packaging — The Stoic Night Review (rebrand ejecutado)</h3>
+<div class="bg-yellow/10 border-l-4 border-yellow p-3 mb-6 rounded-r">
+<p class="text-yellow font-medium text-[13px]"><strong class="font-bold">Veredicto:</strong> REBRAND EJECUTADO. El título ha sido ajustado para maximizar CTR en la fase inicial de distribución.</p>
+</div>
+<div class="overflow-x-auto border border-border rounded-lg mb-6">
+<table class="w-full text-left text-[13px]">
+<thead class="bg-background border-b border-border text-muted">
+<tr>
+<th class="py-2 px-3 font-medium">Title Option</th>
+<th class="py-2 px-3 font-medium">Route</th>
+<th class="py-2 px-3 font-medium">Verdict</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border">
+<tr class="hover:bg-white/5 transition-colors">
+<td class="py-2 px-3 font-medium text-white">Never Chase. Never Beg. Never Explain.</td>
+<td class="py-2 px-3 text-muted"><span class="bg-border/50 px-1.5 py-0.5 rounded text-[11px]">Primary</span></td>
+<td class="py-2 px-3 text-green flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">check_circle</span> Selected</td>
+</tr>
+<tr class="hover:bg-white/5 transition-colors">
+<td class="py-2 px-3">The Stoic Triple Rule for Modern Men</td>
+<td class="py-2 px-3 text-muted"><span class="bg-border/50 px-1.5 py-0.5 rounded text-[11px]">Alternative A</span></td>
+<td class="py-2 px-3 text-muted">Rejected</td>
+</tr>
+<tr class="hover:bg-white/5 transition-colors">
+<td class="py-2 px-3">Why You Should Stop Chasing People</td>
+<td class="py-2 px-3 text-muted"><span class="bg-border/50 px-1.5 py-0.5 rounded text-[11px]">Alternative B</span></td>
+<td class="py-2 px-3 text-muted">Rejected</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="flex flex-col gap-2">
+<div class="flex items-start gap-2">
+<span class="material-symbols-outlined text-green text-[18px] mt-0.5">check_box</span>
+<span class="text-zinc-400 line-through">Revisar tags SEO y keywords de cola larga.</span>
+</div>
+<div class="flex items-start gap-2">
+<span class="material-symbols-outlined text-green text-[18px] mt-0.5">check_box</span>
+<span class="text-zinc-400 line-through">Aprobar descripción y timestamps.</span>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column (34%) -->
+<div class="md:w-1/3 flex flex-col gap-6 shrink-0 border-l border-border pl-6">
+<!-- Pipeline con Claude -->
+<div class="bg-background border border-border rounded-lg p-4 flex flex-col shadow-sm">
+<div class="flex items-center justify-between mb-4">
+<h2 class="text-[11px] text-muted uppercase tracking-wider font-medium font-label">PIPELINE CON CLAUDE</h2>
+<span class="material-symbols-outlined text-muted text-[16px]">psychology</span>
+</div>
+<div class="flex flex-col gap-2.5">
+<!-- State: Running -->
+<div class="relative rounded-lg border border-red/40 bg-red/5 p-3 flex flex-col gap-1 overflow-hidden">
+<div class="absolute top-0 left-0 h-[2px] bg-red w-1/3 shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-pulse"></div>
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-red text-[18px] animate-spin">sync</span>
+<span class="font-medium text-red text-[13px]">🎬 Editar vídeo con LUIS</span>
+</div>
+<button class="text-red/60 hover:text-red transition-colors">
+<span class="material-symbols-outlined text-[16px]">close</span>
+</button>
+</div>
+<div class="flex items-center justify-between mt-1 pl-6">
+<span class="text-[11px] text-red/70 font-mono">12m 34s</span>
+<div class="flex gap-1.5">
+<span class="text-[9px] bg-red/10 text-red px-1.5 py-0.5 rounded border border-red/20 font-mono">OPUS</span>
+<span class="text-[9px] bg-red/10 text-red px-1.5 py-0.5 rounded border border-red/20 font-mono">HIGH</span>
+</div>
+</div>
+</div>
+<!-- State: Primary Gold -->
+<button class="rounded-lg border border-gold/40 bg-gold/10 hover:bg-gold/20 p-3 flex flex-col gap-1 text-left transition-colors group cursor-pointer">
+<div class="flex justify-between items-start w-full">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-gold text-[18px]">play_circle</span>
+<span class="font-medium text-gold text-[13px]">🎬 Retomar pipeline con SARA</span>
+</div>
+</div>
+<div class="flex items-center justify-between mt-1 pl-6 w-full">
+<span class="text-[11px] text-gold/70 truncate pr-2">Diagnostica el estado...</span>
+<div class="flex gap-1.5 shrink-0">
+<span class="text-[9px] bg-gold/10 text-gold px-1.5 py-0.5 rounded border border-gold/20 font-mono">SONNET</span>
+<span class="text-[9px] bg-gold/10 text-gold px-1.5 py-0.5 rounded border border-gold/20 font-mono">MED</span>
+</div>
+</div>
+</button>
+<!-- State: Subtle (Warning) -->
+<button class="rounded-lg border border-border bg-panel hover:bg-background p-3 flex flex-col gap-1 text-left transition-colors group cursor-pointer">
+<div class="flex justify-between items-start w-full">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-zinc-400 text-[18px]">plagiarism</span>
+<span class="font-medium text-zinc-300 text-[13px]">Auditar guion con ELENA</span>
+</div>
+</div>
+<div class="flex items-center justify-between mt-1 pl-6 w-full">
+<span class="text-[11px] text-yellow/80 truncate pr-2 flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">warning</span> ELENA no encuentra guion...</span>
+<div class="flex gap-1.5 shrink-0">
+<span class="text-[9px] bg-border text-muted px-1.5 py-0.5 rounded font-mono">SONNET</span>
+</div>
+</div>
+</button>
+<!-- State: Subtle (Standard) -->
+<button class="rounded-lg border border-border bg-panel hover:bg-background p-3 flex justify-between items-center text-left transition-colors group cursor-pointer">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-zinc-400 text-[18px]">verified</span>
+<span class="font-medium text-zinc-300 text-[13px]">QA del vídeo con AMELIA</span>
+</div>
+<span class="text-[9px] bg-border text-muted px-1.5 py-0.5 rounded font-mono">OPUS</span>
+</button>
+<!-- State: Subtle (Standard) -->
+<button class="rounded-lg border border-border bg-panel hover:bg-background p-3 flex justify-between items-center text-left transition-colors group cursor-pointer">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-zinc-400 text-[18px]">visibility</span>
+<span class="font-medium text-zinc-300 text-[13px]">Review de MARCUS HALE</span>
+</div>
+<span class="text-[9px] bg-border text-muted px-1.5 py-0.5 rounded font-mono">SONNET</span>
+</button>
+<!-- State: Disabled (Subir) -->
+<div class="rounded-lg border border-border/50 bg-background/50 p-3 flex flex-col gap-1 text-left opacity-60">
+<div class="flex justify-between items-center w-full">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-muted text-[18px]">upload</span>
+<span class="font-medium text-muted text-[13px]">📤 Subir a YouTube</span>
+</div>
+</div>
+<div class="pl-6 mt-0.5">
+<span class="text-[10px] text-muted">Requiere resolver items pendientes.</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Checklist -->
+<div class="flex flex-col gap-3">
+<div class="flex items-center gap-2">
+<h2 class="text-[11px] text-muted uppercase tracking-wider font-medium font-label">CHECKLIST</h2>
+<span class="bg-yellow/10 text-yellow text-[10px] px-2 py-0.5 rounded-full font-medium border border-yellow/20">1 pendientes</span>
+<span class="bg-green/10 text-green text-[10px] px-2 py-0.5 rounded-full font-medium border border-green/20">5 hechos</span>
+</div>
+<div class="flex flex-col gap-2">
+<!-- Pending Item -->
+<div class="bg-panel border border-yellow/30 rounded-lg p-3 flex items-start justify-between gap-3 group">
+<div class="flex items-start gap-2 mt-0.5">
+<span class="material-symbols-outlined text-yellow text-[16px] shrink-0 cursor-pointer hover:font-bold">radio_button_unchecked</span>
+<span class="text-[13px] text-zinc-200 leading-snug">decisión Pablo: Elegir la miniatura definitiva para el A/B test.</span>
+</div>
+<button class="shrink-0 bg-gold/10 hover:bg-gold/20 text-gold border border-gold/30 rounded px-2 py-1 text-[11px] font-medium transition-colors flex items-center gap-1">
+                                    decidir <span class="material-symbols-outlined text-[12px]">arrow_forward</span>
+</button>
+</div>
+<!-- Done items summary -->
+<details class="group cursor-pointer">
+<summary class="flex items-center gap-2 text-[12px] text-muted hover:text-zinc-300 transition-colors list-none font-medium select-none p-1">
+<span class="material-symbols-outlined text-[16px] group-open:rotate-90 transition-transform">chevron_right</span>
+                                    Ya hechos (5)
+                                </summary>
+<div class="pl-7 pr-2 py-2 flex flex-col gap-2.5">
+<div class="flex items-start gap-2 opacity-50">
+<span class="material-symbols-outlined text-green text-[14px] shrink-0">check_circle</span>
+<span class="text-[12px] text-zinc-400 line-through leading-snug">Generar variaciones de título.</span>
+</div>
+<div class="flex items-start gap-2 opacity-50">
+<span class="material-symbols-outlined text-green text-[14px] shrink-0">check_circle</span>
+<span class="text-[12px] text-zinc-400 line-through leading-snug">Crear packaging.md.</span>
+</div>
+<div class="flex items-start gap-2 opacity-50">
+<span class="material-symbols-outlined text-green text-[14px] shrink-0">check_circle</span>
+<span class="text-[12px] text-zinc-400 line-through leading-snug">Render de autoedición v1.</span>
+</div>
+</div>
+</details>
+</div>
+</div>
+<!-- Resumen & Archivos -->
+<div class="flex flex-col gap-4 pt-4 border-t border-border">
+<div class="flex gap-4 text-[12px] text-zinc-300">
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-muted text-[16px]">movie</span> Vídeos: 1</div>
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-muted text-[16px]">audio_file</span> Audios: 17</div>
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-muted text-[16px]">image</span> Imágenes: 3</div>
+</div>
+<div class="flex flex-col gap-2">
+<h2 class="text-[11px] text-muted uppercase tracking-wider font-medium font-label">ARCHIVOS (30)</h2>
+<div class="max-h-[320px] overflow-y-auto scrollbar-gold pr-2 flex flex-col gap-1 border border-border rounded-lg bg-background p-1">
+<div class="flex items-center justify-between py-1.5 px-2 hover:bg-white/5 rounded transition-colors group cursor-default">
+<div class="flex items-center gap-2 truncate">
+<span class="material-symbols-outlined text-muted text-[14px] shrink-0">movie</span>
+<span class="font-mono text-[11px] text-zinc-300 truncate">Never Chase...autoedit.mp4</span>
+</div>
+<span class="text-[10px] text-muted shrink-0 pl-2">490.3 MB</span>
+</div>
+<div class="flex items-center justify-between py-1.5 px-2 hover:bg-white/5 rounded transition-colors group cursor-default">
+<div class="flex items-center gap-2 truncate">
+<span class="material-symbols-outlined text-gold text-[14px] shrink-0">image</span>
+<span class="font-mono text-[11px] text-gold truncate">thumb_vfinal_01.png</span>
+</div>
+<span class="text-[10px] text-muted shrink-0 pl-2">1.9 MB</span>
+</div>
+<div class="flex items-center justify-between py-1.5 px-2 hover:bg-white/5 rounded transition-colors group cursor-default">
+<div class="flex items-center gap-2 truncate">
+<span class="material-symbols-outlined text-muted text-[14px] shrink-0">image</span>
+<span class="font-mono text-[11px] text-zinc-400 truncate">thumb_alt_dark.png</span>
+</div>
+<span class="text-[10px] text-muted shrink-0 pl-2">2.1 MB</span>
+</div>
+<div class="flex items-center justify-between py-1.5 px-2 hover:bg-white/5 rounded transition-colors group cursor-default">
+<div class="flex items-center gap-2 truncate">
+<span class="material-symbols-outlined text-muted text-[14px] shrink-0">description</span>
+<span class="font-mono text-[11px] text-zinc-400 truncate">packaging.md</span>
+</div>
+<span class="text-[10px] text-muted shrink-0 pl-2">4 KB</span>
+</div>
+<div class="flex items-center justify-between py-1.5 px-2 hover:bg-white/5 rounded transition-colors group cursor-default opacity-60">
+<div class="flex items-center gap-2 truncate">
+<span class="material-symbols-outlined text-muted text-[14px] shrink-0">audio_file</span>
+<span class="font-mono text-[11px] text-zinc-500 truncate">voiceover_take1.wav</span>
+</div>
+<span class="text-[10px] text-muted shrink-0 pl-2">45 MB</span>
+</div>
+<div class="flex items-center justify-between py-1.5 px-2 hover:bg-white/5 rounded transition-colors group cursor-default opacity-60">
+<div class="flex items-center gap-2 truncate">
+<span class="material-symbols-outlined text-muted text-[14px] shrink-0">audio_file</span>
+<span class="font-mono text-[11px] text-zinc-500 truncate">bg_music_stoic.mp3</span>
+</div>
+<span class="text-[10px] text-muted shrink-0 pl-2">8.2 MB</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</body></html>

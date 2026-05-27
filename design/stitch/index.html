@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🗿 MIGUEL ÁNGEL — Auditoría visual yt-content-pipeline</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: '#0b0b0e',
+            panel: '#13131a',
+            border: '#26262e',
+            accent: '#c9a96a',
+            muted: '#5a5a66',
+            ok: '#22c55e',
+            err: '#ef4444',
+            warn: '#facc15',
+            info: '#3b82f6',
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            display: ['Sora', 'Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'Consolas', 'monospace'],
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet" />
+  <style>
+    body { background: #0b0b0e; color: #e4e4e7; font-family: 'Inter', system-ui, sans-serif; }
+    .font-display { font-family: 'Sora', 'Inter', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', Consolas, monospace; }
+    .gold { color: #c9a96a; }
+    .gold-bg { background: #c9a96a; }
+    .panel { background: #13131a; }
+    .border-c { border-color: #26262e; }
+    .preview-card { transition: transform 0.18s ease, border-color 0.18s ease; }
+    .preview-card:hover { transform: translateY(-2px); border-color: rgba(201, 169, 106, 0.6); }
+    .preview-card:hover .open-btn { background: rgba(201, 169, 106, 0.2); }
+  </style>
+</head>
+<body class="min-h-screen">
+  <!-- Banner -->
+  <div class="bg-amber-500/5 border-y border-amber-500/20 text-amber-300 text-xs px-6 py-2 text-center font-medium tracking-wide">
+    🗿 Mockups de MIGUEL ÁNGEL · Tailwind via CDN · No es la app real — son screens generados en Google Stitch
+  </div>
+
+  <!-- Header -->
+  <header class="max-w-7xl mx-auto px-8 pt-14 pb-8">
+    <div class="flex items-baseline justify-between gap-6 flex-wrap">
+      <div>
+        <p class="text-xs uppercase tracking-[0.2em] text-muted mb-2">YTCP · Charcoal & Gold Design System</p>
+        <h1 class="font-display text-4xl font-bold text-white">Auditoría visual yt-content-pipeline</h1>
+        <p class="text-zinc-400 mt-2 max-w-2xl">5 pantallas vertebrales generadas en Stitch que definen el lenguaje visual del rediseño. Click en cualquiera para abrir el mockup en su tamaño real (2560px).</p>
+      </div>
+      <div class="flex items-center gap-3 text-xs">
+        <span class="flex items-center gap-1.5 px-3 py-1.5 rounded-full panel border border-c text-zinc-300">
+          <span class="w-2 h-2 rounded-full bg-ok"></span>
+          5 / 5 pantallas listas
+        </span>
+        <span class="flex items-center gap-1.5 px-3 py-1.5 rounded-full panel border border-c text-zinc-300">
+          <span class="gold">●</span>
+          6 / 350 generaciones del mes
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Design system tokens preview -->
+  <section class="max-w-7xl mx-auto px-8 mb-10">
+    <h2 class="text-xs uppercase tracking-[0.2em] text-muted mb-3">Design tokens</h2>
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div class="panel border border-c rounded-lg p-3 flex items-center gap-3">
+        <div class="w-8 h-8 rounded" style="background: #0b0b0e; border: 1px solid #26262e;"></div>
+        <div>
+          <p class="text-[11px] text-muted">bg</p>
+          <p class="font-mono text-[11px] text-white">#0b0b0e</p>
+        </div>
+      </div>
+      <div class="panel border border-c rounded-lg p-3 flex items-center gap-3">
+        <div class="w-8 h-8 rounded" style="background: #13131a; border: 1px solid #26262e;"></div>
+        <div>
+          <p class="text-[11px] text-muted">panel</p>
+          <p class="font-mono text-[11px] text-white">#13131a</p>
+        </div>
+      </div>
+      <div class="panel border border-c rounded-lg p-3 flex items-center gap-3">
+        <div class="w-8 h-8 rounded gold-bg"></div>
+        <div>
+          <p class="text-[11px] text-muted">accent</p>
+          <p class="font-mono text-[11px] gold">#c9a96a</p>
+        </div>
+      </div>
+      <div class="panel border border-c rounded-lg p-3 flex items-center gap-3">
+        <div class="w-8 h-8 rounded" style="background: #22c55e;"></div>
+        <div>
+          <p class="text-[11px] text-muted">ok</p>
+          <p class="font-mono text-[11px] text-white">#22c55e</p>
+        </div>
+      </div>
+      <div class="panel border border-c rounded-lg p-3 flex items-center gap-3">
+        <div class="w-8 h-8 rounded" style="background: #ef4444;"></div>
+        <div>
+          <p class="text-[11px] text-muted">err</p>
+          <p class="font-mono text-[11px] text-white">#ef4444</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- A/B Comparison: solid vs liquid glass -->
+  <section class="max-w-7xl mx-auto px-8 mb-12">
+    <div class="flex items-baseline justify-between mb-4">
+      <h2 class="text-xs uppercase tracking-[0.2em] text-muted">🧪 Test A/B — Lenguaje visual</h2>
+      <p class="text-xs text-zinc-500">Compara las dos direcciones y dime cuál sigue para las 4 pantallas restantes.</p>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- Variant A: Solid -->
+      <a href="home-dashboard/screen.html" target="_blank" class="preview-card panel border border-c rounded-xl overflow-hidden block">
+        <div class="aspect-video bg-black flex items-center justify-center overflow-hidden">
+          <img src="home-dashboard/preview.png" alt="Home v1 — sólido charcoal & gold" class="w-full h-full object-cover object-top" loading="lazy" />
+        </div>
+        <div class="p-5">
+          <div class="flex items-center justify-between mb-1">
+            <h3 class="font-display text-lg font-semibold text-white">A · Sólido (Charcoal & Gold)</h3>
+            <span class="text-[10px] uppercase tracking-wider text-zinc-400 border border-c rounded-full px-2 py-1">v1 original</span>
+          </div>
+          <p class="text-zinc-400 text-sm leading-relaxed">Superficies sólidas <code class="font-mono text-zinc-300">#13131a</code>, borders sutiles, gold matte como único accent. Plano, cockpit técnico, máxima legibilidad.</p>
+        </div>
+      </a>
+
+      <!-- Variant B: Liquid Glass -->
+      <a href="home-dashboard-glass/screen.html" target="_blank" class="preview-card panel border rounded-xl overflow-hidden block" style="border-color: rgba(201,169,106,0.4);">
+        <div class="aspect-video bg-black flex items-center justify-center overflow-hidden">
+          <img src="home-dashboard-glass/preview.png" alt="Home v2 — liquid glass" class="w-full h-full object-cover object-top" loading="lazy" />
+        </div>
+        <div class="p-5">
+          <div class="flex items-center justify-between mb-1">
+            <h3 class="font-display text-lg font-semibold text-white">B · Liquid Glass</h3>
+            <span class="text-[10px] uppercase tracking-wider gold border border-accent/40 rounded-full px-2 py-1">v2 nueva</span>
+          </div>
+          <p class="text-zinc-400 text-sm leading-relaxed">Superficies translúcidas <code class="font-mono text-zinc-300">bg-white/[0.04]</code> con <code class="font-mono text-zinc-300">backdrop-blur</code>, highlights de luz en bordes superiores, glow gold/cyan en el fondo. Receta única por pantalla. Premium feel.</p>
+        </div>
+      </a>
+
+    </div>
+  </section>
+
+  <!-- Pantallas grid -->
+  <main class="max-w-7xl mx-auto px-8 pb-16">
+    <h2 class="text-xs uppercase tracking-[0.2em] text-muted mb-4">Pantallas v1 (sólido)</h2>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- Card 1: Home Dashboard -->
+      <a href="home-dashboard/screen.html" target="_blank" class="preview-card panel border border-c rounded-xl overflow-hidden block group">
+        <div class="aspect-video bg-black flex items-center justify-center overflow-hidden">
+          <img src="home-dashboard/preview.png" alt="Home Dashboard" class="w-full h-full object-cover object-top" loading="lazy" />
+        </div>
+        <div class="p-5">
+          <div class="flex items-center justify-between mb-1">
+            <h3 class="font-display text-lg font-semibold text-white">Home Dashboard</h3>
+            <span class="open-btn text-[10px] uppercase tracking-wider gold border border-accent/30 rounded-full px-2 py-1 transition">Abrir ↗</span>
+          </div>
+          <p class="text-zinc-400 text-sm leading-relaxed">"Hola, Caballero Jedi (nivel 6)" + KPIs (vídeos, jobs, logros, racha) + grid de canales activos y coming-soon + footer de accesos rápidos.</p>
+          <p class="font-mono text-[11px] text-muted mt-3">design/stitch/home-dashboard/screen.html</p>
+        </div>
+      </a>
+
+      <!-- Card 2: Kanban -->
+      <a href="kanban-channel/screen.html" target="_blank" class="preview-card panel border border-c rounded-xl overflow-hidden block group">
+        <div class="aspect-video bg-black flex items-center justify-center overflow-hidden">
+          <img src="kanban-channel/preview.png" alt="Kanban Moderni Stoici" class="w-full h-full object-cover object-top" loading="lazy" />
+        </div>
+        <div class="p-5">
+          <div class="flex items-center justify-between mb-1">
+            <h3 class="font-display text-lg font-semibold text-white">Kanban — Moderni Stoici</h3>
+            <span class="open-btn text-[10px] uppercase tracking-wider gold border border-accent/30 rounded-full px-2 py-1 transition">Abrir ↗</span>
+          </div>
+          <p class="text-zinc-400 text-sm leading-relaxed">5 columnas de estado filesystem-driven, cards con progress strip de los 6 hitos, badges de scheduled y active jobs, drag affordance visible.</p>
+          <p class="font-mono text-[11px] text-muted mt-3">design/stitch/kanban-channel/screen.html</p>
+        </div>
+      </a>
+
+      <!-- Card 3: Modal -->
+      <a href="video-detail-modal/screen.html" target="_blank" class="preview-card panel border border-c rounded-xl overflow-hidden block group">
+        <div class="aspect-video bg-black flex items-center justify-center overflow-hidden">
+          <img src="video-detail-modal/preview.png" alt="Video Detail Modal" class="w-full h-full object-cover object-top" loading="lazy" />
+        </div>
+        <div class="p-5">
+          <div class="flex items-center justify-between mb-1">
+            <h3 class="font-display text-lg font-semibold text-white">Modal · Detalle de vídeo</h3>
+            <span class="open-btn text-[10px] uppercase tracking-wider gold border border-accent/30 rounded-full px-2 py-1 transition">Abrir ↗</span>
+          </div>
+          <p class="text-zinc-400 text-sm leading-relaxed">Layout 2:1, player + miniaturas + packaging.md a la izquierda, pipeline de skills + checklist + archivos a la derecha. LUIS en estado running con timer.</p>
+          <p class="font-mono text-[11px] text-muted mt-3">design/stitch/video-detail-modal/screen.html</p>
+        </div>
+      </a>
+
+      <!-- Card 4: Lab Dashboard -->
+      <a href="lab-dashboard/screen.html" target="_blank" class="preview-card panel border border-c rounded-xl overflow-hidden block group">
+        <div class="aspect-video bg-black flex items-center justify-center overflow-hidden">
+          <img src="lab-dashboard/preview.png" alt="Lab Dashboard" class="w-full h-full object-cover object-top" loading="lazy" />
+        </div>
+        <div class="p-5">
+          <div class="flex items-center justify-between mb-1">
+            <h3 class="font-display text-lg font-semibold text-white">Lab · Canales borrador</h3>
+            <span class="open-btn text-[10px] uppercase tracking-wider gold border border-accent/30 rounded-full px-2 py-1 transition">Abrir ↗</span>
+          </div>
+          <p class="text-zinc-400 text-sm leading-relaxed">Modo experimental con strip ámbar superior. 3 tabs (drafts/ideas/research). Cards de drafts con progress strip de los 5 pasos del wizard.</p>
+          <p class="font-mono text-[11px] text-muted mt-3">design/stitch/lab-dashboard/screen.html</p>
+        </div>
+      </a>
+
+      <!-- Card 5: Wizard Step 1 -->
+      <a href="lab-wizard-step-1/screen.html" target="_blank" class="preview-card panel border border-c rounded-xl overflow-hidden block group lg:col-span-2">
+        <div class="aspect-[16/9] lg:aspect-[21/9] bg-black flex items-center justify-center overflow-hidden">
+          <img src="lab-wizard-step-1/preview.png" alt="Lab Wizard Step 1" class="w-full h-full object-cover object-top" loading="lazy" />
+        </div>
+        <div class="p-5">
+          <div class="flex items-center justify-between mb-1">
+            <h3 class="font-display text-lg font-semibold text-white">Lab · Crear canal — Paso 1: Referencia</h3>
+            <span class="open-btn text-[10px] uppercase tracking-wider gold border border-accent/30 rounded-full px-2 py-1 transition">Abrir ↗</span>
+          </div>
+          <p class="text-zinc-400 text-sm leading-relaxed">Wizard de 5 pasos. Form con URL canal de referencia (con validación Algrow), idioma, plataformas objetivo, tema inicial y slots para 2-3 transcripts. Footer sticky con CTA gold que dispara style-engine.</p>
+          <p class="font-mono text-[11px] text-muted mt-3">design/stitch/lab-wizard-step-1/screen.html</p>
+        </div>
+      </a>
+
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-16 pt-8 border-t border-c flex items-center justify-between text-sm">
+      <div class="text-muted">
+        Dossier completo en
+        <a href="MIGUEL-ANGEL-HANDOFF.md" class="gold hover:underline" target="_blank">MIGUEL-ANGEL-HANDOFF.md</a>
+        · Stitch project <code class="font-mono text-zinc-400">8296652321668230254</code>
+      </div>
+      <div class="text-zinc-500 italic font-display">
+        "El bloque ya estaba bien delimitado." — Miguel Ángel
+      </div>
+    </footer>
+  </main>
+</body>
+</html>

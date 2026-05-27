@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>YTCP - Lab Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        charcoal: "#0b0b0e",
+                        panel: "#13131a",
+                        border: "#26262e",
+                        gold: "#c9a96a",
+                        green: { 500: "#22c55e" },
+                        red: { 500: "#ef4444" },
+                        yellow: { 500: "#facc15" },
+                        blue: { 500: "#3b82f6" },
+                        muted: "#5a5a66",
+                        zinc: {
+                            300: "#d4d4d8",
+                            400: "#a1a1aa",
+                            500: "#71717a",
+                            600: "#52525b"
+                        },
+                        amber: {
+                            300: "#fcd34d",
+                            500: "#f59e0b",
+                            700: "#b45309"
+                        }
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "md": "0.375rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px",
+                        "2px": "2px"
+                    },
+                    fontFamily: {
+                        headline: ["Sora", "sans-serif"],
+                        display: ["Sora", "sans-serif"],
+                        body: ["Inter", "sans-serif"],
+                        label: ["Inter", "sans-serif"],
+                        mono: ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", "monospace"]
+                    },
+                    fontSize: {
+                        "body-sm": ["13px", "18px"],
+                        "body-md": ["14px", "20px"],
+                        "title-md": ["20px", "28px"],
+                        "title-lg": ["24px", "32px"],
+                        "title-xl": ["32px", "40px"],
+                        "label": ["11px", "16px"]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-charcoal text-zinc-300 font-body antialiased min-h-screen">
+<!-- Experimental Banner -->
+<div class="fixed top-0 left-0 w-full h-[36px] bg-amber-500/5 border-y border-amber-500/20 flex items-center justify-center z-50">
+<span class="text-amber-300 font-body text-body-sm font-medium">🧪 Modo experimental — Estás viendo el Lab. Las features de esta zona NO están disponibles en el .exe instalado.</span>
+</div>
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-[36px] h-[calc(100%-36px)] w-[64px] bg-[#13131a] border-r border-[#26262e] flex flex-col items-center py-4 gap-4 z-40">
+<!-- Logo -->
+<div class="font-headline font-bold text-[#c9a96a] mb-4 text-sm" title="v0.6">YTCP</div>
+<!-- Tabs -->
+<a class="w-10 h-10 flex items-center justify-center rounded-lg text-[#5a5a66] hover:bg-[#0b0b0e] hover:border-[#26262e] transition-all duration-80ms ease-in-out group relative" href="#" title="Canales">
+<span class="material-symbols-outlined text-[24px]">subscriptions</span>
+</a>
+<a class="w-10 h-10 flex items-center justify-center rounded-lg text-[#5a5a66] hover:bg-[#0b0b0e] hover:border-[#26262e] transition-all duration-80ms ease-in-out group relative" href="#" title="Producción">
+<span class="material-symbols-outlined text-[24px]">movie_edit</span>
+</a>
+<a class="w-10 h-10 flex items-center justify-center rounded-lg text-[#5a5a66] hover:bg-[#0b0b0e] hover:border-[#26262e] transition-all duration-80ms ease-in-out group relative" href="#" title="Sistema">
+<span class="material-symbols-outlined text-[24px]">settings</span>
+</a>
+<a class="w-10 h-10 flex items-center justify-center rounded-lg bg-amber-700/30 text-amber-500 border border-amber-500/60 transition-all duration-80ms ease-in-out group relative" href="#" title="Lab">
+<span class="material-symbols-outlined text-[24px]">science</span>
+</a>
+<a class="w-10 h-10 flex items-center justify-center rounded-lg text-[#5a5a66] hover:bg-[#0b0b0e] hover:border-[#26262e] transition-all duration-80ms ease-in-out group relative mt-auto" href="#" title="Perfil">
+<span class="material-symbols-outlined text-[24px]">account_circle</span>
+<div class="absolute bottom-0 right-0 w-3 h-3 bg-panel rounded-full flex items-center justify-center">
+<img alt="Avatar del Caballero Jedi" class="w-2.5 h-2.5 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB0SAPh8tMC2_R4bFlkDfLLJ4O1FekNg2T8UMaYWDNsnwOo--EcBn1hWsghgh1B9obZ0WY0UrQpVcggoRe2b9Og8pVHFV4vhjKROk_gXzhecbaYzp4pk-j-Txd5J-_TkHixxV9h7ZqOVoB-8U9ti-8ilZ6rkNbfS6t3uXiD0mIlzq5HFUYQpLLBaXR1JB33VkPHzz-NMb61adtYPA6L53UaomJsTPd1M3XNW_7g3GmJZfRY0xSwAcBNryB54OZsUQW9h8V6RxrEqA"/>
+</div>
+</a>
+</nav>
+<!-- Main Content Area -->
+<main class="ml-[64px] mt-[36px] pt-14 flex flex-col min-h-[calc(100vh-36px)] relative">
+<!-- TopBar -->
+<header class="fixed top-[36px] right-0 w-[calc(100%-64px)] h-14 bg-[#13131a] border-b border-[#26262e] flex justify-between items-center px-6 z-30">
+<!-- Left: Title -->
+<div class="flex items-center gap-2">
+<span class="font-headline text-[22px] font-bold text-zinc-100">Lab</span>
+</div>
+<!-- Right: Actions & XP -->
+<div class="flex items-center gap-4">
+<button class="bg-gold/10 border border-gold/40 text-gold px-4 py-1.5 rounded-lg font-body text-body-sm hover:bg-gold/20 transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">add</span>
+                    Nuevo canal
+                </button>
+<!-- Working Mode Toggle -->
+<div class="flex items-center gap-2 bg-charcoal rounded-full p-1 border border-border">
+<div class="w-3 h-3 rounded-full bg-green-500 ml-2"></div>
+<span class="text-[11px] font-mono text-zinc-400 pr-2">En PC</span>
+</div>
+<!-- XP Bar -->
+<div class="w-48 h-7 bg-charcoal rounded-full border border-border flex items-center px-2 relative group cursor-pointer" title="920 / 1000 XP">
+<span class="font-body text-[11px] text-zinc-400 absolute left-3 z-10">Caballero Jedi (6)</span>
+<div class="h-1.5 w-[85%] bg-gold rounded-full absolute bottom-1 left-2 opacity-80"></div>
+</div>
+<button class="text-muted hover:text-zinc-100 transition-colors relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+</button>
+</div>
+</header>
+<!-- Tabs Row -->
+<div class="sticky top-[92px] w-full h-[48px] bg-charcoal border-b border-border px-8 flex justify-between items-end z-20">
+<div class="flex gap-8 h-full">
+<button class="h-full flex items-center border-b-2 border-gold text-gold font-body text-body-md font-medium px-2">
+                    Canales borrador (3)
+                </button>
+<button class="h-full flex items-center border-b-2 border-transparent text-muted hover:text-zinc-300 font-body text-body-md font-medium px-2 transition-colors">
+                    Ideas (12)
+                </button>
+<button class="h-full flex items-center border-b-2 border-transparent text-muted hover:text-zinc-300 font-body text-body-md font-medium px-2 transition-colors">
+                    Investigaciones (5)
+                </button>
+</div>
+<div class="h-full flex items-center pb-2">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-muted text-[18px]">search</span>
+<input class="bg-panel border border-border rounded-md pl-8 pr-3 py-1 text-body-sm focus:outline-none focus:border-gold/50 text-zinc-300 w-48 transition-all" placeholder="Buscar..." type="text"/>
+</div>
+</div>
+</div>
+<!-- Content Canvas -->
+<div class="p-8 flex-1">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-[1200px] mx-auto">
+<!-- Card 1 -->
+<div class="bg-panel rounded-lg border border-border p-4 flex flex-col gap-4 hover:border-gold/30 hover:bg-panel/80 transition-all">
+<div class="flex justify-between items-start">
+<h3 class="font-headline text-title-md font-semibold text-zinc-100 leading-tight">Faceless History Storytelling</h3>
+<span class="px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/30 text-green-500 text-[11px] font-mono whitespace-nowrap">validado 🟢</span>
+</div>
+<div class="text-body-sm text-zinc-400">
+<span class="text-muted">Ref:</span> <span class="font-mono text-[11px]">@Mr. Beast Documentaries</span>
+</div>
+<!-- Progress Strip -->
+<div class="flex gap-1 h-1.5 w-full mt-2">
+<div class="flex-1 bg-gold rounded-full"></div>
+<div class="flex-1 bg-gold rounded-full"></div>
+<div class="flex-1 bg-gold rounded-full"></div>
+<div class="flex-1 bg-gold rounded-full"></div>
+<div class="flex-1 bg-border rounded-full"></div>
+</div>
+<div class="flex justify-between text-[10px] uppercase tracking-wider text-muted font-label">
+<span>Id</span>
+<span>An</span>
+<span>Vi</span>
+<span>Va</span>
+<span>Bo</span>
+</div>
+<div class="mt-auto pt-4 border-t border-border flex justify-between items-center">
+<span class="text-[11px] text-muted">creado hace 2 días</span>
+<div class="flex gap-2">
+<button class="text-zinc-400 hover:text-zinc-100 p-1 rounded hover:bg-charcoal transition-colors" title="Ver"><span class="material-symbols-outlined text-[18px]">visibility</span></button>
+<button class="text-zinc-400 hover:text-red-400 p-1 rounded hover:bg-charcoal transition-colors" title="Descartar"><span class="material-symbols-outlined text-[18px]">close</span></button>
+<button class="bg-gold/10 border border-gold/40 text-gold px-3 py-1 rounded-[4px] text-body-sm hover:bg-gold/20 flex items-center gap-1 transition-colors">
+<span class="material-symbols-outlined text-[16px]">play_arrow</span> Continuar
+                            </button>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-panel rounded-lg border border-border p-4 flex flex-col gap-4 hover:border-gold/30 hover:bg-panel/80 transition-all">
+<div class="flex justify-between items-start">
+<h3 class="font-headline text-title-md font-semibold text-zinc-100 leading-tight">Stoic Sleep Stories EN</h3>
+<span class="px-2 py-0.5 rounded-full bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 text-[11px] font-mono whitespace-nowrap">wizard paso 3</span>
+</div>
+<div class="text-body-sm text-zinc-400">
+<span class="text-muted">Ref:</span> <span class="font-mono text-[11px]">@Jordan Maxwell Library</span>
+</div>
+<!-- Progress Strip -->
+<div class="flex gap-1 h-1.5 w-full mt-2">
+<div class="flex-1 bg-gold rounded-full"></div>
+<div class="flex-1 bg-gold rounded-full"></div>
+<div class="flex-1 bg-amber-500 animate-pulse rounded-full"></div>
+<div class="flex-1 bg-border rounded-full"></div>
+<div class="flex-1 bg-border rounded-full"></div>
+</div>
+<div class="flex justify-between text-[10px] uppercase tracking-wider text-muted font-label">
+<span>Id</span>
+<span>An</span>
+<span>Vi</span>
+<span>Va</span>
+<span>Bo</span>
+</div>
+<div class="mt-auto pt-4 border-t border-border flex justify-between items-center">
+<span class="text-[11px] text-muted">creado hace 2 días</span>
+<div class="flex gap-2">
+<button class="text-zinc-400 hover:text-zinc-100 p-1 rounded hover:bg-charcoal transition-colors" title="Ver"><span class="material-symbols-outlined text-[18px]">visibility</span></button>
+<button class="text-zinc-400 hover:text-red-400 p-1 rounded hover:bg-charcoal transition-colors" title="Descartar"><span class="material-symbols-outlined text-[18px]">close</span></button>
+<button class="bg-gold/10 border border-gold/40 text-gold px-3 py-1 rounded-[4px] text-body-sm hover:bg-gold/20 flex items-center gap-1 transition-colors">
+<span class="material-symbols-outlined text-[16px]">play_arrow</span> Continuar
+                            </button>
+</div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="bg-panel rounded-lg border border-red-500/50 p-4 flex flex-col gap-4 hover:bg-panel/80 transition-all relative overflow-hidden">
+<div class="absolute inset-0 bg-red-500/5 pointer-events-none"></div>
+<div class="flex justify-between items-start relative z-10">
+<h3 class="font-headline text-title-md font-semibold text-zinc-100 leading-tight">Daily Crypto Insights</h3>
+<span class="px-2 py-0.5 rounded-full bg-red-500/20 border border-red-500 text-red-500 text-[11px] font-mono whitespace-nowrap">rojo 🔴 saturado</span>
+</div>
+<div class="text-body-sm text-zinc-400 relative z-10">
+<span class="text-muted">Ref:</span> <span class="font-mono text-[11px]">@CryptoBanter</span>
+</div>
+<!-- Progress Strip -->
+<div class="flex gap-1 h-1.5 w-full mt-2 relative z-10">
+<div class="flex-1 bg-zinc-600 rounded-full"></div>
+<div class="flex-1 bg-zinc-600 rounded-full"></div>
+<div class="flex-1 bg-zinc-600 rounded-full"></div>
+<div class="flex-1 bg-zinc-600 rounded-full"></div>
+<div class="flex-1 bg-border rounded-full"></div>
+</div>
+<div class="flex justify-between text-[10px] uppercase tracking-wider text-muted font-label relative z-10">
+<span>Id</span>
+<span>An</span>
+<span>Vi</span>
+<span>Va</span>
+<span>Bo</span>
+</div>
+<div class="mt-auto pt-4 border-t border-border flex justify-between items-center relative z-10">
+<span class="text-[11px] text-muted">creado hace 2 días</span>
+<div class="flex gap-2">
+<button class="text-zinc-400 hover:text-zinc-100 p-1 rounded hover:bg-charcoal transition-colors" title="Ver"><span class="material-symbols-outlined text-[18px]">visibility</span></button>
+<button class="text-zinc-400 hover:text-red-400 p-1 rounded hover:bg-charcoal transition-colors" title="Descartar"><span class="material-symbols-outlined text-[18px]">close</span></button>
+<button class="border border-border text-zinc-400 px-3 py-1 rounded-[4px] text-body-sm hover:bg-charcoal hover:text-zinc-300 flex items-center gap-1 transition-colors">
+                                Revisar
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer -->
+<footer class="w-full h-6 flex items-center justify-center gap-4 bg-amber-500/5 border-t border-amber-500/20 mt-auto">
+<span class="font-body text-[11px] uppercase tracking-widest text-amber-500">Experimental Mode — Solo Modo Dev</span>
+<a class="font-body text-[11px] uppercase tracking-widest text-amber-500 opacity-80 hover:opacity-100" href="#">Report Bug</a>
+<a class="font-body text-[11px] uppercase tracking-widest text-amber-500 opacity-80 hover:opacity-100" href="#">Documentation</a>
+</footer>
+<!-- FAB -->
+<button class="fixed bottom-10 right-10 bg-gold hover:bg-gold/90 text-charcoal px-6 py-3 rounded-full font-headline font-semibold text-body-md shadow-lg flex items-center gap-2 transition-transform hover:scale-105 z-50">
+<span class="material-symbols-outlined">add</span>
+            Nuevo canal
+        </button>
+</main>
+</body></html>

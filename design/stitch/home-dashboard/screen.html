@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Home Dashboard - YouTube Content Pipeline</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Sora:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        charcoal: "#0b0b0e",
+                        panel: "#13131a",
+                        border: "#26262e",
+                        gold: "#c9a96a",
+                        green: "#22c55e",
+                        red: "#ef4444",
+                        yellow: "#facc15",
+                        blue: "#3b82f6",
+                        muted: "#5a5a66",
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.25rem",
+                        lg: "0.5rem",
+                        xl: "0.75rem",
+                        full: "9999px"
+                    },
+                    fontFamily: {
+                        headline: ["Sora", "sans-serif"],
+                        display: ["Sora", "sans-serif"],
+                        body: ["Inter", "sans-serif"],
+                        label: ["Inter", "sans-serif"]
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body { background-color: #0b0b0e; color: #f4f4f5; font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined { font-family: 'Material Symbols Outlined'; }
+        /* Custom Scrollbar for electron feel */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0b0b0e; }
+        ::-webkit-scrollbar-thumb { background: #26262e; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #5a5a66; }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden antialiased text-zinc-100 selection:bg-gold/30 selection:text-gold">
+<!-- SideNavBar (Shared Component JSON injected styling) -->
+<nav class="fixed left-0 top-0 h-full w-16 bg-[#13131a] border-r border-[#26262e] flex flex-col items-center py-4 gap-4 z-50">
+<!-- Brand/Logo area -->
+<div class="mb-4">
+<span class="font-headline text-xl text-[#c9a96a] font-bold">YT</span>
+</div>
+<!-- Tabs -->
+<div class="flex-1 flex flex-col items-center gap-2 w-full px-2">
+<!-- Active Tab: Dashboard -->
+<button class="w-10 h-10 flex items-center justify-center bg-[#c9a96a]/10 text-[#c9a96a] border border-[#c9a96a]/60 rounded-lg transition-all duration-200 ease-in-out relative group" title="Dashboard">
+<span class="material-symbols-outlined text-[24px]">dashboard</span>
+<span class="absolute left-14 bg-panel border border-border text-zinc-100 px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-lg">Dashboard</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center text-[#5a5a66] hover:bg-[#0b0b0e] hover:border hover:border-[#26262e] border border-transparent rounded-lg transition-all duration-200 ease-in-out relative group" title="Production">
+<span class="material-symbols-outlined text-[24px]">video_settings</span>
+<span class="absolute left-14 bg-panel border border-border text-zinc-100 px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-lg">Production</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center text-[#5a5a66] hover:bg-[#0b0b0e] hover:border hover:border-[#26262e] border border-transparent rounded-lg transition-all duration-200 ease-in-out relative group" title="Pipeline">
+<span class="material-symbols-outlined text-[24px]">account_tree</span>
+<span class="absolute left-14 bg-panel border border-border text-zinc-100 px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-lg">Pipeline</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center text-[#5a5a66] hover:bg-[#0b0b0e] hover:border hover:border-[#26262e] border border-transparent rounded-lg transition-all duration-200 ease-in-out relative group" title="Analytics">
+<span class="material-symbols-outlined text-[24px]">monitoring</span>
+<span class="absolute left-14 bg-panel border border-border text-zinc-100 px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-lg">Analytics</span>
+</button>
+<!-- Separator -->
+<div class="w-8 h-px bg-border my-2"></div>
+<!-- Lab (Dev only) -->
+<button class="w-10 h-10 flex items-center justify-center text-amber-500 hover:bg-amber-900/20 border border-transparent rounded-lg transition-all duration-200 ease-in-out relative group" title="Lab">
+<span class="material-symbols-outlined text-[24px]">science</span>
+<span class="absolute left-14 bg-panel border border-border text-zinc-100 px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-lg">Lab</span>
+</button>
+</div>
+<!-- Footer -->
+<div class="flex flex-col items-center gap-3 w-full">
+<button class="w-10 h-10 flex items-center justify-center text-[#5a5a66] hover:bg-[#0b0b0e] hover:border hover:border-[#26262e] border border-transparent rounded-lg transition-all duration-200 ease-in-out" title="Settings">
+<span class="material-symbols-outlined text-[24px]">settings</span>
+</button>
+<div class="flex flex-col items-center gap-1 group cursor-pointer relative">
+<img alt="Pablo's Avatar" class="w-8 h-8 rounded-full border border-border group-hover:border-gold transition-colors object-cover" data-alt="A futuristic circular avatar image showing a professional stylized portrait in dark charcoal and metallic gold tones. The lighting is cinematic, highlighting the subject against a deep black background, perfect for a high-end dashboard interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjvJCn042eLD03Av3uSo_f9x3hERNDxopeJnrqOuMi9iQwRtJVQgvgCstYzrZ8r-BQDQUsQaKbBhfQpdO9CMmHHOmIx2Q6X4YwKRSNK7IbTzxsDpM68Hi2tk61dzuQ-4jkZe6HHnqAcsseSRd1jh-oU8WwIBThCWT6uqONe3q6kth3DjrE4hAYLy3mboMUII-HO2E8mSoevE2lr_KSKmvjP-525qCnva-kUmermk1nznl396hnCr1ZAYeEwvLVOZpzwwF8rYQhag"/>
+<span class="font-body text-[10px] text-muted font-mono bg-panel px-1 rounded-sm border border-border group-hover:border-gold/30">v0.6</span>
+<span class="absolute left-12 bottom-0 bg-panel border border-border text-zinc-100 px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-lg">YTCP v0.6</span>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 ml-16 flex flex-col h-full bg-charcoal overflow-hidden relative">
+<!-- TopNavBar (Shared Component) -->
+<header class="sticky top-0 z-40 w-full h-[56px] bg-[#0b0b0e] border-b border-[#26262e] flex justify-between items-center px-6 shrink-0 shadow-sm shadow-black/20">
+<!-- Left: Title -->
+<div class="flex items-center gap-3">
+<h1 class="font-headline text-[28px] text-zinc-100 font-semibold tracking-tight leading-none flex items-baseline gap-2">
+                    Hola, Caballero Jedi <span class="text-gold text-lg font-normal tracking-normal">(nivel 6)</span>
+</h1>
+</div>
+<!-- Right: Actions -->
+<div class="flex items-center gap-5">
+<!-- Working Mode Toggle -->
+<button class="flex items-center gap-2 bg-panel border border-border rounded-full px-3 py-1.5 hover:border-border hover:bg-zinc-800/50 transition-colors">
+<div class="w-2 h-2 rounded-full bg-green shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
+<span class="font-body text-xs text-zinc-300 font-medium">En el PC</span>
+</button>
+<!-- XP Bar -->
+<div class="flex items-center gap-3 group relative cursor-help">
+<div class="flex flex-col items-end gap-1">
+<span class="font-headline text-xs text-gold uppercase tracking-wider font-semibold">Caballero Jedi</span>
+</div>
+<div class="w-[220px] h-2 bg-panel border border-border rounded-full overflow-hidden">
+<div class="h-full bg-gold rounded-full w-[38%] relative">
+<!-- pulse effect on right edge -->
+<div class="absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-r from-transparent to-white/30 rounded-r-full"></div>
+</div>
+</div>
+<!-- Tooltip -->
+<div class="absolute right-0 top-full mt-2 bg-panel border border-border text-zinc-300 px-3 py-2 rounded-lg text-xs opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity w-48 shadow-xl z-50">
+<div class="flex justify-between mb-1"><span>XP: 3,420</span><span class="text-gold">38%</span></div>
+<div class="text-muted">Próximo: Maestro Jedi (8,000 XP)</div>
+</div>
+</div>
+<!-- Avatar -->
+<button class="w-8 h-8 rounded-full border border-border overflow-hidden hover:border-gold transition-colors focus:outline-none focus:ring-2 focus:ring-gold/50 relative">
+<img alt="User profile" class="w-full h-full object-cover" data-alt="A futuristic circular avatar image showing a professional stylized portrait in dark charcoal and metallic gold tones. The lighting is cinematic, highlighting the subject against a deep black background, perfect for a high-end dashboard interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAuJClYgynAzCzHwsXH05Xx_MJ058FbCjvTdFpu4kO3jnMLwYzk5qRNdId_VuJLKyjKPcqk9bnJLIzWhPHa9IUg5Z2BNE_obXzNvix7_ePb7ISOz8f1cUs1eaN8SecgRnF4atRc0pbfkdcNeuDOmXcUQ8-_m37CiBchsn9jLYSS4uGGF66kl-g1S77-Hb5GruaM4GjLJ5ZhLqhatNtFujEwdytPB1WmdJ-yFCUlC1by-Aq3ppSGVvvrAsNNDGDyQoRmG02NnOoNbA"/>
+<!-- Sprite indicator overlay -->
+<div class="absolute -bottom-1 -right-1 text-[10px] bg-panel border border-gold text-gold rounded-sm px-0.5 font-mono">L6</div>
+</button>
+<!-- Notifications -->
+<button class="w-9 h-9 flex items-center justify-center text-zinc-400 hover:text-[#c9a96a] bg-panel rounded-lg border border-border hover:border-border transition-all relative">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 0;">notifications</span>
+<span class="absolute -top-1 -right-1 w-4 h-4 bg-red text-white text-[10px] font-bold flex items-center justify-center rounded-full shadow-[0_0_8px_rgba(239,68,68,0.5)]">2</span>
+</button>
+</div>
+</header>
+<!-- Scrollable Content -->
+<div class="flex-1 overflow-y-auto px-8 py-8">
+<div class="max-w-[1400px] mx-auto flex flex-col gap-8">
+<!-- KPI Section -->
+<section>
+<p class="font-body text-zinc-400 text-sm mb-4">3 canales activos. Selecciona uno para entrar al kanban.</p>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+<!-- Uploaded Videos -->
+<div class="bg-panel border border-border rounded-lg p-5 flex flex-col justify-between hover:border-zinc-700 transition-colors group relative overflow-hidden">
+<div class="absolute -right-4 -top-4 w-24 h-24 bg-blue/5 rounded-full blur-2xl group-hover:bg-blue/10 transition-colors pointer-events-none"></div>
+<div class="flex justify-between items-start mb-2 relative z-10">
+<h3 class="font-label text-[11px] text-muted uppercase tracking-wider font-semibold">VÍDEOS SUBIDOS</h3>
+<span class="material-symbols-outlined text-zinc-500 text-[18px]">movie</span>
+</div>
+<div class="font-headline text-[32px] text-zinc-100 font-bold leading-none mt-1">12</div>
+</div>
+<!-- Jobs Completed -->
+<div class="bg-panel border border-border rounded-lg p-5 flex flex-col justify-between hover:border-zinc-700 transition-colors group relative overflow-hidden">
+<div class="absolute -right-4 -top-4 w-24 h-24 bg-green/5 rounded-full blur-2xl group-hover:bg-green/10 transition-colors pointer-events-none"></div>
+<div class="flex justify-between items-start mb-2 relative z-10">
+<h3 class="font-label text-[11px] text-muted uppercase tracking-wider font-semibold">JOBS COMPLETADOS</h3>
+<span class="material-symbols-outlined text-zinc-500 text-[18px]">settings</span>
+</div>
+<div class="font-headline text-[32px] text-zinc-100 font-bold leading-none mt-1">47</div>
+</div>
+<!-- Achievements -->
+<div class="bg-panel border border-border rounded-lg p-5 flex flex-col justify-between hover:border-zinc-700 transition-colors group relative overflow-hidden">
+<div class="absolute -right-4 -top-4 w-24 h-24 bg-gold/5 rounded-full blur-2xl group-hover:bg-gold/10 transition-colors pointer-events-none"></div>
+<div class="flex justify-between items-start mb-2 relative z-10">
+<h3 class="font-label text-[11px] text-muted uppercase tracking-wider font-semibold">LOGROS</h3>
+<span class="material-symbols-outlined text-zinc-500 text-[18px]">emoji_events</span>
+</div>
+<div class="flex items-baseline gap-1 mt-1">
+<span class="font-headline text-[32px] text-zinc-100 font-bold leading-none">8</span>
+<span class="font-body text-zinc-500 text-lg">/24</span>
+</div>
+</div>
+<!-- Streak -->
+<div class="bg-panel border border-border rounded-lg p-5 flex flex-col justify-between hover:border-zinc-700 transition-colors group relative overflow-hidden border-l-2 border-l-red/50">
+<div class="absolute -right-4 -top-4 w-24 h-24 bg-red/5 rounded-full blur-2xl group-hover:bg-red/10 transition-colors pointer-events-none"></div>
+<div class="flex justify-between items-start mb-2 relative z-10">
+<h3 class="font-label text-[11px] text-muted uppercase tracking-wider font-semibold">RACHA</h3>
+<span class="material-symbols-outlined text-red text-[18px]" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
+</div>
+<div class="font-headline text-[32px] text-zinc-100 font-bold leading-none mt-1 flex items-center gap-2">
+                                12 <span class="text-lg font-body text-zinc-400 font-normal">días</span> 🔥
+                            </div>
+</div>
+</div>
+</section>
+<!-- Channels Grid -->
+<section class="mt-4 flex flex-col gap-6">
+<h2 class="font-label text-[11px] text-muted uppercase tracking-widest font-semibold flex items-center gap-2">
+<span class="w-2 h-2 bg-gold/50 rounded-full"></span> TUS CANALES
+                    </h2>
+<!-- Active Row -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+<!-- Moderni Stoici -->
+<button class="bg-panel border border-border rounded-lg p-4 text-left hover:border-gold/40 hover:bg-gold/5 transition-all group flex flex-col h-[140px] relative overflow-hidden cursor-pointer focus:outline-none focus:ring-1 focus:ring-gold shadow-sm">
+<div class="flex justify-between items-start mb-1 w-full">
+<h3 class="font-headline text-[20px] text-zinc-100 font-semibold truncate pr-2 group-hover:text-gold transition-colors">Moderni Stoici</h3>
+<span class="px-2 py-0.5 bg-green/10 border border-green/20 text-green rounded-full text-[10px] font-medium uppercase tracking-wide shrink-0">activo</span>
+</div>
+<div class="font-mono text-[11px] text-muted mb-auto truncate w-full">/Volumes/Data/YT/ModerniStoici</div>
+<div class="mt-4 w-full flex flex-col gap-2">
+<div class="flex items-center gap-2">
+<img alt="MS Avatar" class="w-6 h-6 rounded-full border border-border" data-alt="A sleek minimalist channel avatar depicting the initials MS on a muted gold background, designed for a modern professional application interface with deep contrasting dark tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCX7bMMpYis6v9dTeYxaGjJ8cWlNl4_UETcZhe2jbtd2BXUIO3vhdksmCcT50gozEdJpWTcbfxu3SnMttiUsyuOdFjuwD_Sfp2tQ2IdGiR2Br2sALUnWgxXd2YQ-RjMv_XItrH_iBFCIcg1JYUI-sHV3MxztSQQ9sa0BlUdi9TN9qeqtBFZoMzZLjedW6phiZfsga_PZo8uUyxtOT10WWrFNU3RAqNKdI0Tqn4iugvnlhY634IPSTkcq8-ZwgyWafrinmTTV08Yxg"/>
+<div class="flex items-center gap-1.5 ml-auto">
+<div class="w-1.5 h-1.5 rounded-full bg-green" title="Script ready"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-blue" title="Voiceover running"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-zinc-700" title="Edit pending"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-zinc-700" title="Upload pending"></div>
+<span class="text-xs text-zinc-400 ml-1 font-body">Prod. activa</span>
+</div>
+</div>
+<div class="w-full h-1 bg-border rounded-full overflow-hidden">
+<div class="h-full bg-gold rounded-full w-[45%]"></div>
+</div>
+</div>
+<!-- Subtle highlight on active job -->
+<div class="absolute inset-0 border border-gold/10 rounded-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
+</button>
+<!-- Moderno Estoico -->
+<button class="bg-panel border border-border rounded-lg p-4 text-left hover:border-gold/40 hover:bg-gold/5 transition-all group flex flex-col h-[140px] relative overflow-hidden cursor-pointer focus:outline-none focus:ring-1 focus:ring-gold shadow-sm">
+<div class="flex justify-between items-start mb-1 w-full">
+<h3 class="font-headline text-[20px] text-zinc-100 font-semibold truncate pr-2 group-hover:text-gold transition-colors">Moderno Estoico</h3>
+<span class="px-2 py-0.5 bg-green/10 border border-green/20 text-green rounded-full text-[10px] font-medium uppercase tracking-wide shrink-0">activo</span>
+</div>
+<div class="font-mono text-[11px] text-muted mb-auto truncate w-full">/Volumes/Data/YT/ModernoEstoico</div>
+<div class="mt-4 w-full flex flex-col gap-2">
+<div class="flex items-center gap-2">
+<img alt="ME Avatar" class="w-6 h-6 rounded-full border border-border" data-alt="A sleek minimalist channel avatar depicting the initials ME on a muted gold background, designed for a modern professional application interface with deep contrasting dark tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmRj9p9OANw9Al5Njx7jV_9puaLYDQ0Yu00Dcy6RRsi1Kv5SQPRL7F4C6gXn64mCVeooRsos_6cOhfDC4OqfvVQB-YuWGPx94g9L4S5IbcZLHJZhSaKqSCYOye-cS7s7blHIfCnvNJSz_jChsJ3iwJX29kR9n4sssTzboXQvsw_UACsiMcbJZnZjqC7cRMAQitxC5MZh2gMUi5HM-kD9P2ZF2eGLKLb2kf8GU7PakaS4v3dy5meQf9RbA2CTN-EWKhZm4A1CZ_WQ"/>
+<div class="flex items-center gap-1.5 ml-auto">
+<div class="w-1.5 h-1.5 rounded-full bg-green" title="Done"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-green" title="Done"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-green" title="Done"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-yellow animate-pulse" title="Uploading"></div>
+<span class="text-xs text-zinc-400 ml-1 font-body">Subiendo...</span>
+</div>
+</div>
+<div class="w-full h-1 bg-border rounded-full overflow-hidden">
+<div class="h-full bg-gold rounded-full w-[85%]"></div>
+</div>
+</div>
+</button>
+<!-- The Vaultman -->
+<button class="bg-panel border border-border rounded-lg p-4 text-left hover:border-gold/40 hover:bg-gold/5 transition-all group flex flex-col h-[140px] relative overflow-hidden cursor-pointer focus:outline-none focus:ring-1 focus:ring-gold shadow-sm">
+<div class="flex justify-between items-start mb-1 w-full">
+<h3 class="font-headline text-[20px] text-zinc-100 font-semibold truncate pr-2 group-hover:text-gold transition-colors">The Vaultman</h3>
+<span class="px-2 py-0.5 bg-green/10 border border-green/20 text-green rounded-full text-[10px] font-medium uppercase tracking-wide shrink-0">activo</span>
+</div>
+<div class="font-mono text-[11px] text-muted mb-auto truncate w-full">/Volumes/Data/YT/Vaultman</div>
+<div class="mt-4 w-full flex flex-col gap-2">
+<div class="flex items-center gap-2">
+<img alt="TV Avatar" class="w-6 h-6 rounded-full border border-border" data-alt="A sleek minimalist channel avatar depicting the initials TV on a muted gold background, designed for a modern professional application interface with deep contrasting dark tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCKms_0-2qEZ1kT6ogA-V0PVARumOKhg-wOvy5EJwBi7Vk3a0Oc9kc2LKht0kXOCfTuzxwJsH8tAcXEQzkSxdo0D7yfdLA3xjA_uohOMnJuxErSaIqdYCi0fXTnHchpXiIKj0AYhZ-ANVGqIxa-rzAXunXsy2rTtR6VZzNo-mlHc5p3ppCqTzRuNfUDPaQkXUoh5nAl8-iv6vt0ofkFBvkrnwyuRE8UrcXW3s1S2jCxkaKnjh9oQgwX0PnfvJov_n1hmq621sni4g"/>
+<div class="flex items-center gap-1.5 ml-auto">
+<div class="w-1.5 h-1.5 rounded-full bg-zinc-700" title="Idle"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-zinc-700" title="Idle"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-zinc-700" title="Idle"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-zinc-700" title="Idle"></div>
+<span class="text-xs text-zinc-500 ml-1 font-body">Idle</span>
+</div>
+</div>
+<div class="w-full h-1 bg-border rounded-full overflow-hidden">
+<div class="h-full bg-gold/30 rounded-full w-[0%]"></div>
+</div>
+</div>
+</button>
+</div>
+<!-- Inactive/Coming Soon Row -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-2 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
+<!-- Daily Dog -->
+<div class="bg-[#0e0e12] border border-border/50 rounded-lg p-4 text-left flex flex-col h-[100px] cursor-not-allowed">
+<div class="flex justify-between items-start mb-1 w-full">
+<h3 class="font-headline text-[16px] text-zinc-500 font-medium truncate pr-2">Daily Dog</h3>
+<span class="px-2 py-0.5 bg-zinc-800/50 border border-zinc-700 text-zinc-400 rounded-full text-[9px] font-medium uppercase tracking-wide shrink-0">coming soon</span>
+</div>
+<div class="font-mono text-[10px] text-zinc-600 truncate mt-auto">/Volumes/Data/YT/DailyDog</div>
+</div>
+<!-- Tail Tales -->
+<div class="bg-[#0e0e12] border border-border/50 rounded-lg p-4 text-left flex flex-col h-[100px] cursor-not-allowed">
+<div class="flex justify-between items-start mb-1 w-full">
+<h3 class="font-headline text-[16px] text-zinc-500 font-medium truncate pr-2">Tail Tales</h3>
+<span class="px-2 py-0.5 bg-zinc-800/50 border border-zinc-700 text-zinc-400 rounded-full text-[9px] font-medium uppercase tracking-wide shrink-0">coming soon</span>
+</div>
+<div class="font-mono text-[10px] text-zinc-600 truncate mt-auto">/Volumes/Data/YT/TailTales</div>
+</div>
+<!-- Sleep Soundly -->
+<div class="bg-[#0e0e12] border border-border/50 rounded-lg p-4 text-left flex flex-col h-[100px] cursor-not-allowed">
+<div class="flex justify-between items-start mb-1 w-full">
+<h3 class="font-headline text-[16px] text-zinc-500 font-medium truncate pr-2">Sleep Soundly</h3>
+<span class="px-2 py-0.5 bg-zinc-800/50 border border-zinc-700 text-zinc-400 rounded-full text-[9px] font-medium uppercase tracking-wide shrink-0">coming soon</span>
+</div>
+<div class="font-mono text-[10px] text-zinc-600 truncate mt-auto">/Volumes/Data/YT/SleepSoundly</div>
+</div>
+<!-- Tech Review -->
+<div class="bg-[#0e0e12] border border-border/50 rounded-lg p-4 text-left flex flex-col h-[100px] cursor-not-allowed hidden lg:flex">
+<div class="flex justify-between items-start mb-1 w-full">
+<h3 class="font-headline text-[16px] text-zinc-500 font-medium truncate pr-2">Tech Review</h3>
+<span class="px-2 py-0.5 bg-zinc-800/50 border border-zinc-700 text-zinc-400 rounded-full text-[9px] font-medium uppercase tracking-wide shrink-0">coming soon</span>
+</div>
+<div class="font-mono text-[10px] text-zinc-600 truncate mt-auto">/Volumes/Data/YT/TechReview</div>
+</div>
+</div>
+</section>
+<!-- Quick Actions Footer -->
+<section class="mt-8 pb-12">
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+<button class="bg-[#0b0b0e] border border-border hover:border-zinc-500 hover:bg-zinc-900/50 rounded-lg p-4 flex items-center justify-center gap-3 transition-colors h-14 group">
+<span class="text-xl group-hover:scale-110 transition-transform">🌙</span>
+<span class="font-body text-sm text-zinc-300 font-medium">Sleep Stories</span>
+</button>
+<button class="bg-[#0b0b0e] border border-border hover:border-zinc-500 hover:bg-zinc-900/50 rounded-lg p-4 flex items-center justify-center gap-3 transition-colors h-14 group">
+<span class="text-xl group-hover:scale-110 transition-transform">📋</span>
+<span class="font-body text-sm text-zinc-300 font-medium">Cola de jobs</span>
+</button>
+<button class="bg-[#0b0b0e] border border-border hover:border-gold/40 hover:bg-gold/5 rounded-lg p-4 flex items-center justify-center gap-3 transition-colors h-14 group">
+<span class="text-xl group-hover:scale-110 transition-transform">⚙️</span>
+<span class="font-body text-sm text-zinc-300 font-medium group-hover:text-gold transition-colors">Jobs activos</span>
+</button>
+<button class="bg-[#0b0b0e] border border-border hover:border-zinc-500 hover:bg-zinc-900/50 rounded-lg p-4 flex items-center justify-center gap-3 transition-colors h-14 group">
+<span class="text-xl group-hover:scale-110 transition-transform">🏛️</span>
+<span class="font-body text-sm text-zinc-300 font-medium">Mi perfil</span>
+</button>
+</div>
+</section>
+</div>
+</div>
+</main>
+<!-- ChatDock Sliver -->
+<div class="fixed right-0 top-0 h-full w-[12px] bg-panel border-l border-border hover:w-[48px] transition-all duration-300 ease-out z-50 flex flex-col justify-center items-center group cursor-pointer overflow-hidden shadow-[-4px_0_12px_rgba(0,0,0,0.5)]">
+<div class="rotate-[-90deg] whitespace-nowrap font-label text-[10px] uppercase tracking-widest text-muted group-hover:text-zinc-300 transition-colors opacity-0 group-hover:opacity-100 mb-8 mt-auto">Chat</div>
+<span class="material-symbols-outlined text-[16px] text-muted group-hover:text-gold mb-auto opacity-0 group-hover:opacity-100 transition-colors">chat</span>
+<!-- subtle indicator dot when closed -->
+<div class="w-1 h-1 bg-zinc-600 rounded-full group-hover:opacity-0 transition-opacity absolute top-1/2 -translate-y-1/2"></div>
+</div>
+</body></html>

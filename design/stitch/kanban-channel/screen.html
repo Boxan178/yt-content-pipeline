@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Moderni Stoici - Kanban - YTCP</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Sora:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              charcoal: '#0b0b0e',
+              panel: '#13131a',
+              border: '#26262e',
+              gold: '#c9a96a',
+              green: '#22c55e',
+              red: '#ef4444',
+              yellow: '#facc15',
+              blue: '#3b82f6',
+              muted: '#5a5a66',
+            },
+            borderRadius: {
+              DEFAULT: "0.25rem",
+              lg: "0.5rem",
+              xl: "0.75rem",
+              full: "9999px"
+            },
+            fontFamily: {
+              headline: ["Sora", "sans-serif"],
+              display: ["Sora", "sans-serif"],
+              body: ["Inter", "sans-serif"],
+              label: ["Inter", "sans-serif"]
+            },
+            animation: {
+              'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'spin-slow': 'spin 3s linear infinite',
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { background-color: #0b0b0e; color: #f4f4f5; }
+        
+        /* Custom scrollbar for columns */
+        .kanban-scroll::-webkit-scrollbar { width: 4px; }
+        .kanban-scroll::-webkit-scrollbar-track { background: transparent; }
+        .kanban-scroll::-webkit-scrollbar-thumb { background: #26262e; border-radius: 9999px; }
+        .kanban-scroll:hover::-webkit-scrollbar-thumb { background: #5a5a66; }
+        
+        /* Gold scrollbar for active column */
+        .kanban-scroll-gold::-webkit-scrollbar { width: 4px; }
+        .kanban-scroll-gold::-webkit-scrollbar-track { background: transparent; }
+        .kanban-scroll-gold::-webkit-scrollbar-thumb { background: #c9a96a; border-radius: 9999px; }
+        
+        /* Material symbols setup */
+        .material-symbols-outlined {
+          font-family: 'Material Symbols Outlined';
+          font-weight: normal;
+          font-style: normal;
+          font-size: 24px;
+          line-height: 1;
+          letter-spacing: normal;
+          text-transform: none;
+          display: inline-block;
+          white-space: nowrap;
+          word-wrap: normal;
+          direction: ltr;
+          font-feature-settings: 'liga';
+          -webkit-font-feature-settings: 'liga';
+          -webkit-font-smoothing: antialiased;
+        }
+    </style>
+</head>
+<body class="font-body text-[13px] leading-[18px] bg-[#0b0b0e] h-screen overflow-hidden flex">
+<!-- JSON: SideNavBar (Anchored to specs) -->
+<nav class="fixed left-0 top-0 h-full w-16 bg-[#13131a] border-r border-[#26262e] flex flex-col items-center py-4 gap-4 z-50">
+<!-- Brand / Header -->
+<div class="mb-4 flex flex-col items-center gap-1 group cursor-pointer">
+<span class="font-headline text-title-md text-[#c9a96a] font-bold">Y</span>
+<span class="text-[10px] text-muted tracking-widest uppercase">v0.6</span>
+</div>
+<!-- Tabs -->
+<div class="flex flex-col gap-2 w-full px-2">
+<!-- Active Tab: 'Canales' matches 'Dashboard' semantic slot closest for this specific view -->
+<a class="w-12 h-12 flex items-center justify-center bg-[#c9a96a]/10 text-[#c9a96a] border border-[#c9a96a]/60 rounded-lg relative group transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" style="font-size: 20px;">dashboard</span>
+<div class="absolute left-14 bg-panel border border-border px-3 py-1.5 rounded text-zinc-100 text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity delay-75 z-50 shadow-xl">
+                    Canales
+                </div>
+</a>
+<a class="w-12 h-12 flex items-center justify-center text-[#5a5a66] border border-transparent rounded-lg hover:bg-[#0b0b0e] hover:border-[#26262e] relative group transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" style="font-size: 20px;">video_settings</span>
+<div class="absolute left-14 bg-panel border border-border px-3 py-1.5 rounded text-zinc-100 text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity delay-75 z-50 shadow-xl">
+                    Production
+                </div>
+</a>
+<a class="w-12 h-12 flex items-center justify-center text-[#5a5a66] border border-transparent rounded-lg hover:bg-[#0b0b0e] hover:border-[#26262e] relative group transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" style="font-size: 20px;">account_tree</span>
+<div class="absolute left-14 bg-panel border border-border px-3 py-1.5 rounded text-zinc-100 text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity delay-75 z-50 shadow-xl">
+                    Pipeline
+                </div>
+</a>
+<a class="w-12 h-12 flex items-center justify-center text-[#5a5a66] border border-transparent rounded-lg hover:bg-[#0b0b0e] hover:border-[#26262e] relative group transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" style="font-size: 20px;">monitoring</span>
+<div class="absolute left-14 bg-panel border border-border px-3 py-1.5 rounded text-zinc-100 text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity delay-75 z-50 shadow-xl">
+                    Analytics
+                </div>
+</a>
+<a class="w-12 h-12 flex items-center justify-center text-[#d97706] border border-[#d97706]/30 bg-[#d97706]/10 rounded-lg hover:bg-[#d97706]/20 relative group transition-all duration-200 ease-in-out mt-2" href="#">
+<span class="material-symbols-outlined" style="font-size: 20px;">science</span>
+<div class="absolute left-14 bg-panel border border-border px-3 py-1.5 rounded text-zinc-100 text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity delay-75 z-50 shadow-xl">
+                    Lab
+                </div>
+</a>
+</div>
+<div class="mt-auto flex flex-col gap-2 w-full px-2">
+<a class="w-12 h-12 flex items-center justify-center text-[#5a5a66] border border-transparent rounded-lg hover:bg-[#0b0b0e] hover:border-[#26262e] relative group transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" style="font-size: 20px;">settings</span>
+<div class="absolute left-14 bg-panel border border-border px-3 py-1.5 rounded text-zinc-100 text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity delay-75 z-50 shadow-xl">
+                    Settings
+                </div>
+</a>
+<div class="w-10 h-10 rounded-full mx-auto mt-2 mb-2 overflow-hidden border border-border cursor-pointer">
+<img alt="Pablo's Avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAzQbbpoyjCqMJEoSWo6Uj4cbQaaWSeDKRtLh4jTcf1dbloqoFnGqQ1GKEz-IBFdwvrjONFHl5VX2gvNA6ajKRL9Lzd9QSrvpshUnTnxrag1Zy1EyBRREcSA9hZob9dA22nRv5HVPzsD5Z_cKdhMZDE3SMUFLhmzjpBFI-HHKFcv_FgmRUpysv8jwNjMynlMon6M72DSAPqw5WoaKMJopDOv3TjUruLHpVEkXvJ89QoGbcYOSB_Sg-3eH-45wBf1lFHl5ltr3yp4A"/>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="ml-16 flex-1 flex flex-col h-screen relative">
+<!-- JSON: TopNavBar -->
+<header class="sticky top-0 z-40 w-full h-[56px] bg-[#0b0b0e] border-b border-[#26262e] flex justify-between items-center px-6">
+<!-- Left: Breadcrumb -->
+<div class="flex items-center gap-2">
+<div class="flex items-center text-zinc-400 hover:text-zinc-200 cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-[18px]">folder_open</span>
+<span class="ml-2 font-body text-[13px]">Canales</span>
+</div>
+<span class="text-zinc-600">›</span>
+<div class="flex items-center text-zinc-100">
+<div class="w-5 h-5 rounded-sm bg-panel border border-border overflow-hidden mr-2 flex items-center justify-center">
+<span class="text-[10px]">🏛</span>
+</div>
+<h1 class="font-headline text-[18px] font-semibold tracking-tight">Moderni Stoici</h1>
+</div>
+</div>
+<!-- Center/Right: Actions & Filters -->
+<div class="flex items-center gap-4">
+<!-- Filters -->
+<div class="hidden lg:flex items-center bg-panel border border-border rounded-lg p-1">
+<button class="px-3 py-1 bg-[#26262e] text-zinc-200 rounded text-xs font-medium">Todos</button>
+<button class="px-3 py-1 text-zinc-400 hover:text-zinc-200 rounded text-xs transition-colors">Activos</button>
+<button class="px-3 py-1 text-zinc-400 hover:text-zinc-200 rounded text-xs transition-colors">Sin miniatura</button>
+</div>
+<!-- Action Buttons -->
+<button class="hidden sm:flex items-center gap-1 px-3 py-1.5 border border-border bg-panel hover:bg-border text-zinc-200 rounded-lg text-xs transition-colors">
+<span class="material-symbols-outlined text-[16px]">queue_play_next</span>
+                    Encolar lote
+                </button>
+<button class="flex items-center gap-1 px-3 py-1.5 bg-[#c9a96a]/10 border border-[#c9a96a]/40 text-[#c9a96a] hover:bg-[#c9a96a]/20 rounded-lg text-xs font-medium transition-colors">
+<span class="material-symbols-outlined text-[16px]">add</span>
+                    Nuevo vídeo
+                </button>
+<!-- Divider -->
+<div class="w-px h-6 bg-border mx-2"></div>
+<!-- Status/XP -->
+<div class="flex items-center gap-3">
+<div class="flex items-center gap-1 px-2 py-1 rounded-full bg-green/10 border border-green/20">
+<div class="w-2 h-2 rounded-full bg-green animate-pulse"></div>
+<span class="text-[11px] text-green font-medium">En el PC</span>
+</div>
+<div class="hidden md:flex items-center gap-2 group cursor-help relative">
+<div class="flex flex-col items-end">
+<span class="text-[11px] text-[#c9a96a] font-medium leading-none">Caballero Jedi (6)</span>
+<div class="w-24 h-1 bg-border rounded-full mt-1 overflow-hidden">
+<div class="h-full bg-[#c9a96a] w-[75%] rounded-full"></div>
+</div>
+</div>
+</div>
+<button class="relative text-zinc-400 hover:text-zinc-200 transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-red rounded-full ring-2 ring-[#0b0b0e]"></span>
+</button>
+</div>
+</div>
+</header>
+<!-- Counts Strip -->
+<div class="w-full h-10 border-b border-border flex items-center px-6 gap-6 bg-[#0b0b0e]/80 backdrop-blur-sm z-30">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-yellow"></span>
+<span class="text-xs text-muted uppercase tracking-wider">Pendiente Locución</span>
+<span class="px-1.5 py-0.5 bg-panel border border-border rounded text-[10px] text-zinc-300">4</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-blue"></span>
+<span class="text-xs text-muted uppercase tracking-wider">En Producción</span>
+<span class="px-1.5 py-0.5 bg-panel border border-border rounded text-[10px] text-zinc-300">2</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-green"></span>
+<span class="text-xs text-muted uppercase tracking-wider">Listos</span>
+<span class="px-1.5 py-0.5 bg-panel border border-border rounded text-[10px] text-zinc-300">3</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-zinc-500"></span>
+<span class="text-xs text-muted uppercase tracking-wider">Subidos</span>
+<span class="px-1.5 py-0.5 bg-panel border border-border rounded text-[10px] text-zinc-300">12</span>
+</div>
+</div>
+<!-- Kanban Board -->
+<div class="flex-1 flex overflow-x-auto p-6 gap-6 items-start">
+<!-- Column 1: Pendiente Locución -->
+<div class="w-[320px] flex-shrink-0 flex flex-col h-[calc(100vh-140px)]">
+<div class="flex-1 overflow-y-auto kanban-scroll pr-2 flex flex-col gap-3">
+<!-- Card 1 -->
+<div class="bg-panel border border-border rounded-lg overflow-hidden hover:border-zinc-600 transition-colors cursor-pointer group">
+<div class="h-[80px] bg-[#1a1a24] relative flex items-center justify-center border-b border-border">
+<span class="text-zinc-600 text-xs">Sin miniatura</span>
+<div class="absolute top-2 right-2 bg-panel/80 backdrop-blur px-1.5 py-0.5 rounded border border-border flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-zinc-400">mic</span>
+</div>
+</div>
+<div class="p-3">
+<h3 class="font-body text-[13px] text-zinc-200 leading-tight mb-3 line-clamp-2">8 Brutal Stoic Laws That Will Change Your Life Forever</h3>
+<!-- Progress Bar -->
+<div class="flex gap-1 mb-2">
+<div class="h-1 flex-1 bg-gold rounded-full"></div>
+<div class="h-1 flex-1 bg-border rounded-full"></div>
+<div class="h-1 flex-1 bg-border rounded-full"></div>
+<div class="h-1 flex-1 bg-border rounded-full"></div>
+<div class="h-1 flex-1 bg-border rounded-full"></div>
+<div class="h-1 flex-1 bg-border rounded-full"></div>
+</div>
+<div class="flex justify-between items-center mt-2 text-[10px] text-muted">
+<span>Hace 2h</span>
+<span class="font-mono">#VID-084</span>
+</div>
+</div>
+</div>
+<!-- Drop Zone Placeholder (Simulating Drag State) -->
+<div class="h-[120px] border-2 border-dashed border-[#c9a96a]/50 bg-[#c9a96a]/5 rounded-lg flex items-center justify-center">
+<span class="text-[#c9a96a]/50 text-xs font-medium">Soltar aquí</span>
+</div>
+</div>
+</div>
+<!-- Column 2: En Producción (Active/Gold Scrollbar) -->
+<div class="w-[320px] flex-shrink-0 flex flex-col h-[calc(100vh-140px)] bg-panel/30 rounded-xl p-2 border border-border/50">
+<div class="flex-1 overflow-y-auto kanban-scroll-gold pr-2 flex flex-col gap-3">
+<!-- Card 2 (Active Jobs) -->
+<div class="bg-panel border border-[#c9a96a]/60 rounded-lg overflow-hidden cursor-pointer relative shadow-[0_0_15px_rgba(201,169,106,0.1)]">
+<!-- Active Border Indicator -->
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-[#c9a96a]"></div>
+<div class="h-[80px] bg-zinc-800 relative border-b border-border overflow-hidden">
+<!-- Placeholder image styling -->
+<div class="absolute inset-0 bg-gradient-to-br from-zinc-700 to-zinc-900 flex items-center justify-center opacity-50"></div>
+<div class="absolute top-2 right-2 flex gap-1">
+<div class="bg-red/10 backdrop-blur px-1.5 py-0.5 rounded border border-red/30 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-red animate-spin-slow" style="font-variation-settings: 'FILL' 1;">settings</span>
+<span class="text-[10px] text-red font-bold">2</span>
+</div>
+</div>
+</div>
+<div class="p-3 pl-4">
+<h3 class="font-body text-[13px] text-zinc-100 font-medium leading-tight mb-3 line-clamp-2">The Power of Becoming Unavailable (Marcus Aurelius)</h3>
+<!-- Progress Bar -->
+<div class="flex gap-1 mb-2">
+<div class="h-1 flex-1 bg-gold rounded-full"></div>
+<div class="h-1 flex-1 bg-gold rounded-full"></div>
+<div class="h-1 flex-1 bg-gold rounded-full relative overflow-hidden">
+<div class="absolute inset-0 bg-white/30 animate-[translateX_1s_infinite]"></div>
+</div>
+<div class="h-1 flex-1 bg-border rounded-full"></div>
+<div class="h-1 flex-1 bg-border rounded-full"></div>
+<div class="h-1 flex-1 bg-border rounded-full"></div>
+</div>
+<div class="flex justify-between items-center mt-2 text-[10px] text-muted">
+<span class="text-zinc-400">Rendering 45%</span>
+<span class="font-mono">#VID-083</span>
+</div>
+</div>
+</div>
+<!-- Card 3 (Being Dragged - 80% Opacity) -->
+<div class="bg-panel border border-[#c9a96a] rounded-lg overflow-hidden cursor-grabbing opacity-80 scale-[1.02] shadow-2xl rotate-1 z-50 absolute" style="width: 294px; top: 220px;">
+<div class="h-[80px] bg-[#1a1a24] relative flex items-center justify-center border-b border-border">
+<span class="text-zinc-600 text-xs">Sin miniatura</span>
+</div>
+<div class="p-3">
+<h3 class="font-body text-[13px] text-zinc-200 leading-tight mb-3 line-clamp-2">Why You Must Embrace Solitude</h3>
+<!-- Progress Bar -->
+<div class="flex gap-1 mb-2">
+<div class="h-1 flex-1 bg-gold rounded-full"></div>
+<div class="h-1 flex-1 bg-gold rounded-full"></div>
+<div class="h-1 flex-1 bg-border rounded-full"></div>
+<div class="h-1 flex-1 bg-border rounded-full"></div>
+<div class="h-1 flex-1 bg-border rounded-full"></div>
+<div class="h-1 flex-1 bg-border rounded-full"></div>
+</div>
+<div class="flex justify-between items-center mt-2 text-[10px] text-muted">
+<span>Moviendo...</span>
+<span class="font-mono">#VID-085</span>
+</div>
+</div>
+</div>
+<!-- Ghost space to account for absolute positioned drag element -->
+<div class="h-[140px] opacity-0"></div>
+</div>
+</div>
+<!-- Column 3: Listos para subir -->
+<div class="w-[320px] flex-shrink-0 flex flex-col h-[calc(100vh-140px)]">
+<div class="flex-1 overflow-y-auto kanban-scroll pr-2 flex flex-col gap-3">
+<!-- Card 4 (Ready) -->
+<div class="bg-panel border border-border rounded-lg overflow-hidden hover:border-zinc-600 transition-colors cursor-pointer">
+<div class="h-[80px] relative border-b border-border overflow-hidden bg-zinc-800">
+<!-- Image placeholder -->
+<div class="absolute top-2 right-2 flex gap-1">
+<div class="bg-green/10 backdrop-blur px-1.5 py-0.5 rounded border border-green/30 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-green" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+</div>
+<div class="p-3">
+<h3 class="font-body text-[13px] text-zinc-200 leading-tight mb-3 line-clamp-2">Seneca's Guide to Dealing With Anxiety</h3>
+<!-- Progress Bar -->
+<div class="flex gap-1 mb-2">
+<div class="h-1 flex-1 bg-gold rounded-full"></div>
+<div class="h-1 flex-1 bg-gold rounded-full"></div>
+<div class="h-1 flex-1 bg-gold rounded-full"></div>
+<div class="h-1 flex-1 bg-gold rounded-full"></div>
+<div class="h-1 flex-1 bg-gold rounded-full"></div>
+<div class="h-1 flex-1 bg-border rounded-full"></div>
+</div>
+<div class="flex justify-between items-center mt-2 text-[10px] text-muted">
+<span>1.2 GB • MP4</span>
+<span class="font-mono">#VID-082</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Virtual Column: Programados (Blue dashed) -->
+<div class="w-[320px] flex-shrink-0 flex flex-col h-[calc(100vh-140px)] bg-blue/5 border border-dashed border-blue/30 rounded-xl p-2 relative">
+<div class="absolute top-[-24px] left-2 text-[10px] text-blue uppercase tracking-wider font-semibold">Scheduled</div>
+<div class="flex-1 overflow-y-auto kanban-scroll pr-2 flex flex-col gap-3">
+<!-- Card 5 (Scheduled) -->
+<div class="bg-panel border border-blue/30 rounded-lg overflow-hidden cursor-pointer">
+<div class="h-[80px] relative border-b border-border overflow-hidden bg-zinc-800">
+<div class="absolute top-2 right-2 flex gap-1">
+<div class="bg-blue/10 backdrop-blur px-1.5 py-0.5 rounded border border-blue/30 flex items-center gap-1">
+<span class="text-[12px]">📅</span>
+<span class="text-[10px] text-blue font-medium">Mañana, 18:00</span>
+</div>
+</div>
+</div>
+<div class="p-3">
+<h3 class="font-body text-[13px] text-zinc-200 leading-tight mb-3 line-clamp-2">How to Stop Caring What People Think</h3>
+<!-- Progress Bar -->
+<div class="flex gap-1 mb-2">
+<div class="h-1 flex-1 bg-gold rounded-full"></div>
+<div class="h-1 flex-1 bg-gold rounded-full"></div>
+<div class="h-1 flex-1 bg-gold rounded-full"></div>
+<div class="h-1 flex-1 bg-gold rounded-full"></div>
+<div class="h-1 flex-1 bg-gold rounded-full"></div>
+<div class="h-1 flex-1 bg-gold rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Column 4: Archivados (Muted) -->
+<div class="w-[320px] flex-shrink-0 flex flex-col h-[calc(100vh-140px)] opacity-60">
+<div class="flex-1 overflow-y-auto kanban-scroll pr-2 flex flex-col gap-3">
+<!-- Card 6 (Archived/Hit) -->
+<div class="bg-panel border-none rounded-lg overflow-hidden">
+<div class="h-[80px] relative overflow-hidden bg-zinc-900 grayscale">
+<div class="absolute top-2 right-2 flex gap-1">
+<div class="bg-black/50 backdrop-blur px-1.5 py-0.5 rounded border border-border flex items-center gap-1">
+<span class="text-[12px]">🔥</span>
+<span class="text-[10px] text-[#c9a96a] font-medium">102K</span>
+</div>
+</div>
+</div>
+<div class="p-3">
+<h3 class="font-body text-[12px] text-zinc-500 leading-tight mb-3 line-clamp-1">Epictetus: Control What You Can</h3>
+<div class="flex justify-between items-center text-[10px] text-zinc-600">
+<span>Pub: 12 Oct</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>
