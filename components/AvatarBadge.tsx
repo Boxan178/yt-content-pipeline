@@ -39,7 +39,7 @@ export function AvatarBadge() {
       className="group flex h-12 w-12 items-center justify-center"
       title={lv ? `Nivel ${lv.level} · ${title}` : 'Mi perfil'}
     >
-      <div className="relative h-10 w-10 overflow-hidden rounded-full border border-border bg-gradient-to-br from-amber-500/30 to-amber-700/30 transition group-hover:border-accent/60">
+      <div className="avatar-glow relative h-10 w-10 overflow-hidden rounded-full bg-gradient-to-br from-amber-700/70 to-amber-900 transition group-hover:[box-shadow:0_0_18px_-2px_rgba(201,169,106,0.55)]">
         {/* Iniciales SIEMPRE de fondo. Si la imagen carga OK, se monta encima. */}
         <span className="flex h-full w-full items-center justify-center text-sm font-bold text-amber-200">
           P
