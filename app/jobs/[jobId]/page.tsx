@@ -36,12 +36,14 @@ interface FindResponse {
   channelName: string;
 }
 
-const STATUS_COLOR: Record<JobStatus, string> = {
-  running: 'border-red-500/50 bg-red-500/10 text-red-300',
-  done: 'border-green-500/40 bg-green-500/10 text-green-300',
-  failed: 'border-red-500/40 bg-red-500/10 text-red-300',
-  cancelled: 'border-yellow-500/40 bg-yellow-500/10 text-yellow-300',
-  timeout: 'border-orange-500/40 bg-orange-500/10 text-orange-300',
+const STATUS_PILL: Record<JobStatus, string> = {
+  running: 'pill-away',
+  done: 'pill-active',
+  failed:
+    'bg-red-500/20 border border-red-500/40 text-red-300 rounded-full px-2.5 py-0.5 text-[10px] font-medium inline-flex items-center gap-1',
+  cancelled: 'pill-soon',
+  timeout:
+    'bg-orange-500/15 border border-orange-500/40 text-orange-300 rounded-full px-2.5 py-0.5 text-[10px] font-medium inline-flex items-center gap-1',
 };
 
 function formatDuration(ms: number) {
@@ -100,7 +102,9 @@ export default function JobDetailPage() {
       );
       const json = await r.json();
       if (json.ok && json.job) {
-        setData((prev) => (prev ? { ...prev, job: { ...prev.job, approval: json.job.approval ?? null } } : prev));
+        setData((prev) =>
+          prev ? { ...prev, job: { ...prev.job, approval: json.job.approval ?? null } } : prev,
+        );
       }
     } catch {}
     setApprovalBusy(false);
@@ -150,11 +154,14 @@ export default function JobDetailPage() {
 
   if (error || !data) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-12">
-        <Link href="/jobs" className="text-sm text-muted hover:text-white">
-          ← Jobs
+      <main className="mx-auto max-w-3xl px-8 py-12">
+        <Link
+          href="/jobs"
+          className="inline-flex items-center gap-1.5 text-sm text-zinc-400 transition hover:text-white"
+        >
+          <BackArrow /> Jobs
         </Link>
-        <div className="mt-4 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+        <div className="mt-4 rounded-3xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
           {error || 'Job no encontrado'}
         </div>
       </main>
@@ -166,40 +173,50 @@ export default function JobDetailPage() {
   const durationMs = data.durationMs;
 
   return (
-    <main className="flex h-full flex-col px-6 py-4">
-      <header className="mb-3 flex flex-wrap items-start justify-between gap-3 border-b border-border pb-3">
+    <main className="flex h-full flex-col px-8 py-4">
+      <header className="glass mb-3 flex flex-wrap items-start justify-between gap-3 rounded-3xl px-4 py-3">
         <div className="min-w-0 flex-1">
-          <Link href="/jobs" className="text-xs text-muted hover:text-white">
-            ← Jobs
+          <Link
+            href="/jobs"
+            className="inline-flex items-center gap-1.5 text-xs text-zinc-500 transition hover:text-white"
+          >
+            <BackArrow /> Jobs
           </Link>
-          <h1 className="mt-1 truncate text-xl font-bold text-white">
+          <h1 className="mt-1 truncate font-display text-xl font-semibold tracking-display text-white">
             {j.label} · {data.videoTitle}
           </h1>
-          <p className="mt-1 text-xs text-muted">
-            canal: <span className="text-zinc-300">{data.channelName}</span>
-            {' · '}skill: <span className="text-zinc-300">{j.skill}</span>
+          <p className="mt-1 text-xs text-zinc-400">
+            canal: <span className="text-zinc-200">{data.channelName}</span>
+            {' · '}skill: <span className="text-zinc-200">{j.skill}</span>
             {j.model && (
               <>
-                {' · '}modelo: <span className="text-zinc-300">{j.model}</span>
+                {' · '}modelo: <span className="text-zinc-200">{j.model}</span>
               </>
             )}
             {j.effort && (
               <>
-                {' · '}effort: <span className="text-zinc-300">{j.effort}</span>
+                {' · '}effort: <span className="text-zinc-200">{j.effort}</span>
               </>
             )}
-            {' · '}PID: <span className="text-zinc-300">{j.pid}</span>
+            {' · '}PID: <span className="font-mono text-[11px] text-zinc-300">{j.pid}</span>
           </p>
         </div>
         <div className="flex flex-col items-end gap-1 text-right">
-          <span
-            className={`shrink-0 rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${STATUS_COLOR[j.status]}`}
-          >
-            {isRunning && '●'} {j.status}
-            {j.approval === 'approved' && ' · 👍'}
-            {j.approval === 'rejected' && ' · 👎'}
+          <span className={`${STATUS_PILL[j.status]} shrink-0`}>
+            {isRunning && <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />}
+            {j.status}
+            {j.approval === 'approved' && (
+              <span className="ml-1 text-green-400">
+                <IconCheck />
+              </span>
+            )}
+            {j.approval === 'rejected' && (
+              <span className="ml-1 text-red-400">
+                <IconX />
+              </span>
+            )}
           </span>
-          <span className="text-[10px] text-zinc-500">
+          <span className="nums text-[10px] text-zinc-500">
             {new Date(j.startedAt).toLocaleString('es-ES')} · {formatDuration(durationMs)}
           </span>
         </div>
@@ -209,54 +226,56 @@ export default function JobDetailPage() {
         {isRunning ? (
           <button
             onClick={cancel}
-            className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-300 transition hover:bg-red-500/20"
+            className="inline-flex items-center gap-1.5 rounded-full border border-red-500/40 bg-red-500/20 px-3 py-1.5 text-xs font-medium text-red-300 transition hover:bg-red-500/30"
           >
-            ✕ Cancelar
+            <IconX /> Cancelar
           </button>
         ) : (
           <>
             <button
               onClick={() => sendApproval(j.approval === 'approved' ? null : 'approved')}
               disabled={approvalBusy}
-              className={`rounded-md border px-3 py-1.5 text-xs font-medium transition disabled:opacity-50 ${
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition disabled:opacity-50 ${
                 j.approval === 'approved'
-                  ? 'border-green-500/60 bg-green-500/15 text-green-200'
-                  : 'border-green-500/30 bg-green-500/5 text-green-300 hover:bg-green-500/15'
+                  ? 'border-green-500/60 bg-green-500/20 text-green-200'
+                  : 'border-green-500/30 bg-green-500/10 text-green-300 hover:bg-green-500/20'
               }`}
             >
-              👍 Aprobar
+              <IconCheck /> Aprobar
             </button>
             <button
               onClick={() => sendApproval(j.approval === 'rejected' ? null : 'rejected')}
               disabled={approvalBusy}
-              className={`rounded-md border px-3 py-1.5 text-xs font-medium transition disabled:opacity-50 ${
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition disabled:opacity-50 ${
                 j.approval === 'rejected'
-                  ? 'border-red-500/60 bg-red-500/15 text-red-200'
-                  : 'border-red-500/30 bg-red-500/5 text-red-300 hover:bg-red-500/15'
+                  ? 'border-red-500/60 bg-red-500/20 text-red-200'
+                  : 'border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/20'
               }`}
             >
-              👎 Rechazar
+              <IconX /> Rechazar
             </button>
             <button
               onClick={retry}
-              className="rounded-md border border-border bg-bg px-3 py-1.5 text-xs text-zinc-200 transition hover:border-accent/60 hover:text-white"
+              className="btn-glass text-xs px-3 py-1.5"
             >
-              ↻ Reintentar
+              <IconRefresh /> Reintentar
             </button>
           </>
         )}
         <button
           onClick={() => setShowPrompt((v) => !v)}
-          className="ml-auto rounded-md border border-border bg-bg px-3 py-1.5 text-xs text-muted transition hover:text-white"
+          className="ml-auto rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-400 transition hover:bg-white/10 hover:text-white"
         >
           {showPrompt ? 'ocultar prompt' : 'ver prompt'}
         </button>
       </div>
 
       {showPrompt && (
-        <details open className="mb-3">
-          <summary className="cursor-pointer text-xs text-muted">Prompt enviado a Claude</summary>
-          <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg border border-border bg-bg/60 p-3 font-mono text-[11px] leading-relaxed text-zinc-300">
+        <details open className="glass mb-3 rounded-3xl px-4 py-3">
+          <summary className="cursor-pointer text-[11px] font-medium uppercase tracking-label text-zinc-500">
+            Prompt enviado a Claude
+          </summary>
+          <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-xl border border-white/10 bg-black/30 p-3 font-mono text-[11px] leading-relaxed text-zinc-300">
             {j.prompt}
           </pre>
         </details>
@@ -266,5 +285,36 @@ export default function JobDetailPage() {
         <JobChatPanel events={data.events} running={isRunning} rawLog={data.tail} fullHeight />
       </div>
     </main>
+  );
+}
+
+/* ─── icons ─── */
+function BackArrow() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 12H5M12 19l-7-7 7-7" />
+    </svg>
+  );
+}
+function IconCheck() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 6L9 17l-5-5" />
+    </svg>
+  );
+}
+function IconX() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 6L6 18M6 6l12 12" />
+    </svg>
+  );
+}
+function IconRefresh() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M23 4v6h-6M1 20v-6h6" />
+      <path d="M20.5 9A9 9 0 0 0 5.6 5.6L1 10M23 14l-4.6 4.4A9 9 0 0 1 3.5 15" />
+    </svg>
   );
 }
