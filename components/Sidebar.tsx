@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { countUnread, onChange } from '@/lib/notifications';
 import { AvatarBadge } from './AvatarBadge';
+import { NotionPollerBadge } from './NotionPollerBadge';
 
 interface NavItem {
   href: string;
@@ -15,6 +16,7 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { href: '/', icon: '📺', label: 'Canales', isActive: (p) => p === '/' || p.startsWith('/channels') },
+  { href: '/automator', icon: '🎬', label: 'Automator', isActive: (p) => p.startsWith('/automator') },
   { href: '/sleep-stories', icon: '🌙', label: 'Sleep Stories', isActive: (p) => p.startsWith('/sleep-stories') },
   { href: '/queue', icon: '📋', label: 'Cola', isActive: (p) => p.startsWith('/queue') },
   { href: '/visual-lab', icon: '🎨', label: 'Visual Lab', isActive: (p) => p.startsWith('/visual-lab') },
@@ -37,10 +39,20 @@ export function Sidebar() {
     return onChange(refresh);
   }, []);
 
-  // LAB: visible solo en modo dev (electron .). En el .exe instalado NO se pinta.
+  // LAB: visible en modo dev. Dos vías de detección:
+  //   - Electron (.exe instalado o `electron .`): `window.electronAPI?.isDev`
+  //     lo expone el preload con el flag `--ytcp-dev=1`.
+  //   - Navegador puro corriendo `next dev` (Pablo en localhost:3002, etc.):
+  //     no hay electronAPI, pero `process.env.NODE_ENV === 'development'`
+  //     queda inyectado por Next al bundle. Si es dev, mostramos el Lab.
+  // En el `.exe` empaquetado (`app.isPackaged === true`), electronAPI.isDev
+  // será `false` y NODE_ENV será 'production' → Lab oculto. Comportamiento
+  // correcto: el `.exe` instalado no expone features experimentales.
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setIsDev(window.electronAPI?.isDev === true);
+      const electronDev = window.electronAPI?.isDev === true;
+      const nextDev = process.env.NODE_ENV === 'development';
+      setIsDev(electronDev || nextDev);
     }
   }, []);
 
@@ -59,6 +71,7 @@ export function Sidebar() {
         {NAV.map((item) => {
           const active = item.isActive(pathname);
           const isBell = item.href === '/notifications';
+          const isConfig = item.href === '/configuracion';
           return (
             <Link
               key={item.href}
@@ -76,6 +89,7 @@ export function Sidebar() {
                   {unread > 99 ? '99+' : unread}
                 </span>
               )}
+              {isConfig && <NotionPollerBadge />}
               {/* Tooltip al hover */}
               <span className="pointer-events-none absolute left-12 z-50 hidden whitespace-nowrap rounded border border-border bg-panel px-2 py-1 text-[11px] text-white shadow-lg group-hover:block">
                 {item.label}

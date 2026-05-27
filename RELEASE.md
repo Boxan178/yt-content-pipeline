@@ -87,3 +87,30 @@ Por defecto está **desactivado** para no fallar mientras no haya repo. Cuando y
 - El `claude` CLI **debe estar instalado en el sistema target** (`npm i -g @anthropic-ai/claude-code`). La app comprueba al arrancar y muestra un diálogo de error si falta.
 - El bundle NO incluye Python ni `kie-bridge` — si lo necesitas en el portátil, replica los venvs / paths a mano.
 - La app SIGUE asumiendo que `H:\YOUTUBE\` y `Y:\04_DEV\J.A.R.V.I.S` son rutas válidas. En casa el portátil tiene esas letras mapeadas al NAS → funciona idéntico. Fuera de casa, fuera de alcance hasta que se porte la "memoria" a algo online.
+
+## 6. Notion poller (dashboard 🎬 J.A.R.V.I.S — Pipeline YouTube)
+
+La app puede consumir la DB `📋 Pipeline` de Notion como inbox de arranques: marcas `🟡 Arrancar` y a los <30s la app crea la carpeta del vídeo y lanza SARA.
+
+Setup una vez por máquina:
+
+1. Crea una integración Notion en https://www.notion.so/profile/integrations
+   - Type: Internal
+   - Capabilities: Read content + Update content + Insert content (las tres)
+   - Workspace: el tuyo
+2. Copia el `Internal Integration Token` (empieza por `ntn_` o `secret_`).
+3. Abre el dashboard `🎬 J.A.R.V.I.S — Pipeline YouTube` en Notion → menú `...` → `Connections` → busca tu integración y conéctala. Notion propaga el acceso al hijo `📋 Pipeline` automáticamente.
+4. En `C:\dev\yt-content-pipeline\.env.local` añade:
+   ```
+   NOTION_TOKEN=ntn_xxxxxxxxxxxxxxxxxxxxxxx
+   # opcional — solo si cambias la DB:
+   # NOTION_PIPELINE_DATA_SOURCE_ID=f708ffbd-c79b-4120-a9b9-a4e1c19fa2a1
+   ```
+5. Relanza `npm run dev`. En `/configuracion` activa el toggle "Notion poller". Hay un botón "Sync ahora" para forzar un tick fuera del intervalo de 30s.
+
+Estado/errores se persisten en `~/.yt-content-pipeline/notion-poller.json` y los logs en `~/.yt-content-pipeline/notion-poller.log`.
+
+Errores comunes:
+- `unauthorized` → la integración no está conectada al dashboard, repite paso 3.
+- `object_not_found` → cambió el data source id; lee la URL de la DB en Notion y coge el UUID del query param `?v=` o el último segmento de path.
+- "Carpeta ya existe" → no es error: el poller respeta lo que esté en disco, solo crea lo que falta y aún así dispara SARA.

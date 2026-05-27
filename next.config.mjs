@@ -48,6 +48,26 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Anti-EISDIR: webpack a veces hace `readlink` sobre archivos `.mp4`/`.pdf`
+  // que encuentra recorriendo dirs hermanos (`H:/YOUTUBE/_RECURSOS/...`).
+  // Forzamos a webpack a tratar esas extensiones como assets externos sin
+  // procesarlos — así no intenta hacer module resolution sobre ellos.
+  webpack: (config) => {
+    // 1) IgnorePlugin para cualquier import que parezca ser un asset multimedia
+    //    desde H:/ o Y:/ — no debería existir pero por defensa.
+    const webpack = config.plugins?.find?.((p) => p?.constructor?.name === 'webpack')
+      ?? null;
+    // 2) Regla: archivos multimedia se manejan como recursos asset, sin parser.
+    config.module.rules.push({
+      test: /\.(mp4|mov|mkv|webm|avi|m4a|wav|pdf|psd|ai|prproj|aep)$/i,
+      type: 'asset/resource',
+      generator: { emit: false },
+    });
+    // 3) Excluir dirs externos de la búsqueda de módulos.
+    config.resolve = config.resolve || {};
+    config.resolve.symlinks = false;
+    return config;
+  },
 };
 
 export default nextConfig;

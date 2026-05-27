@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { CHANNELS } from '@/lib/channels';
+import { NotionPollerSection } from '@/components/NotionPollerSection';
 
 interface AppSettings {
   enableConfetti: boolean;
@@ -157,6 +158,8 @@ export default function ConfiguracionPage() {
           />
         </div>
       </section>
+
+      <NotionPollerSection />
 
       <footer className="mt-10 text-xs text-zinc-500">
         Cambios se aplican al instante. Algunos toggles requieren refrescar la página para verse del todo.

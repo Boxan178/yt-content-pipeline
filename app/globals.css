@@ -69,3 +69,43 @@ html, body {
   50% { opacity: 0.6; }
 }
 .animate-pulse-soft { animation: pulse-soft 2s ease-in-out infinite; }
+
+/* ─── yt-automator: utilidades compartidas por componentes ──────────────── */
+@layer components {
+  .label-uppercase {
+    @apply text-[11px] font-medium uppercase tracking-wider text-red-400/80 mb-2 block;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md
+           bg-red-600 hover:bg-red-500 active:bg-red-700
+           text-white text-sm font-medium
+           shadow-lg shadow-red-900/30 transition-colors
+           disabled:bg-red-900/40 disabled:text-red-300/40
+           disabled:cursor-not-allowed disabled:shadow-none;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md
+           bg-zinc-800 hover:bg-zinc-700 border border-zinc-700
+           text-zinc-100 text-sm font-medium transition-colors
+           disabled:bg-zinc-900 disabled:text-zinc-600 disabled:cursor-not-allowed;
+  }
+  .input-base {
+    @apply w-full bg-zinc-950/80 border border-zinc-800 rounded-md
+           px-3 py-2.5 text-zinc-100 placeholder:text-zinc-600
+           focus:outline-none focus:border-red-500/50 focus:ring-1
+           focus:ring-red-500/20 transition-colors;
+  }
+  .card-panel {
+    @apply bg-zinc-900/40 border border-zinc-800 rounded-xl;
+  }
+  .segmented {
+    @apply inline-flex bg-zinc-900 border border-zinc-800 rounded-md p-0.5 gap-0.5;
+  }
+  .segmented-item {
+    @apply px-3 py-1 rounded text-xs text-zinc-400 hover:text-zinc-200
+           transition-colors cursor-pointer;
+  }
+  .segmented-item-active {
+    @apply bg-zinc-700/80 text-zinc-100;
+  }
+}

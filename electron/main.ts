@@ -19,6 +19,10 @@ app.setPath('userData', path.join(os.homedir(), '.yt-content-pipeline'));
 let mainWindow: BrowserWindow | null = null;
 let nextServerProcess: ChildProcess | null = null;
 let nextServerUrl: string | null = null;
+let notionPollerInterval: NodeJS.Timeout | null = null;
+
+/** Intervalo del poller Notion. Pablo lo fijó en 30s — ver task brief. */
+const NOTION_POLLER_INTERVAL_MS = 30_000;
 
 // ── Next standalone server (sólo en producción) ─────────────────────────
 
@@ -126,6 +130,69 @@ function detectClaudeBinary(): { ok: boolean; path?: string; error?: string } {
     }
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+// ── Notion poller (background interval) ───────────────────────────────
+
+/**
+ * Lanza un setInterval que cada 30s hace POST al endpoint /api/notion/sync.
+ * El endpoint internamente respeta el toggle `enabled` (no-op si está off) y
+ * el backoff exponencial — así esta función NO necesita conocer la lógica del
+ * poller. Si el server Next aún no responde, fallamos silenciosamente y
+ * reintentamos al siguiente tick.
+ *
+ * Se llama desde whenReady() después de que el server está arriba.
+ */
+function startNotionPoller() {
+  const baseUrl = isDev ? DEV_URL : nextServerUrl;
+  if (!baseUrl) {
+    console.warn('[notion-poller] no hay baseUrl, no se arranca');
+    return;
+  }
+  if (notionPollerInterval) return; // ya arrancado
+
+  const tickOnce = async () => {
+    try {
+      const r = await fetch(`${baseUrl}/api/notion/sync`, { method: 'POST' });
+      if (!r.ok) {
+        console.warn(`[notion-poller] sync respondió ${r.status}`);
+        return;
+      }
+      const data = (await r.json().catch(() => null)) as
+        | { ok: boolean; result?: { matched?: number; processed?: number; reason?: string } }
+        | null;
+      if (data?.result?.processed && data.result.processed > 0) {
+        // Notificación nativa cuando el poller arranca algo
+        if (Notification.isSupported()) {
+          try {
+            new Notification({
+              title: 'Notion → SARA',
+              body: `${data.result.processed} fila(s) procesadas. ${data.result.matched ?? '?'} marcadas como 🟡 Arrancar.`,
+              silent: false,
+            }).show();
+          } catch {}
+        }
+      }
+    } catch (e) {
+      // Silencioso — el server puede estar reiniciando.
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!msg.includes('ECONNREFUSED') && !msg.includes('fetch failed')) {
+        console.warn('[notion-poller] tick failed:', msg);
+      }
+    }
+  };
+
+  // Primer tick a los 5s del arranque (deja que la app se estabilice).
+  setTimeout(tickOnce, 5_000);
+  notionPollerInterval = setInterval(tickOnce, NOTION_POLLER_INTERVAL_MS);
+  console.log(`[notion-poller] interval ${NOTION_POLLER_INTERVAL_MS}ms armado (baseUrl=${baseUrl})`);
+}
+
+function stopNotionPoller() {
+  if (notionPollerInterval) {
+    clearInterval(notionPollerInterval);
+    notionPollerInterval = null;
   }
 }
 
@@ -306,9 +373,11 @@ app.whenReady().then(async () => {
 
   createWindow();
   setupAutoUpdater();
+  startNotionPoller();
 });
 
 app.on('window-all-closed', () => {
+  stopNotionPoller();
   // Matar el server Next si está vivo (sólo en producción)
   if (nextServerProcess) {
     try { nextServerProcess.kill(); } catch {}
@@ -318,6 +387,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  stopNotionPoller();
   if (nextServerProcess) {
     try { nextServerProcess.kill(); } catch {}
     nextServerProcess = null;
