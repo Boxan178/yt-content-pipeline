@@ -72,11 +72,14 @@ export function XPBar() {
         </span>
         {stats.streak.current >= 2 && (
           <span
-            className="absolute right-2 text-[10px] text-orange-300"
+            className="absolute right-2.5 flex items-center gap-0.5 text-[11px] font-semibold text-orange-300"
             title={`Racha actual: ${stats.streak.current} días`}
-            style={{ filter: 'drop-shadow(0 0 4px rgba(251,146,60,0.6))' }}
+            style={{ filter: 'drop-shadow(0 0 4px rgba(251,146,60,0.55))' }}
           >
-            🔥{stats.streak.current}
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M8.5 14.5A2.5 2.5 0 0 0 11 17c1.5 0 3-1.2 3-3.5 0-2-1-3-1.5-3.5-.5 1-1 1.5-1.5 1.5-.5 0-.5-1.5 0-3.5C7.5 8 5 11 5 14a7 7 0 0 0 14 0c0-2.5-1.5-5-3-6.5-.5 1-1 1.5-1.5 1.5-1.5 0-1.5-3-1.5-5-3 1.5-5 4.5-5 7" />
+            </svg>
+            {stats.streak.current}
           </span>
         )}
       </div>
