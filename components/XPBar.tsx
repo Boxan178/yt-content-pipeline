@@ -6,11 +6,14 @@ import { fetchStats } from '@/lib/gamification-client';
 import { deriveLevel, titleForLevel, type Stats } from '@/lib/gamification-types';
 
 /**
- * Pill compacta para la TopBar: muestra nivel + barra XP + título.
+ * Pill horizontal para la TopBar: muestra título + nivel + barra XP + XP/needed.
  * Click → /perfil
  *
- * Refresca cada 30s mientras la app está abierta. También se actualiza con
- * el evento `storage` que dispara gamification-client en otras pestañas.
+ * Refresh visual 2026-05-27: convertida en una sola "liquid pill" de 256×36
+ * con .xp-fill (gradient gold dorado) dentro de glass background. Mantiene
+ * tabular-nums para que los dígitos no salten al refrescar.
+ *
+ * Refresca cada 30s. También se actualiza con eventos de gamificación.
  */
 export function XPBar() {
   const [stats, setStats] = useState<Stats | null>(null);
@@ -47,32 +50,36 @@ export function XPBar() {
   return (
     <Link
       href="/perfil"
-      className="group flex items-center gap-2 rounded-md border border-border bg-bg/60 px-2.5 py-1 text-xs transition hover:border-accent/60"
+      className={`group relative block h-9 w-64 overflow-hidden rounded-full transition ${bumping ? 'animate-xp-bump' : ''}`}
+      style={{
+        background: 'rgba(255,255,255,0.06)',
+        border: '1px solid rgba(255,255,255,0.12)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        boxShadow: 'inset 0 1px 0 0 rgba(255,255,255,0.10)',
+      }}
       title={`Nivel ${lv.level} · ${title} · ${lv.intoLevel}/${lv.needed} XP al nivel ${lv.level + 1}`}
     >
-      <span
-        className={`grid h-6 w-6 shrink-0 place-items-center rounded-full bg-gradient-to-br from-amber-500/40 to-amber-700/40 text-[10px] font-bold text-amber-200 ${
-          bumping ? 'animate-xp-bump' : ''
-        }`}
-      >
-        {lv.level}
-      </span>
-      <div className="flex flex-col leading-tight">
-        <span className="text-[10px] uppercase tracking-wider text-muted group-hover:text-white">
-          {title}
+      {/* Fill gold liquid */}
+      <div
+        className="xp-fill absolute inset-y-0 left-0 transition-[width] duration-700 ease-out"
+        style={{ width: `${lv.percent}%` }}
+      />
+      {/* Label centrada */}
+      <div className="nums relative flex h-full items-center justify-center px-3 text-[12px] font-medium text-white">
+        <span className="opacity-95">
+          {title} ({lv.level}) · {lv.intoLevel}/{lv.needed} XP
         </span>
-        <div className="relative h-1.5 w-24 overflow-hidden rounded-full bg-zinc-800">
-          <div
-            className="absolute inset-y-0 left-0 bg-gradient-to-r from-amber-400 to-amber-200 transition-[width] duration-700 ease-out"
-            style={{ width: `${lv.percent}%` }}
-          />
-        </div>
+        {stats.streak.current >= 2 && (
+          <span
+            className="absolute right-2 text-[10px] text-orange-300"
+            title={`Racha actual: ${stats.streak.current} días`}
+            style={{ filter: 'drop-shadow(0 0 4px rgba(251,146,60,0.6))' }}
+          >
+            🔥{stats.streak.current}
+          </span>
+        )}
       </div>
-      {stats.streak.current >= 2 && (
-        <span className="ml-1 text-[10px] text-orange-300" title={`Racha actual: ${stats.streak.current} días`}>
-          🔥{stats.streak.current}
-        </span>
-      )}
     </Link>
   );
 }

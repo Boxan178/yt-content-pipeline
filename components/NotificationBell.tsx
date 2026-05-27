@@ -6,7 +6,6 @@ import {
   countUnread,
   listNotifications,
   markAllAsRead,
-  markAsRead,
   clearNotification,
   onChange,
   type AppNotification,
@@ -71,21 +70,36 @@ export function NotificationBell() {
           setOpen((v) => !v);
           if (!open && unread > 0) markAllAsRead();
         }}
-        className="relative flex h-9 w-9 items-center justify-center rounded-md border border-border bg-bg text-zinc-300 transition hover:border-accent/60 hover:text-white"
+        className="glass glass-hover relative flex h-10 w-10 items-center justify-center rounded-full text-zinc-300 transition hover:text-white"
         title={unread > 0 ? `${unread} notificación(es) sin leer` : 'Notificaciones'}
       >
-        <span className="text-base">🔔</span>
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+          <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+        </svg>
         {unread > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-600 px-1 text-[9px] font-bold text-white">
+          <span
+            className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white"
+            style={{ boxShadow: '0 0 8px rgba(239,68,68,0.5)' }}
+          >
             {unread > 99 ? '99+' : unread}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-11 z-50 w-96 overflow-hidden rounded-lg border border-border bg-panel shadow-2xl">
-          <header className="flex items-center justify-between border-b border-border px-3 py-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted">
+        <div className="glass absolute right-0 top-12 z-50 w-96 overflow-hidden rounded-2xl shadow-2xl">
+          <header className="flex items-center justify-between border-b border-white/10 px-3 py-2.5">
+            <span className="text-[10px] font-medium uppercase tracking-label text-zinc-500">
               Notificaciones
             </span>
             <Link
@@ -97,13 +111,13 @@ export function NotificationBell() {
             </Link>
           </header>
           {items.length === 0 ? (
-            <p className="px-3 py-6 text-center text-xs text-muted">Sin notificaciones</p>
+            <p className="px-3 py-6 text-center text-xs text-zinc-500">Sin notificaciones</p>
           ) : (
             <ul className="max-h-96 overflow-y-auto">
               {items.map((n) => (
                 <li
                   key={n.id}
-                  className="group flex items-start gap-2 border-b border-border px-3 py-2 last:border-b-0 hover:bg-bg/40"
+                  className="group flex items-start gap-2 border-b border-white/5 px-3 py-2 last:border-b-0 hover:bg-white/5"
                 >
                   <span
                     className={`shrink-0 rounded border px-1.5 py-0.5 text-[9px] font-semibold ${KIND_COLOR[n.kind]}`}
@@ -114,14 +128,14 @@ export function NotificationBell() {
                     <p className="line-clamp-1 text-xs font-medium text-white" title={n.title}>
                       {n.title}
                     </p>
-                    <p className="line-clamp-1 text-[11px] text-muted" title={n.body}>
+                    <p className="line-clamp-1 text-[11px] text-zinc-400" title={n.body}>
                       {n.body}
                     </p>
-                    <p className="mt-0.5 text-[9px] text-zinc-500">{relTime(n.createdAt)}</p>
+                    <p className="nums mt-0.5 text-[9px] text-zinc-500">{relTime(n.createdAt)}</p>
                   </div>
                   <button
                     onClick={() => clearNotification(n.id)}
-                    className="shrink-0 text-[10px] text-muted opacity-0 transition hover:text-white group-hover:opacity-100"
+                    className="shrink-0 text-[10px] text-zinc-500 opacity-0 transition hover:text-white group-hover:opacity-100"
                     title="Descartar"
                   >
                     ✕

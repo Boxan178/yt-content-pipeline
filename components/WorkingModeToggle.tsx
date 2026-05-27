@@ -34,13 +34,12 @@ export function WorkingModeToggle() {
   };
 
   const isHome = mode === 'home';
+
   return (
     <button
       onClick={toggle}
-      className={`flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition ${
-        isHome
-          ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
-          : 'border-sky-500/40 bg-sky-500/10 text-sky-300 hover:bg-sky-500/20'
+      className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition ${
+        isHome ? 'pill-pc' : 'pill-away'
       }`}
       title={
         isHome
@@ -48,7 +47,14 @@ export function WorkingModeToggle() {
           : 'Fuera del PC (aprobaciones por Telegram, pendiente). Click para volver a "En el PC".'
       }
     >
-      <span>{isHome ? '🏠' : '🌍'}</span>
+      <span
+        className={`h-1.5 w-1.5 shrink-0 rounded-full ${isHome ? 'bg-green-400' : 'bg-cyan-400'}`}
+        style={{
+          boxShadow: isHome
+            ? '0 0 8px rgba(34,197,94,0.6)'
+            : '0 0 8px rgba(34,211,238,0.6)',
+        }}
+      />
       <span>{isHome ? 'En el PC' : 'Fuera'}</span>
     </button>
   );
