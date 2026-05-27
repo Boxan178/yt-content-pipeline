@@ -111,7 +111,7 @@ export default function ChannelPage() {
     pending_locution: 'Pendiente locución',
     production: 'En producción',
     ready: 'Listos para subir',
-    scheduled: '📅 Programados',
+    scheduled: 'Programados',
     uploaded: 'Subidos',
     archived: 'Archivados',
   };
@@ -207,7 +207,7 @@ export default function ChannelPage() {
       // soltar ahí. Para programar una subida hay que usar el botón Subir
       // del modal de detalle. Si arrastran aquí avisamos sin tocar disco.
       if (toState === 'scheduled') {
-        flashToast('Para programar una subida usa el botón 📤 del vídeo, no arrastrando.');
+        flashToast('Para programar una subida usa el botón Subir del vídeo, no arrastrando.');
         return;
       }
       const raw = e.dataTransfer.getData('text/x-ytcp-video');
@@ -242,102 +242,125 @@ export default function ChannelPage() {
     [flashToast, load],
   );
 
+  const totalVideos = data
+    ? data.counts.pending_locution + data.counts.production + data.counts.ready + data.counts.uploaded + data.counts.archived
+    : 0;
+
   return (
     <main className="mx-auto max-w-[1600px] px-6 py-6">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <Link href="/" className="mb-2 inline-block text-xs text-muted hover:text-white">
-            ← Canales
+          <Link
+            href="/"
+            className="mb-3 inline-flex items-center gap-1.5 text-xs text-zinc-500 transition hover:text-white"
+          >
+            <IconArrowLeft />
+            Canales
           </Link>
-          <h1 className="text-2xl font-bold text-white">{data?.name ?? channelSlug}</h1>
+          <h1 className="font-display text-3xl font-semibold tracking-display text-white">
+            {data?.name ?? channelSlug}
+          </h1>
           {data && (
-            <p className="mt-1 text-sm text-muted">
-              {data.counts.pending_locution + data.counts.production + data.counts.ready + data.counts.uploaded + data.counts.archived} vídeos
-              {data.counts.pending_locution > 0 && ` · ${data.counts.pending_locution} pendiente locución`}
-              {' · '}
-              {data.counts.production} en producción
-              {' · '}
-              {data.counts.ready} listos
-              {grouped.scheduled.length > 0 && ` · ${grouped.scheduled.length} programados`}
-              {' · '}
-              {data.counts.uploaded} subidos
-              {data.counts.archived > 0 && ` · ${data.counts.archived} archivados`}
+            <p className="mt-2 text-sm text-zinc-400">
+              <span className="nums text-zinc-200">{totalVideos}</span> vídeos
+              {data.counts.pending_locution > 0 && (
+                <> · <span className="nums text-zinc-200">{data.counts.pending_locution}</span> pendiente locución</>
+              )}
+              {' · '}<span className="nums text-zinc-200">{data.counts.production}</span> en producción
+              {' · '}<span className="nums text-zinc-200">{data.counts.ready}</span> listos
+              {grouped.scheduled.length > 0 && (
+                <> · <span className="nums text-zinc-200">{grouped.scheduled.length}</span> programados</>
+              )}
+              {' · '}<span className="nums text-zinc-200">{data.counts.uploaded}</span> subidos
+              {data.counts.archived > 0 && (
+                <> · <span className="nums text-zinc-200">{data.counts.archived}</span> archivados</>
+              )}
             </p>
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setShowBulkEnqueue(true)}
-            className="rounded-md border border-border bg-bg px-3 py-1.5 text-sm text-zinc-200 transition hover:border-accent/60 hover:text-white"
+            className="btn-glass"
             title="Encolar la misma skill sobre varios vídeos en serie"
           >
-            📋 Encolar lote
+            <IconList />
+            Encolar lote
           </button>
           <button
             onClick={() => setShowCompilation(true)}
-            className="rounded-md border border-accent/30 bg-accent/10 px-3 py-1.5 text-sm text-accent transition hover:bg-accent/20"
+            className="btn-gold"
             title="Crear una recopilación de varias historias"
           >
-            📚 Nueva recopilación
+            <IconStack />
+            Nueva recopilación
           </button>
-          <label className="flex cursor-pointer items-center gap-2 text-sm text-muted">
+          <label className="flex cursor-pointer items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-300 transition hover:bg-white/10">
             <input
               type="checkbox"
               checked={showScheduled}
               onChange={(e) => setShowScheduled(e.target.checked)}
-              className="h-4 w-4 cursor-pointer rounded border-border bg-bg"
+              className="h-3.5 w-3.5 cursor-pointer rounded border-white/20 bg-white/10 accent-accent"
             />
-            Mostrar programados
+            Programados
           </label>
-          <label className="flex cursor-pointer items-center gap-2 text-sm text-muted">
+          <label className="flex cursor-pointer items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-300 transition hover:bg-white/10">
             <input
               type="checkbox"
               checked={showArchived}
               onChange={(e) => setShowArchived(e.target.checked)}
-              className="h-4 w-4 cursor-pointer rounded border-border bg-bg"
+              className="h-3.5 w-3.5 cursor-pointer rounded border-white/20 bg-white/10 accent-accent"
             />
-            Mostrar archivados
+            Archivados
           </label>
           <button
             onClick={() => load()}
             disabled={refreshing}
-            className="rounded-md border border-border bg-panel px-3 py-1.5 text-sm text-white transition hover:border-accent/60 disabled:opacity-50"
+            className="btn-glass disabled:opacity-50"
           >
-            {refreshing ? 'Actualizando…' : 'Refrescar'}
+            <IconRefresh spinning={refreshing} />
+            {refreshing ? 'Actualizando' : 'Refrescar'}
           </button>
         </div>
       </header>
 
       {error && (
-        <div className="mb-4 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+        <div className="mb-4 rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
           Error: {error}
         </div>
       )}
 
       {/* Filtros */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="🔎 Buscar por título…"
-          className="flex-1 min-w-[200px] rounded border border-border bg-bg/40 px-3 py-1.5 text-sm text-white placeholder-zinc-600 focus:border-accent/60 focus:outline-none"
-        />
-        <nav className="flex gap-1 rounded-lg border border-border bg-bg/40 p-1">
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        <div className="glass relative flex flex-1 items-center gap-2 min-w-[220px] rounded-full px-4 py-2">
+          <span className="text-zinc-500">
+            <IconSearch />
+          </span>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por título…"
+            className="flex-1 bg-transparent text-sm text-white placeholder:text-zinc-500 focus:outline-none"
+          />
+        </div>
+        <nav className="glass flex gap-0.5 rounded-full p-1">
           {(
             [
               ['all', 'Todos'],
-              ['working', 'Con job 🔴'],
-              ['compilation', 'Recopilaciones 📚'],
+              ['working', 'Con job'],
+              ['compilation', 'Recopilaciones'],
               ['incomplete', 'Incompletos'],
             ] as const
           ).map(([k, label]) => (
             <button
               key={k}
               onClick={() => setFilterMode(k)}
-              className={`rounded px-2 py-0.5 text-xs transition ${
-                filterMode === k ? 'bg-accent/20 text-accent' : 'text-muted hover:text-white'
+              className={`rounded-full px-3 py-1 text-xs transition ${
+                filterMode === k
+                  ? 'bg-accent/15 text-accent shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]'
+                  : 'text-zinc-400 hover:bg-white/5 hover:text-white'
               }`}
             >
               {label}
@@ -350,22 +373,22 @@ export default function ChannelPage() {
               setSearch('');
               setFilterMode('all');
             }}
-            className="rounded border border-border bg-bg px-2 py-1 text-xs text-muted hover:text-white"
+            className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-400 transition hover:bg-white/10 hover:text-white"
           >
-            ✕ Limpiar
+            Limpiar
           </button>
         )}
       </div>
 
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-md rounded-lg border border-accent/40 bg-panel px-4 py-3 text-sm text-white shadow-xl">
+        <div className="glass-premium animate-toast-in fixed bottom-6 right-6 z-50 max-w-md rounded-2xl px-4 py-3 text-sm text-white">
           {toast}
         </div>
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-24 text-muted">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-700 border-t-accent" />
+        <div className="flex items-center justify-center py-24 text-zinc-500">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/10 border-t-accent" />
         </div>
       ) : (
         <section
@@ -373,8 +396,12 @@ export default function ChannelPage() {
           style={{ gridTemplateColumns: `repeat(${visibleStates.length}, minmax(260px, 1fr))` }}
         >
           {visibleStates.map((state) => (
-            <div
+            <KanbanColumn
               key={state}
+              state={state}
+              label={VISUAL_LABEL[state]}
+              videos={grouped[state]}
+              isDragOver={dragOverState === state}
               onDragOver={(e) => {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'move';
@@ -384,20 +411,13 @@ export default function ChannelPage() {
                 if (e.currentTarget === e.target) setDragOverState(null);
               }}
               onDrop={(e) => handleDropOnColumn(e, state)}
-              className={`flex min-h-[200px] flex-col rounded-xl border bg-panel/40 p-3 transition ${
-                dragOverState === state ? 'border-accent ring-2 ring-accent/30' : 'border-border'
-              }`}
-            >
-              <header className="mb-3 flex items-center justify-between gap-2">
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-300">
-                  {VISUAL_LABEL[state]}
-                </h2>
-                <div className="flex items-center gap-2">
+              actions={
+                <>
                   {state === 'uploaded' && grouped.uploaded.length > 0 && (
                     <button
                       onClick={archiveAllUploaded}
                       disabled={batchArchiving}
-                      className="rounded border border-border bg-bg px-2 py-0.5 text-[11px] text-muted transition hover:border-accent/60 hover:text-white disabled:opacity-50"
+                      className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[10px] text-zinc-400 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
                     >
                       {batchArchiving ? 'Archivando…' : 'Archivar todos'}
                     </button>
@@ -405,35 +425,24 @@ export default function ChannelPage() {
                   {state === 'scheduled' && grouped.scheduled.length > 0 && (
                     <Link
                       href="/scheduled"
-                      className="rounded border border-border bg-bg px-2 py-0.5 text-[11px] text-muted transition hover:border-accent/60 hover:text-white"
+                      className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[10px] text-zinc-400 transition hover:bg-white/10 hover:text-white"
                       title="Ver todas las subidas programadas"
                     >
                       ver lista →
                     </Link>
                   )}
-                  <span className="rounded-full bg-bg px-2 py-0.5 text-xs text-muted">
-                    {grouped[state].length}
-                  </span>
-                </div>
-              </header>
-              <div className="flex flex-col gap-3 overflow-y-auto pr-1" style={{ maxHeight: 'calc(100vh - 240px)' }}>
-                {grouped[state].length === 0 ? (
-                  <p className="rounded border border-dashed border-border/60 px-3 py-6 text-center text-xs text-muted">
-                    vacío
-                  </p>
-                ) : (
-                  grouped[state].map((v) => (
-                    <VideoCard
-                      key={`${v.state}:${v.title}`}
-                      video={v}
-                      onArchived={handleArchived}
-                      onOpen={handleOpen}
-                      celebrate={celebrating.has(v.folderPath.replace(/\\/g, '/'))}
-                    />
-                  ))
-                )}
-              </div>
-            </div>
+                </>
+              }
+              renderCard={(v) => (
+                <VideoCard
+                  key={`${v.state}:${v.title}`}
+                  video={v}
+                  onArchived={handleArchived}
+                  onOpen={handleOpen}
+                  celebrate={celebrating.has(v.folderPath.replace(/\\/g, '/'))}
+                />
+              )}
+            />
           ))}
         </section>
       )}
@@ -448,7 +457,7 @@ export default function ChannelPage() {
           onClose={() => setShowCompilation(false)}
           onCreated={(info) => {
             setShowCompilation(false);
-            flashToast(`📚 Recopilación creada: ${info.folderName}`);
+            flashToast(`Recopilación creada: ${info.folderName}`);
             load();
           }}
         />
@@ -460,9 +469,118 @@ export default function ChannelPage() {
           channelName={data.name}
           videos={data.videos}
           onClose={() => setShowBulkEnqueue(false)}
-          onEnqueued={(count) => flashToast(`📋 Encolados ${count} item(s) — ver /queue`)}
+          onEnqueued={(count) => flashToast(`Encolados ${count} item(s) — ver /queue`)}
         />
       )}
     </main>
+  );
+}
+
+/* ─────────────── KanbanColumn ─────────────── */
+interface KanbanColumnProps {
+  state: string;
+  label: string;
+  videos: VideoCardData[];
+  isDragOver: boolean;
+  onDragOver: (e: React.DragEvent) => void;
+  onDragLeave: (e: React.DragEvent) => void;
+  onDrop: (e: React.DragEvent) => void;
+  actions: React.ReactNode;
+  renderCard: (v: VideoCardData) => React.ReactNode;
+}
+
+function KanbanColumn({
+  state,
+  label,
+  videos,
+  isDragOver,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  actions,
+  renderCard,
+}: KanbanColumnProps) {
+  return (
+    <div
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      className={`glass flex min-h-[200px] flex-col rounded-[28px] p-4 transition ${
+        isDragOver ? 'border-accent/60 ring-2 ring-accent/30' : ''
+      }`}
+    >
+      <header className="mb-3 flex items-center justify-between gap-2 px-1">
+        <h2 className="text-[11px] font-medium uppercase tracking-label text-zinc-500">
+          {label}
+        </h2>
+        <div className="flex items-center gap-2">
+          {actions}
+          <span className="nums rounded-full bg-white/5 px-2 py-0.5 text-xs text-zinc-400">
+            {videos.length}
+          </span>
+        </div>
+      </header>
+      <div
+        className="flex flex-col gap-3 overflow-y-auto pr-1"
+        style={{ maxHeight: 'calc(100vh - 240px)' }}
+      >
+        {videos.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-white/10 px-3 py-6 text-center text-xs text-zinc-600">
+            vacío
+          </p>
+        ) : (
+          videos.map(renderCard)
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────── SF Symbols-style icons ─────────────── */
+function IconArrowLeft() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 12H5M12 19l-7-7 7-7" />
+    </svg>
+  );
+}
+function IconSearch() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="7" />
+      <path d="M21 21l-4.3-4.3" />
+    </svg>
+  );
+}
+function IconList() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 6.5l1.5 1.5L8.5 5M4 12.5l1.5 1.5L8.5 11M4 18.5l1.5 1.5L8.5 17M13 7h7M13 13h7M13 19h7" />
+    </svg>
+  );
+}
+function IconStack() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+    </svg>
+  );
+}
+function IconRefresh({ spinning = false }: { spinning?: boolean }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={spinning ? 'animate-spin' : ''}
+    >
+      <path d="M23 4v6h-6M1 20v-6h6" />
+      <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 0 1 3.51 15" />
+    </svg>
   );
 }
