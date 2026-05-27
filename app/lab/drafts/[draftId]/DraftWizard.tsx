@@ -12,6 +12,14 @@ interface Props {
   initialStep: WizardStep;
 }
 
+/**
+ * Draft wizard (5-step) — Liquid Glass refresh 2026-05-27.
+ *
+ * Cliente: orquesta los pasos 2-5 del wizard de creación de canal. Cada paso
+ * vive dentro de WizardStepLayout (header sticky + footer sticky). Surfaces
+ * glass, CTAs magenta para acciones primarias dentro de Lab, .btn-glass para
+ * secundarias.
+ */
 export function DraftWizard({ initialDraft, initialStep }: Props) {
   const [draft, setDraft] = useState<ChannelDraft>(initialDraft);
   const [step, setStep] = useState<WizardStep>(initialStep);
@@ -74,26 +82,38 @@ export function DraftWizard({ initialDraft, initialStep }: Props) {
     );
   }
   if (step === 5) {
-    return (
-      <Step5Bootstrap
-        draft={draft}
-        persist={persist}
-        onBack={() => goto(4)}
-      />
-    );
+    return <Step5Bootstrap draft={draft} persist={persist} onBack={() => goto(4)} />;
   }
   // step === 1 (no debería llegar — el form vive en /lab/new-channel)
   return (
-    <div className="p-6">
-      <p className="text-sm text-zinc-400">
-        Paso 1 ya completado. Salta al paso 2 para iniciar el análisis.
-      </p>
-      <button
-        onClick={() => goto(2)}
-        className="mt-3 rounded-md border border-accent/60 bg-accent/20 px-4 py-2 text-sm text-accent"
-      >
-        Ir al paso 2 →
-      </button>
+    <div className="p-8">
+      <div className="glass mx-auto max-w-2xl rounded-[28px] p-6">
+        <p className="text-sm text-zinc-400">
+          Paso 1 ya completado. Salta al paso 2 para iniciar el análisis.
+        </p>
+        <button
+          onClick={() => goto(2)}
+          className="mt-4 inline-flex items-center gap-2 rounded-full border border-fuchsia-500/40 bg-fuchsia-500/20 px-5 py-2 font-medium text-fuchsia-200 backdrop-blur-md transition hover:bg-fuchsia-500/30"
+          style={{
+            boxShadow:
+              'inset 0 1px 0 0 rgba(255,255,255,0.18), 0 0 24px -6px rgba(217,70,239,0.45)',
+          }}
+        >
+          Ir al paso 2
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 }
@@ -108,10 +128,7 @@ interface StepProps {
 }
 
 function Step2Analysis({ draft, persist, onNext, onBack }: StepProps) {
-  const [jobId, setJobId] = useState<string | null>(
-    // Si el draft ya tiene un análisis persistido, no relanzamos.
-    draft.styleDna ? null : null,
-  );
+  const [jobId, setJobId] = useState<string | null>(null);
   const [launching, setLaunching] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const hasAnalysis = !!draft.styleDna && !!draft.channelAnalysis;
@@ -135,11 +152,13 @@ function Step2Analysis({ draft, persist, onNext, onBack }: StepProps) {
 
   const handleDone = useCallback(
     async (resp: { parsed?: unknown }) => {
-      const parsed = resp.parsed as {
-        channelAnalysis?: string;
-        styleDna?: string;
-        scriptSample?: string;
-      } | undefined;
+      const parsed = resp.parsed as
+        | {
+            channelAnalysis?: string;
+            styleDna?: string;
+            scriptSample?: string;
+          }
+        | undefined;
       if (!parsed) return;
       try {
         await persist({
@@ -158,52 +177,51 @@ function Step2Analysis({ draft, persist, onNext, onBack }: StepProps) {
   return (
     <WizardStepLayout
       step={2}
-      title="2. Análisis del canal y Style DNA"
+      title="Análisis del canal y Style DNA"
       subtitle="Lanza style-engine sobre los transcripts. Pinta análisis, Style DNA y script style-locked."
       prevHref={null}
       nextHref={hasAnalysis ? '#' : null}
       nextDisabled={!hasAnalysis}
-      nextLabel="Siguiente: visual →"
+      nextLabel="Siguiente: visual"
       onNext={onNext}
     >
       <div className="mx-auto max-w-4xl space-y-5">
-        <div className="rounded-md border border-border bg-bg/60 p-4 text-xs text-zinc-400">
-          <div>
-            <span className="font-semibold text-zinc-300">Canal:</span>{' '}
-            {draft.referenceChannelUrl}
-          </div>
-          <div>
-            <span className="font-semibold text-zinc-300">Idioma:</span> {draft.language}
-          </div>
-          <div>
-            <span className="font-semibold text-zinc-300">Tema:</span> {draft.initialTopic || '(ideas-please)'}
-          </div>
-          <div>
-            <span className="font-semibold text-zinc-300">Transcripts:</span>{' '}
-            {draft.transcripts.length} cargados
-          </div>
+        {/* Resumen del draft */}
+        <div className="glass rounded-2xl p-4">
+          <p className="mb-3 text-[11px] font-medium uppercase tracking-label text-zinc-500">
+            Contexto del draft
+          </p>
+          <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+            <SummaryRow label="Canal" value={draft.referenceChannelUrl} mono />
+            <SummaryRow label="Idioma" value={draft.language} />
+            <SummaryRow label="Tema" value={draft.initialTopic || '(ideas-please)'} />
+            <SummaryRow
+              label="Transcripts"
+              value={`${draft.transcripts.length} cargados`}
+            />
+          </dl>
         </div>
 
         {hasAnalysis ? (
           <div className="space-y-4">
-            <ParsedBlock title="ANÁLISIS DEL CANAL" body={draft.channelAnalysis ?? ''} />
-            <ParsedBlock title="STYLE DNA" body={draft.styleDna ?? ''} />
+            <ParsedBlock title="Análisis del canal" body={draft.channelAnalysis ?? ''} />
+            <ParsedBlock title="Style DNA" body={draft.styleDna ?? ''} />
             {draft.scriptSample && (
-              <ParsedBlock title="SCRIPT STYLE-LOCKED" body={draft.scriptSample} />
+              <ParsedBlock title="Script style-locked" body={draft.scriptSample} />
             )}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={launch}
                 disabled={launching}
-                className="rounded-md border border-border bg-panel px-3 py-1.5 text-xs text-zinc-300 hover:border-zinc-500"
+                className="btn-glass text-xs"
               >
                 {launching ? 'Relanzando…' : 'Re-lanzar análisis'}
               </button>
               <button
                 type="button"
                 onClick={() => onBack()}
-                className="rounded-md border border-border bg-panel px-3 py-1.5 text-xs text-zinc-400"
+                className="btn-glass text-xs"
               >
                 Editar transcripts (paso 1)
               </button>
@@ -217,30 +235,16 @@ function Step2Analysis({ draft, persist, onNext, onBack }: StepProps) {
             onDone={handleDone}
           />
         ) : (
-          <div className="rounded-md border border-amber-700/40 bg-amber-900/10 p-4">
-            <h3 className="text-sm font-semibold text-amber-200">
-              Listo para lanzar style-engine
-            </h3>
-            <p className="mt-1 text-xs text-amber-100/80">
-              Ejecutará STATES 1-6 en una sola sesión claude -p no interactiva
-              (~5-15 min según longitud de los transcripts).
-            </p>
-            <button
-              type="button"
-              onClick={launch}
-              disabled={launching}
-              className="mt-3 rounded-md border border-accent/60 bg-accent/20 px-4 py-2 text-sm font-semibold text-accent hover:bg-accent/30"
-            >
-              {launching ? 'Lanzando…' : '🚀 Lanzar análisis'}
-            </button>
-          </div>
+          <LaunchCard
+            title="Listo para lanzar style-engine"
+            description="Ejecutará STATES 1-6 en una sola sesión claude -p no interactiva (~5-15 min según longitud de los transcripts)."
+            onClick={launch}
+            disabled={launching}
+            label={launching ? 'Lanzando…' : 'Lanzar análisis'}
+          />
         )}
 
-        {err && (
-          <div className="rounded border border-red-700/60 bg-red-900/20 p-3 text-sm text-red-300">
-            Error: {err}
-          </div>
-        )}
+        {err && <ErrorBlock message={err} />}
       </div>
     </WizardStepLayout>
   );
@@ -248,7 +252,7 @@ function Step2Analysis({ draft, persist, onNext, onBack }: StepProps) {
 
 // ── STEP 3 ────────────────────────────────────────────────────────────────
 
-function Step3Visuals({ draft, persist, onNext, onBack }: StepProps) {
+function Step3Visuals({ draft, persist, onNext, onBack: _onBack }: StepProps) {
   const [frames, setFrames] = useState<string[]>(draft.sampleFrameUrls);
   const [thumbs, setThumbs] = useState<string[]>(draft.thumbnailSampleUrls);
   const [jobId, setJobId] = useState<string | null>(null);
@@ -282,19 +286,18 @@ function Step3Visuals({ draft, persist, onNext, onBack }: StepProps) {
 
   const handleDone = useCallback(
     async (resp: { parsed?: unknown }) => {
-      const parsed = resp.parsed as {
-        visualStyleProfile?: string;
-        thumbnailStyleProfile?: string;
-        thumbnailConcepts?: Array<{ header: string; body: string }>;
-      } | undefined;
+      const parsed = resp.parsed as
+        | {
+            visualStyleProfile?: string;
+            thumbnailStyleProfile?: string;
+            thumbnailConcepts?: Array<{ header: string; body: string }>;
+          }
+        | undefined;
       if (!parsed) return;
       try {
         await persist({
           visualStyleProfile: parsed.visualStyleProfile,
           thumbnailStyleProfile: parsed.thumbnailStyleProfile,
-          // El parsedThumbnailConcepts es bruto — lo guardamos como JSON simple
-          // en el campo thumbnailConcepts (estructura libre, refinamos en futuras
-          // versiones).
         });
       } catch (e) {
         setErr(e instanceof Error ? e.message : String(e));
@@ -306,12 +309,12 @@ function Step3Visuals({ draft, persist, onNext, onBack }: StepProps) {
   return (
     <WizardStepLayout
       step={3}
-      title="3. Visual y thumbnails"
+      title="Visual y thumbnails"
       subtitle="Sube paths absolutos de 3-5 frames del vídeo y 2-3 thumbnails de referencia. Style-engine genera Visual Style Profile + Thumbnail Style Profile + 5 conceptos."
       prevHref={`/lab/drafts/${draft.id}?step=2`}
       nextHref={hasVisuals ? '#' : null}
       nextDisabled={!hasVisuals}
-      nextLabel="Siguiente: validación →"
+      nextLabel="Siguiente: validación"
       onNext={onNext}
     >
       <div className="mx-auto max-w-4xl space-y-5">
@@ -334,13 +337,13 @@ function Step3Visuals({ draft, persist, onNext, onBack }: StepProps) {
 
         {hasVisuals ? (
           <div className="space-y-4">
-            <ParsedBlock title="VISUAL STYLE PROFILE" body={draft.visualStyleProfile ?? ''} />
-            <ParsedBlock title="THUMBNAIL STYLE PROFILE" body={draft.thumbnailStyleProfile ?? ''} />
+            <ParsedBlock title="Visual style profile" body={draft.visualStyleProfile ?? ''} />
+            <ParsedBlock title="Thumbnail style profile" body={draft.thumbnailStyleProfile ?? ''} />
             <button
               type="button"
               onClick={saveAndLaunch}
               disabled={launching}
-              className="rounded-md border border-border bg-panel px-3 py-1.5 text-xs text-zinc-300 hover:border-zinc-500"
+              className="btn-glass text-xs"
             >
               {launching ? 'Relanzando…' : 'Re-lanzar análisis visual'}
             </button>
@@ -353,30 +356,16 @@ function Step3Visuals({ draft, persist, onNext, onBack }: StepProps) {
             onDone={handleDone}
           />
         ) : (
-          <div className="rounded-md border border-amber-700/40 bg-amber-900/10 p-4">
-            <h3 className="text-sm font-semibold text-amber-200">
-              Listo para lanzar style-engine (visual)
-            </h3>
-            <p className="mt-1 text-xs text-amber-100/80">
-              Ejecuta STATES 7-9 + 11-13. Genera prompts de imagen por beat del
-              script previo + 5 conceptos de thumbnail.
-            </p>
-            <button
-              type="button"
-              onClick={saveAndLaunch}
-              disabled={launching}
-              className="mt-3 rounded-md border border-accent/60 bg-accent/20 px-4 py-2 text-sm font-semibold text-accent hover:bg-accent/30"
-            >
-              {launching ? 'Lanzando…' : '🚀 Lanzar análisis visual'}
-            </button>
-          </div>
+          <LaunchCard
+            title="Listo para lanzar style-engine (visual)"
+            description="Ejecuta STATES 7-9 + 11-13. Genera prompts de imagen por beat del script previo + 5 conceptos de thumbnail."
+            onClick={saveAndLaunch}
+            disabled={launching}
+            label={launching ? 'Lanzando…' : 'Lanzar análisis visual'}
+          />
         )}
 
-        {err && (
-          <div className="rounded border border-red-700/60 bg-red-900/20 p-3 text-sm text-red-300">
-            Error: {err}
-          </div>
-        )}
+        {err && <ErrorBlock message={err} />}
       </div>
     </WizardStepLayout>
   );
@@ -424,44 +413,55 @@ function Step4Validation({ draft, persist, onNext, onBack }: StepProps) {
   return (
     <WizardStepLayout
       step={4}
-      title="4. Validación de nicho"
-      subtitle="MARIO + Algrow MCP. Veredicto 🟢/🟡/🔴 + scores demand/saturation + wedges + risks."
+      title="Validación de nicho"
+      subtitle="MARIO + Algrow MCP. Veredicto + scores demand/saturation + wedges + risks."
       prevHref={`/lab/drafts/${draft.id}?step=3`}
       nextHref={report ? '#' : null}
       nextDisabled={!report || report.verdict === 'red'}
-      nextLabel="Siguiente: bootstrap →"
+      nextLabel="Siguiente: bootstrap"
       onNext={() => onNext()}
     >
       <div className="mx-auto max-w-4xl space-y-5">
         {report ? (
           <>
             <ValidationReportView report={report} />
+
+            {/* Doble salida si veredicto rojo */}
+            {report.verdict === 'red' && (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <DecisionCard
+                  title="Persistir con ajustes"
+                  description="Vuelve al paso 2 para re-investigar el nicho con un ángulo diferente, transcripts más afilados o un sub-nicho. MARIO marcó rojo, pero tienes margen para iterar."
+                  cta="Re-investigar"
+                  onClick={onBack}
+                  variant="caution"
+                />
+                <DecisionCard
+                  title="Crear pese al rojo"
+                  description="Vas a la fase de bootstrap aceptando el riesgo. Útil si el wedge te convence o si quieres testear un nicho saturado con un ángulo lateral."
+                  cta="Continuar a bootstrap"
+                  onClick={onNext}
+                  variant="danger"
+                />
+              </div>
+            )}
+
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={launch}
                 disabled={launching}
-                className="rounded-md border border-border bg-panel px-3 py-1.5 text-xs text-zinc-300 hover:border-zinc-500"
+                className="btn-glass text-xs"
               >
                 {launching ? 'Re-lanzando…' : 'Re-validar'}
               </button>
               <button
                 type="button"
                 onClick={() => onBack()}
-                className="rounded-md border border-border bg-panel px-3 py-1.5 text-xs text-zinc-400"
+                className="btn-glass text-xs"
               >
-                ← Volver al paso 2 (re-investigar nicho)
+                Volver al paso 2
               </button>
-              {report.verdict === 'red' && (
-                <button
-                  type="button"
-                  onClick={() => onNext()}
-                  className="rounded-md border border-red-700/40 bg-red-900/20 px-3 py-1.5 text-xs text-red-200 hover:bg-red-900/30"
-                  title="Pablo eligió permitir crear pese al rojo"
-                >
-                  Crear canal pese al rojo →
-                </button>
-              )}
             </div>
           </>
         ) : jobId ? (
@@ -472,31 +472,16 @@ function Step4Validation({ draft, persist, onNext, onBack }: StepProps) {
             onDone={handleDone}
           />
         ) : (
-          <div className="rounded-md border border-amber-700/40 bg-amber-900/10 p-4">
-            <h3 className="text-sm font-semibold text-amber-200">
-              Lanzar MARIO + Algrow
-            </h3>
-            <p className="mt-1 text-xs text-amber-100/80">
-              MARIO usará las herramientas Algrow (resolve_url, channel_trends,
-              search_viral_videos, search_longform_channels) y devolverá un
-              veredicto JSON con scores y wedges defendibles. ~5-15 min.
-            </p>
-            <button
-              type="button"
-              onClick={launch}
-              disabled={launching}
-              className="mt-3 rounded-md border border-accent/60 bg-accent/20 px-4 py-2 text-sm font-semibold text-accent hover:bg-accent/30"
-            >
-              {launching ? 'Lanzando…' : '🚀 Lanzar validación'}
-            </button>
-          </div>
+          <LaunchCard
+            title="Lanzar MARIO + Algrow"
+            description="MARIO usará las herramientas Algrow (resolve_url, channel_trends, search_viral_videos, search_longform_channels) y devolverá un veredicto JSON con scores y wedges defendibles. ~5-15 min."
+            onClick={launch}
+            disabled={launching}
+            label={launching ? 'Lanzando…' : 'Lanzar validación'}
+          />
         )}
 
-        {err && (
-          <div className="rounded border border-red-700/60 bg-red-900/20 p-3 text-sm text-red-300">
-            Error: {err}
-          </div>
-        )}
+        {err && <ErrorBlock message={err} />}
       </div>
     </WizardStepLayout>
   );
@@ -514,7 +499,7 @@ interface ParsedBootstrap {
 
 function Step5Bootstrap({
   draft,
-  persist,
+  persist: _persist,
   onBack,
 }: {
   draft: ChannelDraft;
@@ -526,11 +511,14 @@ function Step5Bootstrap({
   const [parsed, setParsed] = useState<ParsedBootstrap | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  // Form fields (auto-pobladas cuando llega el parsed)
   const [chosenName, setChosenName] = useState(draft.bootstrap?.chosenName ?? '');
   const [chosenHandle, setChosenHandle] = useState(draft.bootstrap?.chosenHandle ?? '');
-  const [chosenDescription, setChosenDescription] = useState(draft.bootstrap?.chosenDescription ?? '');
-  const [descVersion, setDescVersion] = useState<'A' | 'B' | 'C'>(draft.bootstrap?.descriptionVersion ?? 'B');
+  const [chosenDescription, setChosenDescription] = useState(
+    draft.bootstrap?.chosenDescription ?? '',
+  );
+  const [descVersion, setDescVersion] = useState<'A' | 'B' | 'C'>(
+    draft.bootstrap?.descriptionVersion ?? 'B',
+  );
   const [logoPrompt, setLogoPrompt] = useState(draft.bootstrap?.logoPrompt ?? '');
   const [bannerPrompt, setBannerPrompt] = useState(draft.bootstrap?.bannerPrompt ?? '');
   const [assetMethod, setAssetMethod] = useState<'canva-mcp' | 'nano-banana-manual' | 'both'>(
@@ -557,28 +545,34 @@ function Step5Bootstrap({
     }
   }
 
-  const handleDone = useCallback((resp: { parsed?: unknown }) => {
-    const p = resp.parsed as ParsedBootstrap | null;
-    if (!p) {
-      setErr('No pude parsear los bloques del bootstrap. Revisa el log y rellena el formulario manualmente.');
-      return;
-    }
-    setParsed(p);
-    if (p.nameProposals && p.nameProposals.length > 0 && !chosenName) {
-      const first = p.nameProposals[0];
-      setChosenName(first.name);
-      setChosenHandle(first.handle);
-    }
-    if (p.descriptions) {
-      const preferred = p.descriptions.find((d) => d.version === descVersion) ?? p.descriptions[0];
-      if (preferred && !chosenDescription) {
-        setChosenDescription(preferred.body);
-        setDescVersion(preferred.version);
+  const handleDone = useCallback(
+    (resp: { parsed?: unknown }) => {
+      const p = resp.parsed as ParsedBootstrap | null;
+      if (!p) {
+        setErr(
+          'No pude parsear los bloques del bootstrap. Revisa el log y rellena el formulario manualmente.',
+        );
+        return;
       }
-    }
-    if (p.logoPrompt && !logoPrompt) setLogoPrompt(p.logoPrompt);
-    if (p.bannerPrompt && !bannerPrompt) setBannerPrompt(p.bannerPrompt);
-  }, [chosenName, chosenDescription, descVersion, logoPrompt, bannerPrompt]);
+      setParsed(p);
+      if (p.nameProposals && p.nameProposals.length > 0 && !chosenName) {
+        const first = p.nameProposals[0];
+        setChosenName(first.name);
+        setChosenHandle(first.handle);
+      }
+      if (p.descriptions) {
+        const preferred =
+          p.descriptions.find((d) => d.version === descVersion) ?? p.descriptions[0];
+        if (preferred && !chosenDescription) {
+          setChosenDescription(preferred.body);
+          setDescVersion(preferred.version);
+        }
+      }
+      if (p.logoPrompt && !logoPrompt) setLogoPrompt(p.logoPrompt);
+      if (p.bannerPrompt && !bannerPrompt) setBannerPrompt(p.bannerPrompt);
+    },
+    [chosenName, chosenDescription, descVersion, logoPrompt, bannerPrompt],
+  );
 
   async function execute() {
     setErr(null);
@@ -620,25 +614,49 @@ function Step5Bootstrap({
     return (
       <WizardStepLayout
         step={5}
-        title="5. Bootstrap completado"
+        title="Bootstrap completado"
         subtitle="Canal materializado en disco. Próximo paso opcional: crear el primer vídeo."
         prevHref={`/lab/drafts/${draft.id}?step=4`}
         nextHref={null}
       >
-        <div className="mx-auto max-w-3xl space-y-4">
-          <div className="rounded-md border border-emerald-600/40 bg-emerald-900/20 p-5">
-            <h3 className="text-base font-bold text-emerald-200">
-              ✅ {chosenName}
-            </h3>
-            <div className="mt-2 text-sm text-emerald-100/80">
-              Path: <code className="font-mono">{executeResult.diskPath}/branding/</code>
+        <div className="mx-auto max-w-3xl space-y-5">
+          <div
+            className="glass rounded-[28px] border border-green-500/40 bg-green-500/10 p-6"
+            style={{ boxShadow: '0 0 32px -8px rgba(34,197,94,0.4)' }}
+          >
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-green-500/40 bg-green-500/15 text-green-300">
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M5 12l5 5L20 7" />
+                </svg>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="mb-1 text-[11px] font-medium uppercase tracking-label text-green-300/80">
+                  Canal en disco
+                </p>
+                <h3 className="font-display text-xl font-semibold tracking-display text-white">
+                  {chosenName}
+                </h3>
+                <p className="mt-2 break-all font-mono text-[11px] text-zinc-400">
+                  {executeResult.diskPath}/branding/
+                </p>
+              </div>
             </div>
             {executeResult.stdout && (
-              <details className="mt-3 rounded border border-emerald-700/40 bg-emerald-950/40">
-                <summary className="cursor-pointer px-3 py-2 text-xs text-emerald-300">
+              <details className="mt-4 rounded-2xl border border-white/10 bg-black/30">
+                <summary className="cursor-pointer px-3 py-2 text-[11px] font-medium uppercase tracking-label text-zinc-500 hover:text-zinc-300">
                   Output del script
                 </summary>
-                <pre className="whitespace-pre-wrap px-3 py-2 text-[11px] text-emerald-50/90">
+                <pre className="whitespace-pre-wrap px-3 pb-3 font-mono text-[11px] leading-relaxed text-zinc-300">
                   {executeResult.stdout}
                 </pre>
               </details>
@@ -646,9 +664,25 @@ function Step5Bootstrap({
           </div>
           <a
             href={`/lab/first-video/${draft.id}`}
-            className="inline-block rounded-md border border-accent/60 bg-accent/20 px-4 py-2 text-sm font-semibold text-accent transition hover:bg-accent/30"
+            className="inline-flex items-center gap-2 rounded-full border border-fuchsia-500/40 bg-fuchsia-500/20 px-5 py-2 font-medium text-fuchsia-200 backdrop-blur-md transition hover:bg-fuchsia-500/30"
+            style={{
+              boxShadow:
+                'inset 0 1px 0 0 rgba(255,255,255,0.18), 0 0 24px -6px rgba(217,70,239,0.45)',
+            }}
           >
-            🎬 Crear el primer vídeo →
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polygon points="6 4 20 12 6 20 6 4" />
+            </svg>
+            Crear el primer vídeo
           </a>
         </div>
       </WizardStepLayout>
@@ -658,30 +692,20 @@ function Step5Bootstrap({
   return (
     <WizardStepLayout
       step={5}
-      title="5. Bootstrap"
-      subtitle="STATE 16 completo: nombre, descripción, logo+banner prompts, estructura en disco."
+      title="Bootstrap"
+      subtitle="STATE 16 completo: nombre, descripción, logo + banner prompts, estructura en disco."
       prevHref={`/lab/drafts/${draft.id}?step=4`}
       nextHref={null}
     >
       <div className="mx-auto max-w-4xl space-y-5">
         {!parsed && !jobId && (
-          <div className="rounded-md border border-amber-700/40 bg-amber-900/10 p-4">
-            <h3 className="text-sm font-semibold text-amber-200">
-              Lanzar state-engine bootstrap
-            </h3>
-            <p className="mt-1 text-xs text-amber-100/80">
-              Ejecuta B1-B7: propuestas de nombre + descripciones + prompts de
-              logo/banner. NO toca disco — eso es el siguiente paso.
-            </p>
-            <button
-              type="button"
-              onClick={launch}
-              disabled={launching}
-              className="mt-3 rounded-md border border-accent/60 bg-accent/20 px-4 py-2 text-sm font-semibold text-accent hover:bg-accent/30"
-            >
-              {launching ? 'Lanzando…' : '🚀 Lanzar state-engine'}
-            </button>
-          </div>
+          <LaunchCard
+            title="Lanzar state-engine bootstrap"
+            description="Ejecuta B1-B7: propuestas de nombre + descripciones + prompts de logo/banner. NO toca disco — eso es el siguiente paso."
+            onClick={launch}
+            disabled={launching}
+            label={launching ? 'Lanzando…' : 'Lanzar state-engine'}
+          />
         )}
 
         {jobId && !parsed && (
@@ -696,167 +720,211 @@ function Step5Bootstrap({
         {parsed && (
           <>
             {parsed.nameProposals && (
-              <Section title="1. Elige el nombre del canal">
+              <BootstrapSection title="1. Elige el nombre del canal">
                 <div className="space-y-2">
                   {parsed.nameProposals.map((p) => {
                     const checked = chosenName === p.name;
                     return (
                       <label
                         key={p.index}
-                        className={`block cursor-pointer rounded-md border p-3 transition ${
+                        className={`block cursor-pointer rounded-2xl border p-4 transition ${
                           checked
-                            ? 'border-accent/60 bg-accent/10'
-                            : 'border-border bg-bg/40 hover:border-zinc-500'
+                            ? 'border-fuchsia-500/40 bg-fuchsia-500/10'
+                            : 'border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.05]'
                         }`}
                       >
-                        <input
-                          type="radio"
-                          name="name-proposal"
-                          checked={checked}
-                          onChange={() => {
-                            setChosenName(p.name);
-                            setChosenHandle(p.handle);
-                          }}
-                          className="mr-2"
-                        />
-                        <span className="text-sm font-semibold text-white">{p.name}</span>
-                        <span className="ml-2 text-xs text-zinc-500">@{p.handle}</span>
-                        <div className="mt-1 ml-5 text-xs text-zinc-400">{p.rationale}</div>
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="radio"
+                            name="name-proposal"
+                            checked={checked}
+                            onChange={() => {
+                              setChosenName(p.name);
+                              setChosenHandle(p.handle);
+                            }}
+                            className="mt-1 accent-fuchsia-500"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-baseline gap-2">
+                              <span className="font-display text-sm font-medium text-white">
+                                {p.name}
+                              </span>
+                              <span className="font-mono text-[11px] text-zinc-500">
+                                @{p.handle}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+                              {p.rationale}
+                            </p>
+                          </div>
+                        </div>
                       </label>
                     );
                   })}
                 </div>
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <input
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <FormInput
                     type="text"
                     value={chosenName}
-                    onChange={(e) => setChosenName(e.target.value)}
+                    onChange={(v) => setChosenName(v)}
                     placeholder="Nombre del canal"
-                    className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-white focus:border-accent"
                   />
-                  <input
+                  <FormInput
                     type="text"
                     value={chosenHandle}
-                    onChange={(e) => setChosenHandle(e.target.value)}
+                    onChange={(v) => setChosenHandle(v)}
                     placeholder="@handle"
-                    className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-white focus:border-accent"
                   />
                 </div>
-              </Section>
+              </BootstrapSection>
             )}
 
             {parsed.descriptions && (
-              <Section title="2. Elige la descripción">
+              <BootstrapSection title="2. Elige la descripción">
                 <div className="space-y-2">
                   {parsed.descriptions.map((d) => {
                     const checked = descVersion === d.version;
                     return (
                       <label
                         key={d.version}
-                        className={`block cursor-pointer rounded-md border p-3 transition ${
+                        className={`block cursor-pointer rounded-2xl border p-4 transition ${
                           checked
-                            ? 'border-accent/60 bg-accent/10'
-                            : 'border-border bg-bg/40 hover:border-zinc-500'
+                            ? 'border-fuchsia-500/40 bg-fuchsia-500/10'
+                            : 'border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.05]'
                         }`}
                       >
-                        <input
-                          type="radio"
-                          name="desc-version"
-                          checked={checked}
-                          onChange={() => {
-                            setDescVersion(d.version);
-                            setChosenDescription(d.body);
-                          }}
-                          className="mr-2"
-                        />
-                        <span className="text-xs font-semibold uppercase tracking-wider text-zinc-300">
-                          Versión {d.version}
-                        </span>
-                        <div className="mt-1 whitespace-pre-wrap text-xs text-zinc-400">
-                          {d.body}
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="radio"
+                            name="desc-version"
+                            checked={checked}
+                            onChange={() => {
+                              setDescVersion(d.version);
+                              setChosenDescription(d.body);
+                            }}
+                            className="mt-1 accent-fuchsia-500"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[11px] font-medium uppercase tracking-label text-fuchsia-300/80">
+                              Versión {d.version}
+                            </p>
+                            <p className="mt-1 whitespace-pre-wrap text-xs leading-relaxed text-zinc-300">
+                              {d.body}
+                            </p>
+                          </div>
                         </div>
                       </label>
                     );
                   })}
                 </div>
-                <textarea
+                <FormTextarea
                   value={chosenDescription}
-                  onChange={(e) => setChosenDescription(e.target.value)}
+                  onChange={setChosenDescription}
                   rows={5}
                   placeholder="Descripción final (editable)"
-                  className="mt-3 w-full rounded-md border border-border bg-bg px-3 py-2 text-xs text-white focus:border-accent"
                 />
-              </Section>
+              </BootstrapSection>
             )}
 
-            <Section title="3. Logo prompt (Nano Banana Pro, EN)">
-              <textarea
+            <BootstrapSection title="3. Logo prompt (Nano Banana Pro, EN)">
+              <FormTextarea
                 value={logoPrompt}
-                onChange={(e) => setLogoPrompt(e.target.value)}
+                onChange={setLogoPrompt}
                 rows={5}
-                className="w-full rounded-md border border-border bg-bg px-3 py-2 text-[11px] font-mono text-white focus:border-accent"
+                mono
               />
-            </Section>
+            </BootstrapSection>
 
-            <Section title="4. Banner prompt (2560×1440, safe area central 1546×423)">
-              <textarea
+            <BootstrapSection title="4. Banner prompt (2560×1440, safe area central 1546×423)">
+              <FormTextarea
                 value={bannerPrompt}
-                onChange={(e) => setBannerPrompt(e.target.value)}
+                onChange={setBannerPrompt}
                 rows={5}
-                className="w-full rounded-md border border-border bg-bg px-3 py-2 text-[11px] font-mono text-white focus:border-accent"
+                mono
               />
-            </Section>
+            </BootstrapSection>
 
-            <Section title="5. Vía de generación de assets">
-              <div className="space-y-1">
+            <BootstrapSection title="5. Vía de generación de assets">
+              <div className="space-y-2">
                 {(
                   [
                     { v: 'canva-mcp', label: 'Canva MCP (engine llama generate-design)' },
-                    { v: 'nano-banana-manual', label: 'Nano Banana Pro manual (pegar prompts en Flow)' },
+                    {
+                      v: 'nano-banana-manual',
+                      label: 'Nano Banana Pro manual (pegar prompts en Flow)',
+                    },
                     { v: 'both', label: 'Ambos: Canva primero, Nano si no convence' },
                   ] as const
                 ).map((opt) => (
-                  <label key={opt.v} className="flex cursor-pointer items-center gap-2 text-sm text-zinc-300">
+                  <label
+                    key={opt.v}
+                    className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition ${
+                      assetMethod === opt.v
+                        ? 'border-fuchsia-500/40 bg-fuchsia-500/10 text-fuchsia-100'
+                        : 'border-white/10 bg-white/[0.03] text-zinc-300 hover:border-white/20 hover:bg-white/[0.05]'
+                    }`}
+                  >
                     <input
                       type="radio"
                       name="asset-method"
                       checked={assetMethod === opt.v}
                       onChange={() => setAssetMethod(opt.v)}
+                      className="accent-fuchsia-500"
                     />
-                    {opt.label}
+                    <span className="text-sm">{opt.label}</span>
                   </label>
                 ))}
               </div>
-            </Section>
+            </BootstrapSection>
 
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={execute}
                 disabled={!canExecute}
-                className={`rounded-md border px-5 py-2 text-sm font-semibold transition ${
+                className={
                   canExecute
-                    ? 'border-emerald-600/60 bg-emerald-700/30 text-emerald-100 hover:bg-emerald-700/40'
-                    : 'cursor-not-allowed border-border bg-panel text-zinc-600'
-                }`}
+                    ? 'inline-flex items-center gap-2 rounded-full border border-green-500/40 bg-green-500/20 px-5 py-2 font-medium text-green-200 backdrop-blur-md transition hover:bg-green-500/30'
+                    : 'inline-flex cursor-not-allowed items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-5 py-2 font-medium text-zinc-600'
+                }
+                style={
+                  canExecute
+                    ? {
+                        boxShadow:
+                          'inset 0 1px 0 0 rgba(255,255,255,0.18), 0 0 24px -6px rgba(34,197,94,0.45)',
+                      }
+                    : undefined
+                }
               >
-                {executing ? 'Bootstrappeando…' : '🚀 Bootstrap canal en disco'}
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M5 12l5 5L20 7" />
+                </svg>
+                {executing ? 'Bootstrappeando…' : 'Bootstrap canal en disco'}
               </button>
               <button
                 type="button"
                 onClick={() => onBack()}
-                className="rounded-md border border-border bg-panel px-3 py-1.5 text-xs text-zinc-400"
+                className="btn-glass text-xs"
               >
-                ← Volver
+                Volver
               </button>
             </div>
 
             {parsed.finalSummary && (
-              <details className="rounded-md border border-border bg-bg/60">
-                <summary className="cursor-pointer px-3 py-2 text-xs text-zinc-400">
+              <details className="glass rounded-2xl">
+                <summary className="cursor-pointer px-4 py-2.5 text-[11px] font-medium uppercase tracking-label text-zinc-500 hover:text-zinc-300">
                   Resumen del state-engine (B7)
                 </summary>
-                <pre className="whitespace-pre-wrap px-3 py-2 text-[11px] text-zinc-300">
+                <pre className="whitespace-pre-wrap px-4 pb-4 text-[11px] leading-relaxed text-zinc-300">
                   {parsed.finalSummary}
                 </pre>
               </details>
@@ -864,39 +932,179 @@ function Step5Bootstrap({
           </>
         )}
 
-        {err && (
-          <div className="rounded border border-red-700/60 bg-red-900/20 p-3 text-sm text-red-300">
-            Error: {err}
-          </div>
-        )}
+        {err && <ErrorBlock message={err} />}
       </div>
     </WizardStepLayout>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+// ── helpers ───────────────────────────────────────────────────────────────
+
+function SummaryRow({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
   return (
-    <div className="rounded-md border border-border bg-panel/40 p-4">
-      <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-300">
-        {title}
-      </h4>
-      {children}
+    <div className="flex items-baseline gap-2">
+      <dt className="shrink-0 text-[10px] font-medium uppercase tracking-label text-zinc-500">
+        {label}
+      </dt>
+      <dd
+        className={`min-w-0 truncate text-zinc-200 ${
+          mono ? 'font-mono text-[12px]' : 'text-sm'
+        }`}
+      >
+        {value}
+      </dd>
     </div>
   );
 }
 
-// ── helpers ───────────────────────────────────────────────────────────────
-
 function ParsedBlock({ title, body }: { title: string; body: string }) {
   return (
-    <details className="rounded-md border border-emerald-700/40 bg-emerald-900/10" open>
-      <summary className="cursor-pointer px-3 py-2 text-xs font-semibold uppercase tracking-wider text-emerald-300">
-        ✓ {title}
+    <details
+      className="glass rounded-2xl border border-fuchsia-500/25"
+      open
+    >
+      <summary className="flex cursor-pointer items-center gap-2 px-4 py-2.5 text-[11px] font-medium uppercase tracking-label text-fuchsia-300/80 hover:text-fuchsia-200">
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M5 12l5 5L20 7" />
+        </svg>
+        {title}
       </summary>
-      <pre className="whitespace-pre-wrap px-3 py-2 text-[12px] leading-snug text-emerald-50/90">
+      <pre className="whitespace-pre-wrap px-4 pb-4 text-[12px] leading-relaxed text-zinc-200">
         {body}
       </pre>
     </details>
+  );
+}
+
+function BootstrapSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="glass rounded-[24px] p-5">
+      <h4 className="mb-3 text-[11px] font-medium uppercase tracking-label text-fuchsia-300/80">
+        {title}
+      </h4>
+      <div className="space-y-3">{children}</div>
+    </div>
+  );
+}
+
+function LaunchCard({
+  title,
+  description,
+  onClick,
+  disabled,
+  label,
+}: {
+  title: string;
+  description: string;
+  onClick: () => void;
+  disabled?: boolean;
+  label: string;
+}) {
+  return (
+    <div className="glass rounded-[24px] border border-fuchsia-500/25 p-5">
+      <h3 className="font-display text-base font-medium tracking-display text-white">
+        {title}
+      </h3>
+      <p className="mt-1.5 text-xs leading-relaxed text-zinc-400">{description}</p>
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        className="mt-4 inline-flex items-center gap-2 rounded-full border border-fuchsia-500/40 bg-fuchsia-500/20 px-5 py-2 font-medium text-fuchsia-200 backdrop-blur-md transition hover:bg-fuchsia-500/30 disabled:opacity-50"
+        style={{
+          boxShadow:
+            'inset 0 1px 0 0 rgba(255,255,255,0.18), 0 0 24px -6px rgba(217,70,239,0.45)',
+        }}
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <polygon points="6 4 20 12 6 20 6 4" />
+        </svg>
+        {label}
+      </button>
+    </div>
+  );
+}
+
+function ErrorBlock({ message }: { message: string }) {
+  return (
+    <div className="glass rounded-2xl border border-red-500/40 bg-red-500/5 p-4 text-sm text-red-300">
+      <span className="font-medium">Error:</span> {message}
+    </div>
+  );
+}
+
+function DecisionCard({
+  title,
+  description,
+  cta,
+  onClick,
+  variant,
+}: {
+  title: string;
+  description: string;
+  cta: string;
+  onClick: () => void;
+  variant: 'caution' | 'danger';
+}) {
+  const isDanger = variant === 'danger';
+  return (
+    <div
+      className={`glass glass-premium rounded-[24px] border p-5 ${
+        isDanger ? 'border-red-500/30' : 'border-amber-500/30'
+      }`}
+    >
+      <h4
+        className={`font-display text-base font-medium tracking-display ${
+          isDanger ? 'text-red-200' : 'text-amber-200'
+        }`}
+      >
+        {title}
+      </h4>
+      <p className="mt-1.5 text-xs leading-relaxed text-zinc-400">{description}</p>
+      <button
+        type="button"
+        onClick={onClick}
+        className={`mt-3 inline-flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-xs font-medium ${
+          isDanger
+            ? 'border-red-500/40 bg-red-500/15 text-red-200 hover:bg-red-500/25'
+            : 'border-amber-500/40 bg-amber-500/15 text-amber-200 hover:bg-amber-500/25'
+        }`}
+      >
+        {cta}
+      </button>
+    </div>
   );
 }
 
@@ -909,15 +1117,22 @@ interface PathArrayFieldProps {
   max: number;
 }
 
-function PathArrayField({ label, values, onChange, placeholder, min, max }: PathArrayFieldProps) {
-  // Aseguramos al menos `min` campos visibles.
-  const padded = values.length < min ? [...values, ...Array(min - values.length).fill('')] : values;
+function PathArrayField({
+  label,
+  values,
+  onChange,
+  placeholder,
+  min,
+  max,
+}: PathArrayFieldProps) {
+  const padded =
+    values.length < min ? [...values, ...Array(min - values.length).fill('')] : values;
   return (
     <div>
-      <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400">
+      <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-label text-zinc-500">
         {label}
       </label>
-      <div className="mt-1 space-y-1">
+      <div className="space-y-1.5">
         {padded.map((v, i) => (
           <div key={i} className="flex items-center gap-2">
             <input
@@ -929,15 +1144,27 @@ function PathArrayField({ label, values, onChange, placeholder, min, max }: Path
                 onChange(copy);
               }}
               placeholder={placeholder}
-              className="flex-1 rounded-md border border-border bg-bg px-3 py-2 text-xs text-white outline-none focus:border-accent font-mono"
+              className="flex-1 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2.5 font-mono text-[12px] text-white placeholder:text-zinc-600 focus:border-fuchsia-500/40 focus:bg-white/[0.06] focus:outline-none"
             />
             {padded.length > min && (
               <button
                 type="button"
                 onClick={() => onChange(padded.filter((_, j) => j !== i))}
-                className="text-xs text-zinc-500 hover:text-red-400"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-zinc-500 hover:border-red-500/30 hover:text-red-400"
+                title="Eliminar"
               >
-                ✕
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
               </button>
             )}
           </div>
@@ -947,11 +1174,59 @@ function PathArrayField({ label, values, onChange, placeholder, min, max }: Path
         <button
           type="button"
           onClick={() => onChange([...padded, ''])}
-          className="mt-1 text-xs text-accent hover:underline"
+          className="mt-2 text-xs font-medium text-fuchsia-300 hover:text-fuchsia-200"
         >
           + Añadir otro
         </button>
       )}
     </div>
+  );
+}
+
+function FormInput({
+  type,
+  value,
+  onChange,
+  placeholder,
+}: {
+  type: 'text';
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <input
+      type={type}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-white placeholder:text-zinc-500 focus:border-fuchsia-500/40 focus:bg-white/[0.06] focus:outline-none"
+    />
+  );
+}
+
+function FormTextarea({
+  value,
+  onChange,
+  rows,
+  placeholder,
+  mono,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  rows: number;
+  placeholder?: string;
+  mono?: boolean;
+}) {
+  return (
+    <textarea
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      rows={rows}
+      placeholder={placeholder}
+      className={`w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-white placeholder:text-zinc-500 focus:border-fuchsia-500/40 focus:bg-white/[0.06] focus:outline-none ${
+        mono ? 'font-mono text-[11px] leading-relaxed' : 'text-sm leading-relaxed'
+      }`}
+    />
   );
 }

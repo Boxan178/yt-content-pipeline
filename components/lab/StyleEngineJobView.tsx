@@ -20,10 +20,12 @@ interface StyleEngineJobViewProps {
 }
 
 /**
- * Visor de un job style-engine en curso. Polleia cada 3s mientras el job está
- * running; pinta tail + bloques parseados cuando el job termina.
+ * Style-engine job viewer — Liquid Glass refresh 2026-05-27.
  *
- * El padre se encarga de persistir los bloques parseados al draft via PUT.
+ * Visor de un job style-engine en curso. Polleia cada 3s mientras el job está
+ * running. Header con status pill (.pill-* family) + label, log en glass card
+ * con font-mono y bg-black/40 (estilo terminal). Pulse animation en pill
+ * mientras corre.
  */
 export function StyleEngineJobView({
   draftId,
@@ -73,50 +75,82 @@ export function StyleEngineJobView({
 
   if (err) {
     return (
-      <div className="rounded border border-red-700/60 bg-red-900/20 p-3 text-sm text-red-300">
-        Error: {err}
+      <div className="glass rounded-2xl border border-red-500/40 bg-red-500/5 p-4 text-sm text-red-300">
+        <span className="font-medium">Error:</span> {err}
       </div>
     );
   }
   if (!resp) {
-    return <div className="text-sm text-zinc-500">Cargando job…</div>;
+    return (
+      <div className="glass rounded-2xl p-4 text-sm text-zinc-500">
+        Cargando job…
+      </div>
+    );
   }
 
   const { job, tail } = resp;
   const isDone = job.status === 'done';
-  const isFailed = job.status === 'failed' || job.status === 'timeout' || job.status === 'cancelled';
+  const isFailed =
+    job.status === 'failed' || job.status === 'timeout' || job.status === 'cancelled';
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2 text-sm">
-        <span
-          className={`inline-block h-2 w-2 rounded-full ${
-            job.status === 'running'
-              ? 'animate-pulse bg-amber-400'
-              : isDone
-              ? 'bg-emerald-500'
-              : 'bg-red-500'
-          }`}
-        />
-        <span className="font-semibold text-white">{job.label}</span>
-        <span className="text-xs text-zinc-500">· {job.status}</span>
+      <div className="glass rounded-2xl p-4">
+        <div className="flex items-center gap-3">
+          <StatusPill status={job.status} />
+          <span className="font-display text-sm font-medium tracking-display text-white">
+            {job.label}
+          </span>
+        </div>
       </div>
 
-      <details className="rounded border border-border bg-bg/60" open={!isDone}>
-        <summary className="cursor-pointer px-3 py-2 text-xs text-zinc-400">
+      <details
+        className="glass rounded-2xl"
+        open={!isDone}
+      >
+        <summary className="cursor-pointer px-4 py-2.5 text-[11px] font-medium uppercase tracking-label text-zinc-500 hover:text-zinc-300">
           Log (últimas 300 líneas)
         </summary>
-        <pre className="max-h-72 overflow-auto px-3 py-2 text-[11px] leading-snug text-zinc-300">
+        <pre className="mx-4 mb-4 max-h-80 overflow-auto rounded-2xl bg-black/40 p-4 font-mono text-[11px] leading-relaxed text-zinc-300">
           {tail}
         </pre>
       </details>
 
       {isFailed && (
-        <div className="rounded border border-red-700/60 bg-red-900/20 p-3 text-sm text-red-300">
-          Job terminó con estado <strong>{job.status}</strong>. Revisa el log
-          arriba y vuelve a lanzar.
+        <div className="glass rounded-2xl border border-red-500/40 bg-red-500/5 p-4 text-sm text-red-300">
+          Job terminó con estado{' '}
+          <span className="font-semibold uppercase">{job.status}</span>. Revisa
+          el log arriba y vuelve a lanzar.
         </div>
       )}
     </div>
+  );
+}
+
+function StatusPill({ status }: { status: ClaudeJob['status'] }) {
+  if (status === 'running') {
+    return (
+      <span
+        className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/14 px-2.5 py-0.5 text-[11px] font-medium text-amber-300"
+        style={{ boxShadow: '0 0 12px -2px rgba(245,158,11,0.4)' }}
+      >
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" />
+        running
+      </span>
+    );
+  }
+  if (status === 'done') {
+    return (
+      <span className="pill-active">
+        <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
+        done
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-red-500/40 bg-red-500/14 px-2.5 py-0.5 text-[11px] font-medium text-red-300">
+      <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
+      {status}
+    </span>
   );
 }

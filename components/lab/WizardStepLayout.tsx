@@ -22,6 +22,13 @@ interface WizardStepLayoutProps {
   onNext?: () => void;
 }
 
+/**
+ * Wizard step layout — Liquid Glass refresh 2026-05-27.
+ *
+ * Estructura común de cada paso del wizard. Header sticky con progress + title;
+ * footer sticky con prev/next; main scrollable. Surfaces .glass y CTAs magenta
+ * (excepto el "Atrás" que es .btn-glass neutro).
+ */
 export function WizardStepLayout({
   step,
   title,
@@ -30,55 +37,111 @@ export function WizardStepLayout({
   prevHref,
   nextHref,
   nextDisabled,
-  nextLabel = 'Siguiente →',
+  nextLabel = 'Siguiente',
   onNext,
 }: WizardStepLayoutProps) {
   return (
     <div className="flex h-full flex-col">
-      <header className="border-b border-border bg-panel/40 px-6 py-4">
-        <WizardProgress current={step} />
-        <h1 className="mt-3 text-xl font-bold text-white">{title}</h1>
-        {subtitle && (
-          <p className="mt-1 text-sm text-zinc-400">{subtitle}</p>
-        )}
-      </header>
-
-      <main className="flex-1 overflow-auto px-6 py-6">{children}</main>
-
-      <footer className="flex items-center justify-between border-t border-border bg-panel/40 px-6 py-3">
-        <div>
-          {prevHref ? (
-            <Link
-              href={prevHref}
-              className="rounded-md border border-border bg-bg px-4 py-2 text-sm text-zinc-300 transition hover:border-zinc-500 hover:text-white"
-            >
-              ← Atrás
-            </Link>
-          ) : (
-            <span />
+      {/* Header sticky con glass surface */}
+      <header className="sticky top-0 z-10 px-6 pb-3 pt-4">
+        <div className="glass rounded-[28px] px-6 py-4">
+          <WizardProgress current={step} />
+          <div className="mt-4 flex items-baseline gap-3">
+            <span className="text-[11px] font-medium uppercase tracking-label text-fuchsia-300/80">
+              Paso {step} de 5
+            </span>
+          </div>
+          <h1 className="mt-1 font-display text-2xl font-semibold tracking-display text-white">
+            {title}
+          </h1>
+          {subtitle && (
+            <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
+              {subtitle}
+            </p>
           )}
         </div>
-        <div>
-          {nextHref ? (
-            nextDisabled ? (
-              <button
-                disabled
-                className="cursor-not-allowed rounded-md border border-border bg-panel px-4 py-2 text-sm text-zinc-600"
-              >
-                {nextLabel}
-              </button>
-            ) : (
+      </header>
+
+      {/* Contenido scrollable */}
+      <main className="flex-1 overflow-auto px-6 py-6">{children}</main>
+
+      {/* Footer con CTA magenta y atrás glass */}
+      <footer className="sticky bottom-0 z-10 px-6 pt-3 pb-4">
+        <div className="glass flex items-center justify-between rounded-[28px] px-6 py-3">
+          <div>
+            {prevHref ? (
               <Link
-                href={nextHref}
-                onClick={onNext}
-                className="rounded-md border border-accent/60 bg-accent/20 px-4 py-2 text-sm font-semibold text-accent transition hover:bg-accent/30"
+                href={prevHref}
+                className="btn-glass inline-flex items-center gap-2"
               >
-                {nextLabel}
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M19 12H5M12 5l-7 7 7 7" />
+                </svg>
+                Atrás
               </Link>
-            )
-          ) : (
-            <span />
-          )}
+            ) : (
+              <span />
+            )}
+          </div>
+          <div>
+            {nextHref ? (
+              nextDisabled ? (
+                <button
+                  disabled
+                  className="inline-flex cursor-not-allowed items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-5 py-2 font-medium text-zinc-600"
+                >
+                  {nextLabel}
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </button>
+              ) : (
+                <Link
+                  href={nextHref}
+                  onClick={onNext}
+                  className="inline-flex items-center gap-2 rounded-full border border-fuchsia-500/40 bg-fuchsia-500/20 px-5 py-2 font-medium text-fuchsia-200 backdrop-blur-md transition hover:bg-fuchsia-500/30"
+                  style={{
+                    boxShadow:
+                      'inset 0 1px 0 0 rgba(255,255,255,0.18), 0 0 24px -6px rgba(217,70,239,0.45)',
+                  }}
+                >
+                  {nextLabel}
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </Link>
+              )
+            ) : (
+              <span />
+            )}
+          </div>
         </div>
       </footer>
     </div>
