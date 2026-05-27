@@ -10,6 +10,12 @@ interface Props {
 
 type Tab = 'bank' | 'assigned';
 
+/**
+ * Ideas panel — Liquid Glass refresh 2026-05-27.
+ *
+ * Tabs glass (banco vs asignadas), form glass para crear, listado glass con
+ * priority pill + tags chips. Magenta accent en el tab activo.
+ */
 export function IdeasPanel({ initialIdeas }: Props) {
   const [ideas, setIdeas] = useState<Idea[]>(initialIdeas);
   const [tab, setTab] = useState<Tab>('bank');
@@ -24,7 +30,9 @@ export function IdeasPanel({ initialIdeas }: Props) {
   const [creating, setCreating] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const visible = ideas.filter((i) => (tab === 'bank' ? i.channelId === null : i.channelId !== null));
+  const visible = ideas.filter((i) =>
+    tab === 'bank' ? i.channelId === null : i.channelId !== null,
+  );
 
   async function create() {
     setErr(null);
@@ -63,19 +71,30 @@ export function IdeasPanel({ initialIdeas }: Props) {
     setIdeas(ideas.filter((i) => i.id !== id));
   }
 
-  const canCreate = form.title.trim().length >= 3 && form.description.trim().length >= 5 && !creating;
+  const canCreate =
+    form.title.trim().length >= 3 &&
+    form.description.trim().length >= 5 &&
+    !creating;
 
   return (
     <div className="space-y-5">
       {/* Tabs */}
       <div className="flex gap-2">
-        <TabBtn label={`Banco (${ideas.filter((i) => i.channelId === null).length})`} active={tab === 'bank'} onClick={() => setTab('bank')} />
-        <TabBtn label={`Asignadas (${ideas.filter((i) => i.channelId !== null).length})`} active={tab === 'assigned'} onClick={() => setTab('assigned')} />
+        <TabBtn
+          label={`Banco (${ideas.filter((i) => i.channelId === null).length})`}
+          active={tab === 'bank'}
+          onClick={() => setTab('bank')}
+        />
+        <TabBtn
+          label={`Asignadas (${ideas.filter((i) => i.channelId !== null).length})`}
+          active={tab === 'assigned'}
+          onClick={() => setTab('assigned')}
+        />
       </div>
 
       {/* Form crear */}
-      <div className="rounded-md border border-border bg-panel/40 p-4">
-        <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-300">
+      <div className="glass rounded-[24px] p-5">
+        <h4 className="mb-3 text-[11px] font-medium uppercase tracking-label text-fuchsia-300/80">
           Crear idea
         </h4>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
@@ -84,14 +103,14 @@ export function IdeasPanel({ initialIdeas }: Props) {
             placeholder="Título (mín 3 chars)"
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
-            className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-white focus:border-accent"
+            className={INPUT_CLS}
           />
           <input
             type="text"
             placeholder="Canal (slug o uuid de draft) — vacío = Banco"
             value={form.channelId}
             onChange={(e) => setForm({ ...form, channelId: e.target.value })}
-            className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-white focus:border-accent"
+            className={INPUT_CLS}
           />
         </div>
         <textarea
@@ -99,7 +118,7 @@ export function IdeasPanel({ initialIdeas }: Props) {
           value={form.description}
           onChange={(e) => setForm({ ...form, description: e.target.value })}
           rows={3}
-          className="mt-2 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-white focus:border-accent"
+          className={`mt-2 ${INPUT_CLS}`}
         />
         <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
           <input
@@ -107,14 +126,17 @@ export function IdeasPanel({ initialIdeas }: Props) {
             placeholder="Tags (separados por coma)"
             value={form.tags}
             onChange={(e) => setForm({ ...form, tags: e.target.value })}
-            className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-white focus:border-accent"
+            className={INPUT_CLS}
           />
           <select
             value={form.priority}
             onChange={(e) =>
-              setForm({ ...form, priority: Number(e.target.value) as 1 | 2 | 3 | 4 | 5 })
+              setForm({
+                ...form,
+                priority: Number(e.target.value) as 1 | 2 | 3 | 4 | 5,
+              })
             }
-            className="rounded-md border border-border bg-bg px-3 py-2 text-sm text-white focus:border-accent"
+            className={INPUT_CLS}
           >
             <option value={1}>Prioridad 1 (baja)</option>
             <option value={2}>Prioridad 2</option>
@@ -124,22 +146,42 @@ export function IdeasPanel({ initialIdeas }: Props) {
           </select>
         </div>
         {err && (
-          <div className="mt-2 rounded border border-red-700/60 bg-red-900/20 p-2 text-xs text-red-300">
-            Error: {err}
+          <div className="mt-3 rounded-2xl border border-red-500/40 bg-red-500/5 p-3 text-xs text-red-300">
+            <span className="font-medium">Error:</span> {err}
           </div>
         )}
-        <div className="mt-3 flex justify-end">
+        <div className="mt-4 flex justify-end">
           <button
             type="button"
             onClick={create}
             disabled={!canCreate}
-            className={`rounded-md border px-4 py-1.5 text-xs font-semibold ${
+            className={
               canCreate
-                ? 'border-accent/60 bg-accent/20 text-accent hover:bg-accent/30'
-                : 'cursor-not-allowed border-border bg-panel text-zinc-600'
-            }`}
+                ? 'inline-flex items-center gap-2 rounded-full border border-fuchsia-500/40 bg-fuchsia-500/20 px-4 py-1.5 text-sm font-medium text-fuchsia-200 backdrop-blur-md transition hover:bg-fuchsia-500/30'
+                : 'inline-flex cursor-not-allowed items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-1.5 text-sm font-medium text-zinc-600'
+            }
+            style={
+              canCreate
+                ? {
+                    boxShadow:
+                      'inset 0 1px 0 0 rgba(255,255,255,0.18), 0 0 16px -4px rgba(217,70,239,0.45)',
+                  }
+                : undefined
+            }
           >
-            {creating ? 'Creando…' : '+ Crear idea'}
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            {creating ? 'Creando…' : 'Crear idea'}
           </button>
         </div>
       </div>
@@ -147,41 +189,61 @@ export function IdeasPanel({ initialIdeas }: Props) {
       {/* Listado */}
       {visible.length === 0 ? (
         <p className="text-sm text-zinc-500">
-          {tab === 'bank' ? 'El banco está vacío.' : 'No hay ideas asignadas a canal todavía.'}
+          {tab === 'bank'
+            ? 'El banco está vacío.'
+            : 'No hay ideas asignadas a canal todavía.'}
         </p>
       ) : (
         <ul className="space-y-2">
           {visible.map((i) => (
-            <li key={i.id} className="rounded-md border border-border bg-panel p-3">
+            <li key={i.id} className="glass glass-hover rounded-2xl p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold text-white">
-                    {i.title}
-                    <span className="ml-2 inline-block rounded-full bg-bg px-2 py-0.5 text-[10px] text-zinc-500">
-                      P{i.priority}
+                  <div className="mb-1.5 flex items-baseline gap-2">
+                    <span className="font-display text-sm font-medium tracking-display text-white">
+                      {i.title}
                     </span>
+                    <PriorityPill priority={i.priority} />
                   </div>
-                  <div className="mt-1 text-xs text-zinc-400">{i.description}</div>
+                  <p className="text-xs leading-relaxed text-zinc-400">
+                    {i.description}
+                  </p>
                   {i.tags.length > 0 && (
-                    <div className="mt-1 flex flex-wrap gap-1">
+                    <div className="mt-2 flex flex-wrap gap-1.5">
                       {i.tags.map((t) => (
-                        <span key={t} className="rounded-full bg-bg px-2 py-0.5 text-[10px] text-zinc-400">
+                        <span
+                          key={t}
+                          className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] text-zinc-400"
+                        >
                           {t}
                         </span>
                       ))}
                     </div>
                   )}
                   {i.channelId && (
-                    <div className="mt-1 text-[10px] text-accent">→ canal: {i.channelId}</div>
+                    <p className="mt-2 font-mono text-[10px] text-fuchsia-300">
+                      → canal: {i.channelId}
+                    </p>
                   )}
                 </div>
                 <button
                   type="button"
                   onClick={() => remove(i.id)}
-                  className="text-xs text-zinc-500 hover:text-red-400"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-zinc-500 hover:border-red-500/30 hover:text-red-400"
                   title="Eliminar"
                 >
-                  ✕
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M6 6l12 12M18 6L6 18" />
+                  </svg>
                 </button>
               </div>
             </li>
@@ -192,18 +254,51 @@ export function IdeasPanel({ initialIdeas }: Props) {
   );
 }
 
-function TabBtn({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+const INPUT_CLS =
+  'w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-white placeholder:text-zinc-500 focus:border-fuchsia-500/40 focus:bg-white/[0.06] focus:outline-none';
+
+function TabBtn({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-md border px-3 py-1.5 text-xs font-semibold transition ${
+      className={`rounded-full border px-4 py-1.5 text-xs font-medium transition ${
         active
-          ? 'border-accent/60 bg-accent/20 text-accent'
-          : 'border-border bg-panel text-zinc-400 hover:border-zinc-500 hover:text-white'
+          ? 'border-fuchsia-500/40 bg-fuchsia-500/15 text-fuchsia-200'
+          : 'border-white/10 bg-white/[0.04] text-zinc-400 hover:border-white/20 hover:text-white'
       }`}
+      style={
+        active
+          ? { boxShadow: '0 0 12px -2px rgba(217,70,239,0.4)' }
+          : undefined
+      }
     >
       {label}
     </button>
+  );
+}
+
+function PriorityPill({ priority }: { priority: 1 | 2 | 3 | 4 | 5 }) {
+  const intensity = priority >= 4 ? 'high' : priority === 3 ? 'mid' : 'low';
+  const cls =
+    intensity === 'high'
+      ? 'border-fuchsia-500/40 bg-fuchsia-500/14 text-fuchsia-300'
+      : intensity === 'mid'
+      ? 'border-white/10 bg-white/[0.04] text-zinc-300'
+      : 'border-white/10 bg-white/[0.04] text-zinc-500';
+  return (
+    <span
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${cls}`}
+    >
+      P{priority}
+    </span>
   );
 }

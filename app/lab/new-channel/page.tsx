@@ -15,6 +15,12 @@ const LANGUAGES: Array<{ value: DraftLanguage; label: string }> = [
   { value: 'other', label: 'Otro' },
 ];
 
+/**
+ * New channel wizard step 1 — Liquid Glass refresh 2026-05-27.
+ *
+ * Form de entrada al wizard. Inputs glass con focus magenta, label uppercase
+ * tracking-label. CTA magenta principal al final.
+ */
 export default function NewChannelStep1Page() {
   const router = useRouter();
   const [url, setUrl] = useState('');
@@ -57,39 +63,28 @@ export default function NewChannelStep1Page() {
       <div className="flex min-w-0 flex-1 flex-col">
         <WizardStepLayout
           step={1}
-          title="1. Referencia"
+          title="Referencia"
           subtitle="Pega el canal a clonar, el idioma y un tema inicial. Style-engine necesita 2-3 transcripts completos."
           prevHref="/lab"
-          nextHref={canSubmit ? '#' : null}
-          nextDisabled={!canSubmit}
-          nextLabel={submitting ? 'Creando…' : 'Crear draft y continuar →'}
-          onNext={() => {
-            // El href "#" no navega — el submit se dispara desde el botón explícito de abajo.
-          }}
+          nextHref={null}
         >
           <div className="mx-auto max-w-3xl space-y-5">
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400">
-                URL del canal de referencia
-              </label>
+            <FormField label="URL del canal de referencia">
               <input
                 type="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://www.youtube.com/@somecanal"
-                className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-white outline-none focus:border-accent"
+                className={INPUT_CLS}
               />
-            </div>
+            </FormField>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400">
-                  Idioma principal
-                </label>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField label="Idioma principal">
                 <select
                   value={language}
                   onChange={(e) => setLanguage(e.target.value as DraftLanguage)}
-                  className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-white outline-none focus:border-accent"
+                  className={INPUT_CLS}
                 >
                   {LANGUAGES.map((l) => (
                     <option key={l.value} value={l.value}>
@@ -97,26 +92,39 @@ export default function NewChannelStep1Page() {
                     </option>
                   ))}
                 </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400">
-                  Tema inicial (opcional)
-                </label>
+              </FormField>
+              <FormField
+                label="Tema inicial (opcional)"
+                helper="Vacío = ideas-please"
+              >
                 <input
                   type="text"
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
-                  placeholder="ej. La caída del Imperio Romano  |  vacío = ideas-please"
-                  className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-white outline-none focus:border-accent"
+                  placeholder="Ej. La caída del Imperio Romano"
+                  className={INPUT_CLS}
                 />
-              </div>
+              </FormField>
             </div>
 
             {transcripts.map((t, idx) => (
-              <div key={idx}>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400">
-                  Transcript #{idx + 1} {idx >= 2 ? '(opcional)' : '(obligatorio)'}
-                </label>
+              <FormField
+                key={idx}
+                label={`Transcript #${idx + 1} ${
+                  idx >= 2 ? '(opcional)' : '(obligatorio)'
+                }`}
+                helper={
+                  <span>
+                    <span className="nums font-mono">{t.trim().length}</span>{' '}
+                    caracteres
+                    {t.trim().length > 0 && t.trim().length < 200 && (
+                      <span className="ml-2 text-amber-300">
+                        Demasiado corto — pega el transcript completo.
+                      </span>
+                    )}
+                  </span>
+                }
+              >
                 <textarea
                   value={t}
                   onChange={(e) => {
@@ -126,32 +134,24 @@ export default function NewChannelStep1Page() {
                   }}
                   rows={6}
                   placeholder="Pega el transcript COMPLETO del vídeo aquí (sin resumir)."
-                  className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-xs text-white outline-none focus:border-accent font-mono"
+                  className={`${INPUT_CLS} font-mono text-[12px] leading-relaxed`}
                 />
-                <div className="mt-1 text-[10px] text-zinc-500">
-                  {t.trim().length} caracteres
-                  {t.trim().length > 0 && t.trim().length < 200 && (
-                    <span className="ml-2 text-amber-400">
-                      Demasiado corto — pega el transcript completo.
-                    </span>
-                  )}
-                </div>
-              </div>
+              </FormField>
             ))}
 
             {transcripts.length < 3 && (
               <button
                 type="button"
                 onClick={() => setTranscripts([...transcripts, ''])}
-                className="text-xs text-accent hover:underline"
+                className="text-xs font-medium text-fuchsia-300 hover:text-fuchsia-200"
               >
                 + Añadir un tercer transcript (recomendado)
               </button>
             )}
 
             {err && (
-              <div className="rounded border border-red-700/60 bg-red-900/20 p-3 text-sm text-red-300">
-                Error: {err}
+              <div className="glass rounded-2xl border border-red-500/40 bg-red-500/5 p-4 text-sm text-red-300">
+                <span className="font-medium">Error:</span> {err}
               </div>
             )}
 
@@ -160,18 +160,61 @@ export default function NewChannelStep1Page() {
                 type="button"
                 onClick={submit}
                 disabled={!canSubmit}
-                className={`rounded-md border px-5 py-2 text-sm font-semibold transition ${
+                className={
                   canSubmit
-                    ? 'border-accent/60 bg-accent/20 text-accent hover:bg-accent/30'
-                    : 'cursor-not-allowed border-border bg-panel text-zinc-600'
-                }`}
+                    ? 'inline-flex items-center gap-2 rounded-full border border-fuchsia-500/40 bg-fuchsia-500/20 px-6 py-2.5 font-medium text-fuchsia-200 backdrop-blur-md transition hover:bg-fuchsia-500/30'
+                    : 'inline-flex cursor-not-allowed items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-6 py-2.5 font-medium text-zinc-600'
+                }
+                style={
+                  canSubmit
+                    ? {
+                        boxShadow:
+                          'inset 0 1px 0 0 rgba(255,255,255,0.18), 0 0 24px -6px rgba(217,70,239,0.45)',
+                      }
+                    : undefined
+                }
               >
-                {submitting ? 'Creando…' : 'Crear draft y continuar →'}
+                {submitting ? 'Creando…' : 'Crear draft y continuar'}
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
               </button>
             </div>
           </div>
         </WizardStepLayout>
       </div>
+    </div>
+  );
+}
+
+const INPUT_CLS =
+  'w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-white placeholder:text-zinc-500 focus:border-fuchsia-500/40 focus:bg-white/[0.06] focus:outline-none';
+
+function FormField({
+  label,
+  helper,
+  children,
+}: {
+  label: string;
+  helper?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-label text-zinc-500">
+        {label}
+      </label>
+      {children}
+      {helper && <p className="mt-1.5 text-xs text-zinc-500">{helper}</p>}
     </div>
   );
 }
