@@ -57,7 +57,9 @@ export default function ChatDetailPage() {
     setLoading(false);
   }, [sessionId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   if (loading) {
     return (
@@ -68,9 +70,14 @@ export default function ChatDetailPage() {
   }
   if (error || !data) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-12">
-        <Link href="/chats" className="text-sm text-muted hover:text-white">← Chats</Link>
-        <div className="mt-4 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+      <main className="mx-auto max-w-3xl px-8 py-12">
+        <Link
+          href="/chats"
+          className="inline-flex items-center gap-1.5 text-sm text-zinc-400 transition hover:text-white"
+        >
+          <BackArrow /> Chats
+        </Link>
+        <div className="mt-4 rounded-3xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
           {error || 'Sesión no encontrada'}
         </div>
       </main>
@@ -78,12 +85,20 @@ export default function ChatDetailPage() {
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-6">
-      <header className="mb-4 border-b border-border pb-3">
-        <Link href="/chats" className="text-xs text-muted hover:text-white">← Chats</Link>
-        <h1 className="mt-1 text-xl font-bold text-white">Sesión {sessionId}</h1>
-        <p className="text-xs text-muted">
-          {data.messages.length} mensajes · proyecto: <span className="font-mono">{data.project}</span>
+    <main className="mx-auto max-w-4xl px-8 pb-12 pt-2">
+      <header className="mb-6">
+        <Link
+          href="/chats"
+          className="inline-flex items-center gap-1.5 text-xs text-zinc-500 transition hover:text-white"
+        >
+          <BackArrow /> Chats
+        </Link>
+        <h1 className="mt-2 font-display text-2xl font-semibold tracking-display text-white">
+          Sesión <span className="font-mono text-lg text-zinc-400">{sessionId}</span>
+        </h1>
+        <p className="mt-1 text-xs text-zinc-500">
+          <span className="nums">{data.messages.length}</span> mensajes · proyecto:{' '}
+          <span className="font-mono text-zinc-400">{data.project}</span>
         </p>
       </header>
 
@@ -92,28 +107,35 @@ export default function ChatDetailPage() {
           const role = detectRole(m);
           const text = extractText(m);
           if (!text && role === 'other') return null;
+          const isUser = role === 'user';
+          const isAssistant = role === 'assistant';
           return (
-            <div key={idx} className={`flex ${role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div
+              key={idx}
+              className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
+            >
               <div
-                className={`max-w-[85%] rounded-2xl border px-3 py-2 text-sm ${
-                  role === 'user'
-                    ? 'rounded-br-md border-zinc-700/60 bg-zinc-800/80 text-zinc-100'
-                    : role === 'assistant'
-                    ? 'rounded-bl-md border-accent/20 bg-accent/5 text-zinc-100'
-                    : 'border-border bg-bg/40 text-muted'
+                className={`max-w-[85%] rounded-3xl px-4 py-2.5 text-sm ${
+                  isUser
+                    ? 'glass rounded-br-lg text-zinc-100'
+                    : isAssistant
+                    ? 'rounded-bl-lg border border-accent/30 bg-accent/5 text-zinc-100'
+                    : 'glass text-zinc-400'
                 }`}
               >
-                {role === 'assistant' && text ? (
+                {isAssistant && text ? (
                   <div className="prose-tg max-w-none text-sm leading-relaxed">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
                   </div>
                 ) : text ? (
                   <p className="whitespace-pre-wrap break-words">{text}</p>
                 ) : (
-                  <p className="text-[10px] italic text-muted">({role} sin texto plano — bloque de tool)</p>
+                  <p className="text-[10px] italic text-zinc-500">
+                    ({role} sin texto plano — bloque de tool)
+                  </p>
                 )}
                 {m.timestamp && (
-                  <p className="mt-1 text-[9px] text-zinc-500">
+                  <p className="nums mt-1 text-[9px] text-zinc-500">
                     {new Date(m.timestamp).toLocaleString('es-ES')}
                   </p>
                 )}
@@ -123,5 +145,13 @@ export default function ChatDetailPage() {
         })}
       </div>
     </main>
+  );
+}
+
+function BackArrow() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 12H5M12 19l-7-7 7-7" />
+    </svg>
   );
 }
