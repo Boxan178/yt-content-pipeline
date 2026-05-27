@@ -87,7 +87,7 @@ export function PackagingSections({ markdown }: Props) {
   if (sections.length === 0) {
     // No hay headings — render plano
     return (
-      <div className="prose-tg overflow-hidden rounded-lg border border-border bg-bg/60 p-5">
+      <div className="prose-tg glass overflow-hidden rounded-3xl p-5">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>
       </div>
     );
@@ -95,17 +95,23 @@ export function PackagingSections({ markdown }: Props) {
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-end gap-2 px-1 text-[10px] text-muted">
-        <button onClick={() => setAll(true)} className="rounded border border-border bg-bg px-2 py-0.5 hover:text-white">
+      <div className="flex items-center justify-end gap-1.5 px-1 text-[10px]">
+        <button
+          onClick={() => setAll(true)}
+          className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-zinc-400 transition hover:bg-white/10 hover:text-white"
+        >
           Expandir todo
         </button>
-        <button onClick={() => setAll(false)} className="rounded border border-border bg-bg px-2 py-0.5 hover:text-white">
+        <button
+          onClick={() => setAll(false)}
+          className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-zinc-400 transition hover:bg-white/10 hover:text-white"
+        >
           Colapsar todo
         </button>
       </div>
 
       {intro && (
-        <div className="prose-tg overflow-hidden rounded-lg border border-border bg-bg/60 p-4">
+        <div className="prose-tg glass overflow-hidden rounded-3xl p-4">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{intro}</ReactMarkdown>
         </div>
       )}
@@ -115,19 +121,23 @@ export function PackagingSections({ markdown }: Props) {
         return (
           <div
             key={`${idx}-${s.heading}`}
-            className="overflow-hidden rounded-lg border border-border bg-bg/60"
+            className="glass overflow-hidden rounded-3xl"
           >
             <button
               onClick={() => setOpenMap((prev) => ({ ...prev, [idx]: !open }))}
-              className="flex w-full items-center justify-between gap-2 px-4 py-2.5 text-left transition hover:bg-bg/80"
+              className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition hover:bg-white/5"
             >
-              <span className="text-sm font-semibold text-white">{s.heading}</span>
+              <span className="font-display text-sm font-semibold tracking-display text-white">
+                {s.heading}
+              </span>
               <span className={`text-zinc-500 transition-transform ${open ? 'rotate-90' : ''}`}>
-                ▶
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 6l6 6-6 6" />
+                </svg>
               </span>
             </button>
             {open && (
-              <div className="border-t border-border/60 px-4 py-3">
+              <div className="border-t border-white/10 px-4 py-3">
                 <div className="prose-tg">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{s.raw}</ReactMarkdown>
                 </div>

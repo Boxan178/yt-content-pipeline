@@ -122,31 +122,34 @@ export function VideoDetailModal({ video, onClose }: Props) {
 
   return (
     <div
-      className="absolute inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/80 p-4 backdrop-blur-sm"
+      className="absolute inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="my-8 w-full max-w-7xl rounded-2xl border border-border bg-panel shadow-2xl"
+        className="glass-premium my-8 w-full max-w-7xl overflow-hidden rounded-[28px]"
       >
         {/* Header */}
-        <header className="flex items-start justify-between gap-4 border-b border-border p-5">
+        <header className="flex items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
           <div className="min-w-0 flex-1">
-            <p className="text-xs uppercase tracking-wider text-muted">
-              {video.state} · {detail?.stateFolder ?? ''}
+            <p className="text-[10px] font-medium uppercase tracking-label text-zinc-500">
+              {video.state}{detail?.stateFolder ? ` · ${detail.stateFolder}` : ''}
             </p>
-            <h1 className="mt-1 text-xl font-bold text-white">{video.title}</h1>
+            <h1 className="mt-1.5 font-display text-2xl font-semibold tracking-display text-white">
+              {video.title}
+            </h1>
             {detail?.folderPath && (
               <button
                 onClick={() => copyPath(detail.folderPath)}
-                className="mt-1 truncate font-mono text-[11px] text-muted hover:text-white"
+                className="mt-1.5 flex max-w-full items-center gap-1.5 truncate font-mono text-[11px] text-zinc-500 transition hover:text-white"
                 title={detail.folderPath}
               >
-                {detail.folderPath}
+                <IconCopy />
+                <span className="truncate">{detail.folderPath}</span>
               </button>
             )}
           </div>
-          <div className="flex shrink-0 gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             {(() => {
               const pct = video.progress?.percent ?? 0;
               const ready = pct >= 80;
@@ -164,42 +167,42 @@ export function VideoDetailModal({ video, onClose }: Props) {
                     if (!ready) e.preventDefault();
                   }}
                   title={reason || 'Configurar subida a YouTube'}
-                  className={`rounded-md border px-3 py-1.5 text-sm font-medium transition ${
+                  className={
                     ready
-                      ? 'border-accent/40 bg-accent/10 text-accent hover:bg-accent/20'
-                      : 'cursor-not-allowed border-border bg-bg text-zinc-500 opacity-60'
-                  }`}
+                      ? 'btn-gold'
+                      : 'btn-glass cursor-not-allowed opacity-60'
+                  }
                 >
-                  📤 Subir
+                  <IconUpload />
+                  Subir
                 </a>
               );
             })()}
-            <button
-              onClick={openFolder}
-              className="rounded-md border border-border bg-bg px-3 py-1.5 text-sm text-white transition hover:border-accent/60"
-            >
+            <button onClick={openFolder} className="btn-glass" title="Abrir carpeta en Explorer">
+              <IconFolder />
               Abrir carpeta
             </button>
             <button
               onClick={onClose}
-              className="rounded-md border border-border bg-bg px-3 py-1.5 text-sm text-muted transition hover:text-white"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-zinc-400 transition hover:bg-white/10 hover:text-white"
+              title="Cerrar (Esc)"
             >
-              Cerrar (Esc)
+              <IconClose />
             </button>
           </div>
         </header>
 
         {/* Body */}
-        <div className="grid grid-cols-1 gap-6 p-5 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-3">
           {/* Left column: media + packaging (2/3 del ancho en md+) */}
           <div className="flex flex-col gap-6 md:col-span-2">
             {/* Render principal */}
             <section>
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
+              <h2 className="mb-3 text-[11px] font-medium uppercase tracking-label text-zinc-500">
                 Render principal
               </h2>
               {loading ? (
-                <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-border text-muted">
+                <div className="glass flex h-40 items-center justify-center rounded-3xl text-zinc-500">
                   Cargando…
                 </div>
               ) : detail?.renderPrincipal ? (
@@ -207,17 +210,17 @@ export function VideoDetailModal({ video, onClose }: Props) {
                   <video
                     controls
                     preload="metadata"
-                    className="max-h-[55vh] w-full rounded-lg border border-border bg-black"
+                    className="max-h-[55vh] w-full rounded-2xl border border-white/10 bg-black"
                     src={mediaUrl(detail.renderPrincipal.relPath)}
                   />
-                  <p className="mt-1 text-xs text-muted">
+                  <p className="mt-2 font-mono text-[11px] text-zinc-500">
                     {detail.renderPrincipal.name} · {formatBytes(detail.renderPrincipal.size)}
                   </p>
                 </div>
               ) : (
-                <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted">
+                <div className="glass rounded-3xl px-4 py-8 text-center text-sm text-zinc-500">
                   Sin render principal
-                </p>
+                </div>
               )}
             </section>
 
@@ -246,18 +249,18 @@ export function VideoDetailModal({ video, onClose }: Props) {
             {/* Locución (audios) */}
             {detail && detail.audios.length > 0 && (
               <section>
-                <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
-                  Locución ({detail.audios.length} archivos)
+                <h2 className="mb-3 text-[11px] font-medium uppercase tracking-label text-zinc-500">
+                  Locución <span className="nums text-zinc-400">({detail.audios.length})</span>
                 </h2>
                 <div className="flex flex-wrap gap-1.5">
                   {detail.audios.map((a, i) => (
                     <button
                       key={a.relPath}
                       onClick={() => setAudioIdx(i)}
-                      className={`rounded border px-2 py-1 text-xs transition ${
+                      className={`rounded-full border px-3 py-1 text-xs transition ${
                         audioIdx === i
-                          ? 'border-accent/60 bg-accent/10 text-accent'
-                          : 'border-border bg-bg text-muted hover:border-zinc-500 hover:text-white'
+                          ? 'border-accent/50 bg-accent/15 text-accent'
+                          : 'border-white/10 bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white'
                       }`}
                     >
                       {a.name.replace(/\.[^.]+$/, '')}
@@ -265,14 +268,14 @@ export function VideoDetailModal({ video, onClose }: Props) {
                   ))}
                 </div>
                 {detail.audios[audioIdx] && (
-                  <div className="mt-2">
+                  <div className="mt-3 glass rounded-2xl p-3">
                     <audio
                       controls
                       preload="metadata"
                       className="w-full"
                       src={mediaUrl(detail.audios[audioIdx].relPath)}
                     />
-                    <p className="mt-1 text-xs text-muted">
+                    <p className="mt-2 font-mono text-[11px] text-zinc-500">
                       {detail.audios[audioIdx].name} · {formatBytes(detail.audios[audioIdx].size)}
                     </p>
                   </div>
@@ -283,16 +286,16 @@ export function VideoDetailModal({ video, onClose }: Props) {
             {/* Packaging.md — secciones colapsables */}
             {detail?.packagingMd ? (
               <section>
-                <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
+                <h2 className="mb-3 text-[11px] font-medium uppercase tracking-label text-zinc-500">
                   packaging.md
                 </h2>
                 <PackagingSections markdown={detail.packagingMd} />
               </section>
             ) : detail ? (
               <section>
-                <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted">
+                <div className="glass rounded-3xl px-4 py-8 text-center text-sm text-zinc-500">
                   Sin packaging.md
-                </p>
+                </div>
               </section>
             ) : null}
           </div>
@@ -300,7 +303,7 @@ export function VideoDetailModal({ video, onClose }: Props) {
           {/* Right column: render panel + file lists + meta (1/3 del ancho en md+) */}
           <aside className="flex flex-col gap-4 md:col-span-1">
             {error && (
-              <div className="rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+              <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
                 {error}
               </div>
             )}
@@ -355,13 +358,13 @@ export function VideoDetailModal({ video, onClose }: Props) {
                 ? 'Para subir necesitas una miniatura final en _PACKAGING/MINIATURAS/.'
                 : undefined;
               return (
-                <section className="rounded-lg border border-border bg-bg/40 p-4">
-                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">
+                <section className="glass rounded-3xl p-4">
+                  <h3 className="mb-3 text-[11px] font-medium uppercase tracking-label text-zinc-500">
                     Pipeline con Claude
                   </h3>
                   <div className="space-y-3">
                     <ClaudeRunButton
-                      label="🎬 Retomar pipeline con SARA"
+                      label="Retomar pipeline con SARA"
                       hint="SARA diagnostica el estado del vídeo y orquesta a quien corresponda. Siempre activa (su trabajo es arreglar lo que falte). Hasta 30 min."
                       prompt={sara.prompt}
                       cwd={sara.cwd}
@@ -416,7 +419,7 @@ export function VideoDetailModal({ video, onClose }: Props) {
                       />
                     )}
                     <ClaudeRunButton
-                      label={hasAnyAudio ? '🎙️ Completar locución con CALIOPE' : '🎙️ Generar locución con CALIOPE'}
+                      label={hasAnyAudio ? 'Completar locución con CALIOPE' : 'Generar locución con CALIOPE'}
                       hint={hasAnyAudio
                         ? 'CALIOPE compara los mp3s existentes con el tts-jobs.json y genera los chunks que falten via Algrow MCP.'
                         : 'CALIOPE busca el tts-jobs.json del vídeo y genera todos los chunks via Algrow MCP.'}
@@ -430,7 +433,7 @@ export function VideoDetailModal({ video, onClose }: Props) {
                       variant="subtle"
                     />
                     <ClaudeRunButton
-                      label="🎯 Diagnóstico estratégico (MARIO)"
+                      label="Diagnóstico estratégico (MARIO)"
                       hint="MARIO valida topic + busca outliers + estima targets CTR/AVD + da veredicto GO/PIVOT/STOP. Útil antes de empezar producción."
                       prompt={mario.prompt}
                       cwd={mario.cwd}
@@ -444,7 +447,7 @@ export function VideoDetailModal({ video, onClose }: Props) {
                     />
                     {video.state === 'uploaded' && (
                       <ClaudeRunButton
-                        label="🔍 Post-mortem 72h (test-72h)"
+                        label="Post-mortem 72h (test-72h)"
                         hint="Pull de YouTube Analytics + comparativa vs target + propuestas de iteración (title v2 / thumb v2). Solo aplica >72h post-publicación."
                         prompt={test72h.prompt}
                         cwd={test72h.cwd}
@@ -459,7 +462,7 @@ export function VideoDetailModal({ video, onClose }: Props) {
                       />
                     )}
                     <ClaudeRunButton
-                      label="📝 Proponer títulos con MARCOS"
+                      label="Proponer títulos con MARCOS"
                       hint="MARCOS genera 4 rutas de título (curiosidad / search / tensión / híbrido) y recomienda una. 1-3 min."
                       prompt={marcos.prompt}
                       cwd={marcos.cwd}
@@ -471,7 +474,7 @@ export function VideoDetailModal({ video, onClose }: Props) {
                       variant="subtle"
                     />
                     <ClaudeRunButton
-                      label="📤 Subir a YouTube (privado)"
+                      label="Subir a YouTube (privado)"
                       hint="Usa youtube-seo-optimizer: sube el render + miniatura + metadata como BORRADOR privado. Te paso el link para que apruebes y publiques manualmente."
                       prompt={upload.prompt}
                       cwd={upload.cwd}
@@ -485,7 +488,7 @@ export function VideoDetailModal({ video, onClose }: Props) {
                       variant="subtle"
                     />
                     <ClaudeRunButton
-                      label="🎬 Editar vídeo con LUIS"
+                      label="Editar vídeo con LUIS"
                       hint="Pipeline completo de edición: render con forced alignment + auto-audit visual + AMELIA + MARCUS HALE + mover a PENDIENTE DE REVISAR + assign-task. 25-40 min."
                       prompt={luis.prompt}
                       cwd={luis.cwd}
@@ -522,32 +525,41 @@ export function VideoDetailModal({ video, onClose }: Props) {
 
             {detail && (
               <>
-                <section className="rounded-lg border border-border bg-bg/40 p-3">
-                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
+                <section className="glass rounded-3xl p-4">
+                  <h3 className="mb-3 text-[11px] font-medium uppercase tracking-label text-zinc-500">
                     Resumen
                   </h3>
-                  <ul className="space-y-1 text-sm text-zinc-300">
-                    <li>Vídeos: <span className="text-white">{detail.counts.videos}</span></li>
-                    <li>Audios: <span className="text-white">{detail.counts.audios}</span></li>
-                    <li>Imágenes: <span className="text-white">{detail.counts.images}</span></li>
+                  <ul className="space-y-1.5 text-sm text-zinc-300">
+                    <li className="flex items-center justify-between">
+                      <span>Vídeos</span>
+                      <span className="nums font-display font-medium text-white">{detail.counts.videos}</span>
+                    </li>
+                    <li className="flex items-center justify-between">
+                      <span>Audios</span>
+                      <span className="nums font-display font-medium text-white">{detail.counts.audios}</span>
+                    </li>
+                    <li className="flex items-center justify-between">
+                      <span>Imágenes</span>
+                      <span className="nums font-display font-medium text-white">{detail.counts.images}</span>
+                    </li>
                   </ul>
                 </section>
 
-                <section className="rounded-lg border border-border bg-bg/40 p-3">
-                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
-                    Archivos ({detail.allFiles.length})
+                <section className="glass rounded-3xl p-4">
+                  <h3 className="mb-3 text-[11px] font-medium uppercase tracking-label text-zinc-500">
+                    Archivos <span className="nums normal-case tracking-normal text-zinc-400">({detail.allFiles.length})</span>
                   </h3>
-                  <ul className="max-h-80 space-y-1 overflow-y-auto pr-2 text-xs">
+                  <ul className="max-h-80 space-y-1 overflow-y-auto pr-2">
                     {detail.allFiles.map((f) => (
-                      <li key={f.relPath} className="flex items-start justify-between gap-2">
+                      <li key={f.relPath} className="flex items-start justify-between gap-2 rounded-md px-2 py-1 hover:bg-white/5">
                         <button
                           onClick={() => copyPath(`${detail.folderPath}/${f.relPath}`.replace(/\//g, '\\'))}
-                          className="min-w-0 flex-1 truncate text-left text-zinc-400 hover:text-white"
+                          className="min-w-0 flex-1 truncate text-left font-mono text-[11px] text-zinc-400 transition hover:text-white"
                           title={`Copiar ruta · ${f.relPath}`}
                         >
                           {f.relPath}
                         </button>
-                        <span className="shrink-0 text-[10px] text-muted">
+                        <span className="nums shrink-0 font-mono text-[10px] text-zinc-500">
                           {formatBytes(f.size)}
                         </span>
                       </li>
@@ -560,11 +572,42 @@ export function VideoDetailModal({ video, onClose }: Props) {
         </div>
 
         {toast && (
-          <div className="pointer-events-none fixed bottom-6 left-1/2 z-[60] -translate-x-1/2 rounded-lg border border-accent/40 bg-panel px-4 py-2 text-sm text-white shadow-xl">
+          <div className="glass-premium animate-toast-in pointer-events-none fixed bottom-6 left-1/2 z-[60] -translate-x-1/2 rounded-2xl px-4 py-2 text-sm text-white">
             {toast}
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+/* ─────────────── SVG icons ─────────────── */
+function IconCopy() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="9" width="13" height="13" rx="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+function IconUpload() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 4v12M6 10l6-6 6 6M4 20h16" />
+    </svg>
+  );
+}
+function IconFolder() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 7a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+    </svg>
+  );
+}
+function IconClose() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 6L6 18M6 6l12 12" />
+    </svg>
   );
 }

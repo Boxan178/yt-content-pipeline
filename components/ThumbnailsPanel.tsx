@@ -97,18 +97,18 @@ export function ThumbnailsPanel({
   return (
     <section>
       <header className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
-          Miniaturas ({minis.length})
+        <h2 className="text-[11px] font-medium uppercase tracking-label text-zinc-500">
+          Miniaturas <span className="nums normal-case tracking-normal text-zinc-400">({minis.length})</span>
         </h2>
       </header>
 
       {minis.length === 0 ? (
-        <p className="mb-3 rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted">
-          Sin miniaturas en <code className="text-zinc-400">_PACKAGING/MINIATURAS/</code> todavía.
-        </p>
+        <div className="glass mb-4 rounded-3xl px-4 py-8 text-center text-sm text-zinc-500">
+          Sin miniaturas en <code className="font-mono text-zinc-400">_PACKAGING/MINIATURAS/</code> todavía.
+        </div>
       ) : (
         <div
-          className="mb-3 grid gap-3"
+          className="mb-4 grid gap-3"
           style={{ gridTemplateColumns: `repeat(auto-fill, minmax(200px, 1fr))` }}
         >
           {minis.map((img) => {
@@ -117,9 +117,10 @@ export function ThumbnailsPanel({
             return (
               <article
                 key={img.relPath}
-                className={`group relative overflow-hidden rounded-lg border bg-bg/60 transition hover:border-accent/60 ${
-                  isActive ? 'border-green-500/50 ring-1 ring-green-500/30' : 'border-border'
+                className={`glass glass-hover group relative overflow-hidden rounded-2xl ${
+                  isActive ? 'ring-1 ring-green-500/40' : ''
                 }`}
+                style={isActive ? { borderColor: 'rgba(34,197,94,0.4)' } : undefined}
                 title={img.name}
               >
                 <div
@@ -135,25 +136,26 @@ export function ThumbnailsPanel({
                   />
                   {isActive && (
                     <span
-                      className="absolute top-1.5 left-1.5 rounded bg-green-600 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white"
+                      className="pill-active absolute top-2 left-2"
                       title={
                         isExplicit
                           ? 'Marcada como elegida'
                           : 'Más reciente (no hay elegida explícita)'
                       }
                     >
-                      {isExplicit ? '✓ elegida' : 'actual'}
+                      <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
+                      {isExplicit ? 'elegida' : 'actual'}
                     </span>
                   )}
                 </div>
-                <div className="p-2">
+                <div className="p-2.5">
                   <p className="line-clamp-1 text-[11px] text-zinc-300" title={img.name}>
                     {img.name}
                   </p>
-                  <p className="mt-0.5 text-[10px] text-muted">
+                  <p className="nums mt-0.5 font-mono text-[10px] text-zinc-500">
                     {formatBytes(img.size)} · {relTime(img.mtime)}
                   </p>
-                  <div className="mt-1.5 flex items-center gap-1">
+                  <div className="mt-2 flex items-center gap-1">
                     {isExplicit ? (
                       <button
                         onClick={(e) => {
@@ -161,7 +163,7 @@ export function ThumbnailsPanel({
                           setSelectedTo(null);
                         }}
                         disabled={busySelect !== null}
-                        className="flex-1 rounded border border-border bg-bg px-1.5 py-0.5 text-[10px] text-muted transition hover:text-white disabled:opacity-50"
+                        className="flex-1 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-zinc-400 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
                         title="Quitar la marca (vuelve a 'más reciente')"
                       >
                         Quitar marca
@@ -173,7 +175,7 @@ export function ThumbnailsPanel({
                           setSelectedTo(img.name);
                         }}
                         disabled={busySelect !== null}
-                        className="flex-1 rounded border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] text-accent transition hover:bg-accent/20 disabled:opacity-50"
+                        className="flex-1 rounded-full border border-accent/40 bg-accent/10 px-2 py-1 text-[10px] text-accent transition hover:bg-accent/20 disabled:opacity-50"
                         title="Marcar como miniatura elegida"
                       >
                         {busySelect === img.name ? 'Marcando…' : 'Marcar elegida'}
@@ -189,7 +191,7 @@ export function ThumbnailsPanel({
 
       {/* Acción: generar nueva miniatura con NORA + IRIS (ejecuta kie-bridge directo) */}
       <ClaudeRunButton
-        label={minis.length === 0 ? '🎨 Generar miniatura con NORA + IRIS' : '🎨 Iterar miniatura con NORA + IRIS'}
+        label={minis.length === 0 ? 'Generar miniatura con NORA + IRIS' : 'Iterar miniatura con NORA + IRIS'}
         hint="NORA define concepto + IRIS construye prompt + ejecuta kie-bridge (nano-banana-2) directo. Genera 3 variantes a disco."
         prompt={nora.prompt}
         cwd={nora.cwd}
@@ -205,7 +207,7 @@ export function ThumbnailsPanel({
       {/* Lightbox simple al hacer click */}
       {zoomed && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-6"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-6 backdrop-blur-sm"
           onClick={() => setZoomed(null)}
         >
           <div className="relative max-h-full max-w-full" onClick={(e) => e.stopPropagation()}>
@@ -213,20 +215,22 @@ export function ThumbnailsPanel({
             <img
               src={mediaUrl(zoomed.relPath)}
               alt={zoomed.name}
-              className="max-h-[88vh] max-w-[88vw] rounded-lg object-contain"
+              className="max-h-[88vh] max-w-[88vw] rounded-2xl object-contain"
             />
-            <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between rounded bg-black/70 px-3 py-2 text-xs text-white">
+            <div className="glass-premium absolute bottom-4 left-4 right-4 flex items-center justify-between rounded-2xl px-3 py-2 text-xs text-white">
               <span className="truncate">{zoomed.name}</span>
-              <span className="shrink-0 pl-3 text-muted">
+              <span className="nums shrink-0 pl-3 font-mono text-zinc-400">
                 {formatBytes(zoomed.size)} · {relTime(zoomed.mtime)}
               </span>
             </div>
             <button
               onClick={() => setZoomed(null)}
-              className="absolute -top-3 -right-3 flex h-8 w-8 items-center justify-center rounded-full border border-border bg-panel text-sm text-white hover:bg-bg"
+              className="glass-premium absolute -top-3 -right-3 flex h-9 w-9 items-center justify-center rounded-full text-white transition hover:text-accent"
               title="Cerrar (Esc)"
             >
-              ✕
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
             </button>
           </div>
         </div>
