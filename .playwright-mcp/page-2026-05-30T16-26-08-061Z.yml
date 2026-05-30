@@ -1,0 +1,108 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]: ⚠️
+    - generic [ref=e4]: Modo desarrollo · estás corriendo el código sin empaquetar
+  - generic [ref=e5]:
+    - complementary [ref=e6]:
+      - link "YT" [ref=e7] [cursor=pointer]:
+        - /url: /
+      - navigation [ref=e8]:
+        - link "Canales" [ref=e9] [cursor=pointer]:
+          - /url: /
+          - img [ref=e10]
+        - link "Automator" [ref=e13] [cursor=pointer]:
+          - /url: /automator
+          - img [ref=e14]
+        - link "Sleep Stories" [ref=e17] [cursor=pointer]:
+          - /url: /sleep-stories
+          - img [ref=e18]
+        - link "Cola" [ref=e20] [cursor=pointer]:
+          - /url: /queue
+          - img [ref=e21]
+        - link "Visual Lab" [ref=e23] [cursor=pointer]:
+          - /url: /visual-lab
+          - img [ref=e24]
+        - link "Subidas programadas" [ref=e29] [cursor=pointer]:
+          - /url: /scheduled
+          - img [ref=e30]
+        - link "Jobs activos" [ref=e33] [cursor=pointer]:
+          - /url: /jobs
+          - img [ref=e34]
+        - link "Historial de chats" [ref=e36] [cursor=pointer]:
+          - /url: /chats
+          - img [ref=e37]
+        - link "Perfil — Templo Jedi" [ref=e39] [cursor=pointer]:
+          - /url: /perfil
+          - img [ref=e40]
+        - link "Notificaciones" [ref=e43] [cursor=pointer]:
+          - /url: /notifications
+          - img [ref=e44]
+        - link "Configuración" [ref=e47] [cursor=pointer]:
+          - /url: /configuracion
+          - img [ref=e48]
+        - link "Lab (solo modo dev)" [ref=e53] [cursor=pointer]:
+          - /url: /lab
+          - img [ref=e54]
+      - link "P" [ref=e56] [cursor=pointer]:
+        - /url: /perfil
+        - generic [ref=e58]: P
+    - generic [ref=e59]:
+      - banner [ref=e60]:
+        - generic [ref=e61]:
+          - heading "Hola, Padawan" [level=1] [ref=e63]
+          - generic [ref=e64]:
+            - button "En el PC" [ref=e65] [cursor=pointer]:
+              - generic [ref=e67]: En el PC
+            - button "Notificaciones" [ref=e69] [cursor=pointer]:
+              - img [ref=e70]
+      - main [ref=e74]:
+        - generic [ref=e75]:
+          - generic [ref=e76]:
+            - link "Canales" [ref=e77] [cursor=pointer]:
+              - /url: /
+              - img [ref=e78]
+              - text: Canales
+            - heading "moderni-stoici" [level=1] [ref=e80]
+          - generic [ref=e81]:
+            - button "Explorar ideas" [ref=e82] [cursor=pointer]:
+              - img [ref=e83]
+              - text: Explorar ideas
+            - button "Encolar lote" [ref=e85] [cursor=pointer]:
+              - img [ref=e86]
+              - text: Encolar lote
+            - generic [ref=e88] [cursor=pointer]:
+              - checkbox "Ideas" [checked] [ref=e89]
+              - text: Ideas
+            - generic [ref=e90] [cursor=pointer]:
+              - checkbox "Programados" [checked] [ref=e91]
+              - text: Programados
+            - generic [ref=e92] [cursor=pointer]:
+              - checkbox "Archivados" [ref=e93]
+              - text: Archivados
+            - button "Actualizando" [disabled] [ref=e94]:
+              - img [ref=e95]
+              - text: Actualizando
+        - generic [ref=e98]:
+          - generic [ref=e99]:
+            - img [ref=e101]
+            - textbox "Buscar por título…" [ref=e104]
+          - navigation [ref=e105]:
+            - button "Todos" [ref=e106] [cursor=pointer]
+            - button "Con job" [ref=e107] [cursor=pointer]
+            - button "Recopilaciones" [ref=e108] [cursor=pointer]
+            - button "Incompletos" [ref=e109] [cursor=pointer]
+    - complementary [ref=e112]:
+      - generic "Arrastrar para cambiar el ancho" [ref=e113]
+      - generic [ref=e114]:
+        - generic [ref=e115]: Chat
+        - button "sonnet" [ref=e116] [cursor=pointer]
+        - button "medium" [ref=e117] [cursor=pointer]
+        - generic [ref=e118]:
+          - button "+ nueva" [ref=e119] [cursor=pointer]
+          - button "→" [ref=e120] [cursor=pointer]
+      - generic [ref=e122]: Habla con claude. Tiene acceso a todas tus skills (SARA, ELENA, MARCO AURELIO, IRIS, etc.) y al filesystem.
+      - generic [ref=e124]:
+        - textbox "Escribe un mensaje… (Enter envía · Shift+Enter salta línea)" [ref=e125]:
+          - /placeholder: Escribe un mensaje…  (Enter envía · Shift+Enter salta línea)
+        - button "Enviar" [disabled] [ref=e126]
+  - alert [ref=e127]

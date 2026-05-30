@@ -1,0 +1,157 @@
+- generic [ref=e2]:
+  - complementary [ref=e3]:
+    - link "YT" [ref=e4] [cursor=pointer]:
+      - /url: /
+    - navigation [ref=e5]:
+      - link "Canales" [ref=e6] [cursor=pointer]:
+        - /url: /
+        - img [ref=e7]
+      - link "Automator" [ref=e10] [cursor=pointer]:
+        - /url: /automator
+        - img [ref=e11]
+      - link "Sleep Stories" [ref=e14] [cursor=pointer]:
+        - /url: /sleep-stories
+        - img [ref=e15]
+      - link "Cola" [ref=e17] [cursor=pointer]:
+        - /url: /queue
+        - img [ref=e18]
+      - link "Visual Lab" [ref=e20] [cursor=pointer]:
+        - /url: /visual-lab
+        - img [ref=e21]
+      - link "Subidas programadas" [ref=e26] [cursor=pointer]:
+        - /url: /scheduled
+        - img [ref=e27]
+      - link "Jobs activos" [ref=e30] [cursor=pointer]:
+        - /url: /jobs
+        - img [ref=e31]
+      - link "Historial de chats" [ref=e33] [cursor=pointer]:
+        - /url: /chats
+        - img [ref=e34]
+      - link "Perfil — Templo Jedi" [ref=e36] [cursor=pointer]:
+        - /url: /perfil
+        - img [ref=e37]
+      - link "Notificaciones" [ref=e40] [cursor=pointer]:
+        - /url: /notifications
+        - img [ref=e41]
+      - link "Configuración" [ref=e44] [cursor=pointer]:
+        - /url: /configuracion
+        - img [ref=e45]
+    - link "P" [ref=e48] [cursor=pointer]:
+      - /url: /perfil
+      - generic [ref=e50]: P
+  - generic [ref=e51]:
+    - banner [ref=e52]:
+      - generic [ref=e53]:
+        - heading "Hola, Padawan" [level=1] [ref=e55]
+        - generic [ref=e56]:
+          - button "En el PC" [ref=e57] [cursor=pointer]:
+            - generic [ref=e59]: En el PC
+          - button "Notificaciones" [ref=e61] [cursor=pointer]:
+            - img [ref=e62]
+    - main [ref=e66]:
+      - paragraph [ref=e67]: 7 canales activos. Selecciona uno para entrar al kanban.
+      - generic [ref=e68]:
+        - generic [ref=e69]:
+          - heading "Tus canales" [level=2] [ref=e70]
+          - paragraph [ref=e71]: 7 activos · 4 próximamente
+        - generic [ref=e72]:
+          - link "Moderni Stoici activo H:/YOUTUBE/CANALES ESTOICISMO/MODERNI STOICI" [ref=e73] [cursor=pointer]:
+            - /url: /channels/moderni-stoici
+            - generic [ref=e74]:
+              - heading "Moderni Stoici" [level=3] [ref=e75]
+              - generic [ref=e76]: activo
+            - paragraph [ref=e78]: H:/YOUTUBE/CANALES ESTOICISMO/MODERNI STOICI
+          - link "Moderno Estoico activo H:/YOUTUBE/CANALES ESTOICISMO/MODERNO ESTOICO" [ref=e86] [cursor=pointer]:
+            - /url: /channels/moderno-estoico
+            - generic [ref=e87]:
+              - heading "Moderno Estoico" [level=3] [ref=e88]
+              - generic [ref=e89]: activo
+            - paragraph [ref=e91]: H:/YOUTUBE/CANALES ESTOICISMO/MODERNO ESTOICO
+          - link "The Vaultman activo H:/YOUTUBE/THE VAULTMAN" [ref=e99] [cursor=pointer]:
+            - /url: /channels/vaultman
+            - generic [ref=e100]:
+              - heading "The Vaultman" [level=3] [ref=e101]
+              - generic [ref=e102]: activo
+            - paragraph [ref=e104]: H:/YOUTUBE/THE VAULTMAN
+          - link "Uncharted History activo H:/YOUTUBE/UNCHARTED HISTORY" [ref=e112] [cursor=pointer]:
+            - /url: /channels/uncharted-history
+            - generic [ref=e113]:
+              - heading "Uncharted History" [level=3] [ref=e114]
+              - generic [ref=e115]: activo
+            - paragraph [ref=e117]: H:/YOUTUBE/UNCHARTED HISTORY
+          - link "The Sleeping Stoic activo H:/YOUTUBE/CANALES SLEEP STORIES/THE SLEEPING STOIC" [ref=e125] [cursor=pointer]:
+            - /url: /channels/the-sleeping-stoic
+            - generic [ref=e126]:
+              - heading "The Sleeping Stoic" [level=3] [ref=e127]
+              - generic [ref=e128]: activo
+            - paragraph [ref=e130]: H:/YOUTUBE/CANALES SLEEP STORIES/THE SLEEPING STOIC
+          - link "Drowsy Tales activo H:/YOUTUBE/CANALES SLEEP STORIES/DROWSY TALES" [ref=e138] [cursor=pointer]:
+            - /url: /channels/drowsy-tales
+            - generic [ref=e139]:
+              - heading "Drowsy Tales" [level=3] [ref=e140]
+              - generic [ref=e141]: activo
+            - paragraph [ref=e143]: H:/YOUTUBE/CANALES SLEEP STORIES/DROWSY TALES
+          - link "The Sleepy Historian activo H:/YOUTUBE/CANALES SLEEP STORIES/THE SLEEPY HISTORIAN" [ref=e151] [cursor=pointer]:
+            - /url: /channels/the-sleepy-historian
+            - generic [ref=e152]:
+              - heading "The Sleepy Historian" [level=3] [ref=e153]
+              - generic [ref=e154]: activo
+            - paragraph [ref=e156]: H:/YOUTUBE/CANALES SLEEP STORIES/THE SLEEPY HISTORIAN
+        - generic [ref=e164]:
+          - generic [ref=e165]:
+            - generic [ref=e166]:
+              - heading "Daily Dog" [level=3] [ref=e167]
+              - generic [ref=e168]: coming soon
+            - paragraph [ref=e169]: H:/YOUTUBE/DAILY DOG
+          - generic [ref=e170]:
+            - generic [ref=e171]:
+              - heading "Tail Tales" [level=3] [ref=e172]
+              - generic [ref=e173]: coming soon
+            - paragraph [ref=e174]: H:/YOUTUBE/TAIL TALES_EN
+          - generic [ref=e175]:
+            - generic [ref=e176]:
+              - heading "Canal Español" [level=3] [ref=e177]
+              - generic [ref=e178]: coming soon
+            - paragraph [ref=e179]: rootPath no configurado
+          - generic [ref=e180]:
+            - generic [ref=e181]:
+              - heading "Canal Paranormal" [level=3] [ref=e182]
+              - generic [ref=e183]: coming soon
+            - paragraph [ref=e184]: rootPath no configurado
+      - generic [ref=e185]:
+        - heading "Accesos rápidos" [level=2] [ref=e186]
+        - generic [ref=e187]:
+          - link "Sleep Stories →" [ref=e188] [cursor=pointer]:
+            - /url: /sleep-stories
+            - img [ref=e190]
+            - generic [ref=e192]: Sleep Stories
+            - generic [ref=e193]: →
+          - link "Cola de jobs →" [ref=e194] [cursor=pointer]:
+            - /url: /queue
+            - img [ref=e196]
+            - generic [ref=e198]: Cola de jobs
+            - generic [ref=e199]: →
+          - link "Jobs activos →" [ref=e200] [cursor=pointer]:
+            - /url: /jobs
+            - img [ref=e202]
+            - generic [ref=e204]: Jobs activos
+            - generic [ref=e205]: →
+          - link "Mi perfil →" [ref=e206] [cursor=pointer]:
+            - /url: /perfil
+            - img [ref=e208]
+            - generic [ref=e211]: Mi perfil
+            - generic [ref=e212]: →
+  - complementary [ref=e213]:
+    - generic "Arrastrar para cambiar el ancho" [ref=e214]
+    - generic [ref=e215]:
+      - generic [ref=e216]: Chat
+      - button "sonnet" [ref=e217] [cursor=pointer]
+      - button "medium" [ref=e218] [cursor=pointer]
+      - generic [ref=e219]:
+        - button "+ nueva" [ref=e220] [cursor=pointer]
+        - button "→" [ref=e221] [cursor=pointer]
+    - generic [ref=e223]: Habla con claude. Tiene acceso a todas tus skills (SARA, ELENA, MARCO AURELIO, IRIS, etc.) y al filesystem.
+    - generic [ref=e225]:
+      - textbox "Escribe un mensaje… (Enter envía · Shift+Enter salta línea)" [ref=e226]:
+        - /placeholder: Escribe un mensaje…  (Enter envía · Shift+Enter salta línea)
+      - button "Enviar" [disabled] [ref=e227]
