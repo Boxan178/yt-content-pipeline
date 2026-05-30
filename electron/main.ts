@@ -21,11 +21,14 @@ let nextServerProcess: ChildProcess | null = null;
 let nextServerUrl: string | null = null;
 let notionPollerInterval: NodeJS.Timeout | null = null;
 let autoPublishPollerInterval: NodeJS.Timeout | null = null;
+let queuePollerInterval: NodeJS.Timeout | null = null;
 
 /** Intervalo del poller Notion. Pablo lo fijó en 30s — ver task brief. */
 const NOTION_POLLER_INTERVAL_MS = 30_000;
 /** Intervalo del poller de auto-subida oculta a YouTube (detector + cola). */
 const AUTOPUBLISH_POLLER_INTERVAL_MS = 60_000;
+/** Intervalo del poller que avanza la cola serial de SARA (loop vídeo-a-vídeo). */
+const QUEUE_POLLER_INTERVAL_MS = 30_000;
 
 // ── Next standalone server (sólo en producción) ─────────────────────────
 
@@ -263,6 +266,63 @@ function stopAutoPublishPoller() {
   }
 }
 
+// ── Queue poller (avanza la cola serial de SARA en background) ──────────
+//
+// La cola (lib/job-queue.ts) es LAZY: sólo avanza cuando algo llama a
+// /api/queue. Sin este poller, un vídeo con loopUntilComplete se queda a
+// medias tras el primer turno de SARA si no hay ninguna página de cola
+// abierta polleando — justo lo que congelaba el backlog de Pablo cuando
+// miraba el kanban (que NO pollea /api/queue) o cerraba la app. Un GET
+// /api/queue cada 30s recomputa el progreso real, re-lanza SARA turno a
+// turno y avanza al siguiente vídeo cuando el actual queda listo/bloqueado.
+// El tick es idempotente (mutex interno) y barato cuando la cola está vacía
+// o el job sigue vivo. Mismo patrón que notion / auto-publish.
+//
+// OJO: esto sólo corre con Electron abierto. Para producción 100% headless
+// o sólo-web (sin Electron), haría falta un ticker server-side
+// (instrumentation.ts) — documentado como mejora futura.
+//
+// Kill-switch: arrancar con YTCP_QUEUE_POLLER_ENABLED=0 para desactivarlo.
+function startQueuePoller() {
+  if (process.env.YTCP_QUEUE_POLLER_ENABLED === '0') {
+    console.log('[queue-poller] desactivado por kill-switch (YTCP_QUEUE_POLLER_ENABLED=0).');
+    return;
+  }
+  const baseUrl = isDev ? DEV_URL : nextServerUrl;
+  if (!baseUrl) {
+    console.warn('[queue-poller] no hay baseUrl, no se arranca');
+    return;
+  }
+  if (queuePollerInterval) return; // ya arrancado
+
+  const tickOnce = async () => {
+    try {
+      const r = await fetch(`${baseUrl}/api/queue`, { method: 'GET' });
+      if (!r.ok) {
+        console.warn(`[queue-poller] tick respondió ${r.status}`);
+      }
+    } catch (e) {
+      // Silencioso — el server puede estar reiniciando.
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!msg.includes('ECONNREFUSED') && !msg.includes('fetch failed')) {
+        console.warn('[queue-poller] tick failed:', msg);
+      }
+    }
+  };
+
+  // Primer tick a los 8s del arranque (deja que el server se estabilice).
+  setTimeout(tickOnce, 8_000);
+  queuePollerInterval = setInterval(tickOnce, QUEUE_POLLER_INTERVAL_MS);
+  console.log(`[queue-poller] interval ${QUEUE_POLLER_INTERVAL_MS}ms armado (baseUrl=${baseUrl})`);
+}
+
+function stopQueuePoller() {
+  if (queuePollerInterval) {
+    clearInterval(queuePollerInterval);
+    queuePollerInterval = null;
+  }
+}
+
 // ── Auto-updater (electron-updater + GitHub Releases) ──────────────────
 
 /**
@@ -443,11 +503,13 @@ app.whenReady().then(async () => {
   setupAutoUpdater();
   startNotionPoller();
   startAutoPublishPoller();
+  startQueuePoller();
 });
 
 app.on('window-all-closed', () => {
   stopNotionPoller();
   stopAutoPublishPoller();
+  stopQueuePoller();
   // Matar el server Next si está vivo (sólo en producción)
   if (nextServerProcess) {
     try { nextServerProcess.kill(); } catch {}
@@ -458,6 +520,8 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   stopNotionPoller();
+  stopAutoPublishPoller();
+  stopQueuePoller();
   if (nextServerProcess) {
     try { nextServerProcess.kill(); } catch {}
     nextServerProcess = null;

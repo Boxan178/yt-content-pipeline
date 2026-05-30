@@ -51,8 +51,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'packaging.md no existe' }, { status: 404 });
   }
 
-  let md = await readFile(packagingPath, 'utf-8');
-  const itemEscaped = body.itemText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // normalize('NFC') en ambos lados: el packaging.md del disco y el itemText del
+  // cliente pueden venir en formas Unicode distintas (acentos/em-dash). Sin esto
+  // el regex no matchea y la decisión se añade duplicada al final en vez de marcar
+  // el checkbox/ancla existente.
+  let md = (await readFile(packagingPath, 'utf-8')).normalize('NFC');
+  const itemText = body.itemText.normalize('NFC');
+  const itemEscaped = itemText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   // Buscamos la línea `- [ ] <texto exacto>` permitiendo espacios variables
   const re = new RegExp(`^(\\s*)-\\s*\\[\\s*\\]\\s+${itemEscaped}\\s*$`, 'm');
   const ts = new Date();
@@ -63,7 +68,7 @@ export async function POST(req: NextRequest) {
   // Caso A — decisión "PENDIENTE ELECCIÓN DE PABLO" como texto libre: sustituimos
   // la línea de Estado por el resultado para que deje de aparecer como pendiente.
   if (body.statusAnchor?.trim()) {
-    const anchor = body.statusAnchor.trim();
+    const anchor = body.statusAnchor.trim().normalize('NFC');
     const anchorEscaped = anchor.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const anchorRe = new RegExp(`^(\\s*)${anchorEscaped}\\s*$`, 'm');
     if (anchorRe.test(md)) {
@@ -78,13 +83,13 @@ export async function POST(req: NextRequest) {
   if (!updated && re.test(md)) {
     md = md.replace(re, (_match, indent: string) => {
       updated = true;
-      return `${indent}- [x] ${body.itemText}\n${indent}  → DECISIÓN: ${body.decision} _(${tsHuman})_`;
+      return `${indent}- [x] ${itemText}\n${indent}  → DECISIÓN: ${body.decision} _(${tsHuman})_`;
     });
   }
 
   if (!updated) {
     // No encontrado: añadir entrada en sección "Decisiones" al final
-    md = md.trimEnd() + `\n\n## Decisiones\n\n- ${body.itemText}\n  → DECISIÓN: ${body.decision} _(${tsHuman})_\n`;
+    md = md.trimEnd() + `\n\n## Decisiones\n\n- ${itemText}\n  → DECISIÓN: ${body.decision} _(${tsHuman})_\n`;
   }
 
   await writeFile(packagingPath, md, 'utf-8');

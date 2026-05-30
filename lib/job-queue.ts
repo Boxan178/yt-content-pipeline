@@ -170,8 +170,15 @@ export function moveItem(id: string, direction: 'up' | 'down'): boolean {
 
 /** Localiza el canal de un videoFolder por prefijo de rootPath. */
 function findChannelForFolder(videoFolder: string) {
-  const norm = videoFolder.replace(/\\/g, '/');
-  return CHANNELS.find((c) => c.enabled && c.rootPath && norm.startsWith(c.rootPath.replace(/\\/g, '/')));
+  // normalize('NFC') + separador final: el dominio tiene acentos/em-dash y un
+  // rootPath podría ser prefijo de otro. Comparar forma Unicode canónica y con
+  // '/' final evita falsos match y fallos por formas Unicode distintas.
+  const norm = videoFolder.replace(/\\/g, '/').normalize('NFC');
+  return CHANNELS.find((c) => {
+    if (!c.enabled || !c.rootPath) return false;
+    const root = c.rootPath.replace(/\\/g, '/').normalize('NFC');
+    return norm === root || norm.startsWith(root + '/');
+  });
 }
 
 const SHARED_VIDEO_EXT = new Set(['.mp4', '.mov', '.mkv']);

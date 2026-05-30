@@ -29,7 +29,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { isPidAlive, killPid } from './claude-jobs';
 import { getChannel } from './channels';
-import { notifyUploadDone } from './notify';
+import { notifyUploadDone, notifyUploadFailed } from './notify';
 import { YOUTUBE_UPLOADER_DIR, YOUTUBE_UPLOADER_PY, YOUTUBE_UPLOADER_PYTHON } from './config';
 
 const DIR = path.join(os.homedir(), '.yt-content-pipeline');
@@ -153,9 +153,12 @@ export function hasUploadForFolder(
   videoFolder: string,
   statuses: UploadStatus[] = ['pending', 'uploading', 'done'],
 ): boolean {
-  const norm = videoFolder.replace(/\\/g, '/');
+  // normalize('NFC') porque el dominio está lleno de acentos/em-dash (Ó, —) y la
+  // misma carpeta puede llegar en distinta forma Unicode (readdir vs string del
+  // cliente de subida manual). Sin esto el dedupe falla → 2ª subida a YouTube.
+  const norm = videoFolder.replace(/\\/g, '/').normalize('NFC');
   return readSchedule().items.some(
-    (i) => i.videoFolder.replace(/\\/g, '/') === norm && statuses.includes(i.status),
+    (i) => i.videoFolder.replace(/\\/g, '/').normalize('NFC') === norm && statuses.includes(i.status),
   );
 }
 
@@ -327,11 +330,29 @@ async function onUploadDone(item: ScheduledUpload): Promise<void> {
   }
 }
 
+// Mutex simple: evita ticks reentrantes (poller Electron 60s + GET kanban +
+// GET /api/uploads pollean a la vez) que con los await internos podrían
+// doble-lanzar upload.py para el mismo vídeo → subida DUPLICADA a YouTube.
+// Mismo patrón que lib/job-queue.ts. Todas las rutas API corren en el mismo
+// proceso Next, así que un mutex module-level es efectivo.
+let schedulerTicking = false;
+
 /**
  * Tick: para cada upload pendiente cuya fecha ya llegó, lanza upload.py.
  * Para los uploading, comprueba el pid y marca done/failed parseando el log.
+ * Reentrada protegida por mutex (evita doble subida).
  */
 export async function tickScheduler(): Promise<State> {
+  if (schedulerTicking) return readSchedule();
+  schedulerTicking = true;
+  try {
+    return await tickSchedulerInner();
+  } finally {
+    schedulerTicking = false;
+  }
+}
+
+async function tickSchedulerInner(): Promise<State> {
   const s = readSchedule();
   let dirty = false;
   const now = Date.now();
@@ -360,6 +381,19 @@ export async function tickScheduler(): Promise<State> {
       item.failReason = parsed.error;
       item.finishedAt = new Date().toISOString();
       dirty = true;
+      // Aviso de fallo SOLO para subidas automáticas (hands-off): sin esto una
+      // subida auto que falla (OAuth caducado, render movido…) se queda en
+      // silencio y Pablo no se entera de que el vídeo no se publicó. Las manuales
+      // las conduce él desde la UI, donde ya ve el fallo.
+      if (item.auto && !item.notified) {
+        item.notified = true;
+        const ch = getChannel(item.channel);
+        const failTitle = item.title || item.videoTitle;
+        const failReason = item.failReason ?? 'desconocido';
+        postActions.push(() =>
+          notifyUploadFailed({ channelName: ch?.name ?? item.channel, videoTitle: failTitle, reason: failReason }).then(() => undefined),
+        );
+      }
     }
   }
 
@@ -375,6 +409,9 @@ export async function tickScheduler(): Promise<State> {
       item.logPath = logPath;
       item.startedAt = new Date().toISOString();
       dirty = true;
+      // Persistir YA: si el proceso muere entre el spawn y el save final, este
+      // item no debe re-lanzarse como 'pending' en el próximo tick (= 2ª subida).
+      save(s);
     } catch (e) {
       item.status = 'failed';
       item.failReason = e instanceof Error ? e.message : String(e);

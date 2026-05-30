@@ -84,8 +84,11 @@ export async function GET() {
     const queue = readQueue();
     for (const it of queue.items) {
       if (it.status !== 'pending') continue;
-      const vf = norm(it.videoFolder);
-      const ch = channels.find((c) => vf.startsWith(norm(c.rootPath)));
+      const vf = norm(it.videoFolder).normalize('NFC');
+      const ch = channels.find((c) => {
+        const root = norm(c.rootPath).normalize('NFC');
+        return vf === root || vf.startsWith(root + '/');
+      });
       if (ch) summary[ch.slug].pending += 1;
     }
   } catch {}

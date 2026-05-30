@@ -69,9 +69,13 @@ export function extractMetadata(md: string): ExtractedMetadata {
   // Dentro, si hay code block ```...```, preferimos su contenido (suele ser la
   // descripción "lista para pegar" en YouTube Studio).
   let description = '';
+  // Nota: el final de sección es "siguiente ## " (flag m) o FIN DE CADENA. En JS
+  // `\Z` NO es un anchor (matchea la letra Z literal), así que con la descripción
+  // como última sección el match fallaba y devolvía '' → vídeo subido sin
+  // descripción. Usamos `(?![\s\S])` (no hay más caracteres = fin de cadena).
   const descSection =
-    md.match(/^##\s+[^\n]*?Descripci[oó]n[^\n]*\n+([\s\S]+?)(?=^##\s|\Z)/im) ??
-    md.match(/^##\s+[^\n]*?Description[^\n]*\n+([\s\S]+?)(?=^##\s|\Z)/im);
+    md.match(/^##\s+[^\n]*?Descripci[oó]n[^\n]*\n+([\s\S]+?)(?=^##\s|(?![\s\S]))/im) ??
+    md.match(/^##\s+[^\n]*?Description[^\n]*\n+([\s\S]+?)(?=^##\s|(?![\s\S]))/im);
   if (descSection) {
     const body = descSection[1].trim();
     // Si hay code block, coger SOLO eso

@@ -150,3 +150,29 @@ export async function notifyUploadDone(
   ]);
   return { telegram: tg.ok, push: push.ok };
 }
+
+/**
+ * Avisa a Pablo de que una subida AUTOMÁTICA falló (OAuth caducado, render
+ * movido, etc.). Sin esto, las subidas hands-off fallan en SILENCIO y el vídeo
+ * se queda sin publicar sin que nadie se entere. Telegram principal + push
+ * best-effort.
+ */
+export async function notifyUploadFailed(info: {
+  channelName: string;
+  videoTitle: string;
+  reason: string;
+}): Promise<{ telegram: boolean; push: boolean }> {
+  const safeTitle = escapeHtml(info.videoTitle);
+  const safeChannel = escapeHtml(info.channelName);
+  const safeReason = escapeHtml(info.reason.slice(0, 240));
+  const text =
+    `❌ <b>Subida automática FALLÓ</b> en ${safeChannel}\n` +
+    `${safeTitle}\n` +
+    `Motivo: <code>${safeReason}</code>\n` +
+    `📌 Súbelo a mano o revisa el OAuth del canal (si el token caducó, re-autoriza en youtube-uploader).`;
+  const [tg, push] = await Promise.all([
+    sendTelegram(text),
+    sendDashboardPush({ title: '❌ Subida falló', body: `${info.videoTitle} — revisar` }),
+  ]);
+  return { telegram: tg.ok, push: push.ok };
+}
