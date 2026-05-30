@@ -6,10 +6,20 @@
 
 ---
 
-## 🔴 ACCIÓN REQUERIDA DE PABLO (lo más importante)
+## ✅ OAuth de YouTube — RESUELTO (era el único bloqueo)
 
-**El token OAuth de YouTube de `moderni-stoici` está CADUCADO/REVOCADO.** Al probar
-una subida real, `upload.py` falló con:
+> Resuelto el 2026-05-30 con Pablo. **Subida real confirmada** (video_id
+> `G3Z8DzP2Fzo`, unlisted en Moderni Stoici — recordar borrarlo de Studio).
+> Cadena de 3 fallos: token caducado (7 días, modo Testing) → `client_secret`
+> invalidado al tocar Google Cloud → primera re-auth agarró el canal equivocado
+> (Daily Dog). Fix final: `client_secret` fresco descargado + `refresh_token` del
+> canal **correcto** (Moderni Stoici, `UCpDsZiNeI-Pi4gqQGqq8JYg`) + **app OAuth
+> publicada a Producción** → el token ya NO caduca. Mejora pendiente sugerida:
+> que la app verifique `channel_id` esperado vs autorizado antes de subir (evita
+> subir al canal equivocado en silencio).
+
+**Historia original (por si reaparece):** el token OAuth de `moderni-stoici` estaba
+CADUCADO/REVOCADO. Al probar una subida real, `upload.py` falló con:
 
 ```
 google.auth.exceptions.RefreshError: invalid_grant: Token has been expired or revoked.
