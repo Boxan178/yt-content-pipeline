@@ -138,3 +138,29 @@ Typecheck app + electron: **exit 0** tras todos los fixes.
 - Limpiar artefactos de test: `H:/YOUTUBE/_YTCP_TEST` (lo borra el script), item
   fallido en `scheduled-uploads.json`, `.upload-jobs/` del vídeo de prueba, y borrar
   el vídeo de prueba `[TEST ytcp - BORRAR]` de YouTube Studio cuando el OAuth funcione.
+
+---
+
+## Actualización — producción en marcha + validaciones finales
+
+- **Pipeline de sleep stories VALIDADO** (la mayor preocupación de Pablo): el turno de SARA
+  sobre "Marcus Aurelius' Meditations" produjo de verdad — `guion.md` **251 KB** (guion de 2h)
+  + `descripcion-seo.md` + prompt de miniatura IRIS + texto fuente (Meditations, George Long).
+  Produce end-to-end igual que moderni.
+- **Fix `progress.ts` (guion*.md) validado empíricamente**: esa sleep story NO tiene
+  `packaging.md`, pero marca `scriptWritten:true` correctamente por la detección de `guion.md`.
+  Sin el fix saldría `false` pese a tener 251KB de guion → el loop nunca la completaría. (9º fix.)
+- **Brutos siempre marcado para canales con biblioteca**: confirmado correcto. moderni +
+  the-sleeping-stoic → biblioteca poblada → `brutos=true` siempre. drowsy/sleepy → biblioteca
+  vacía aún → false (correcto, son el "caso aparte"). Sin cambios necesarios.
+- **Producción autónoma montada**: moderni "9 Guards" (maxAttempts=6, ya en fase audio/TTS) +
+  una sleep story en la cola, drenando en serie con un driver que simula el poller de Electron.
+  TTS (Algrow) y montaje (LUIS) autorizados por Pablo. Recordatorio: las subidas fallan hasta
+  re-autorizar el OAuth de YouTube.
+- **LUIS / repetición de clips en vídeos de 2h**: es comportamiento de la skill de LUIS
+  (`Y:\…\.claude\skills`, `render_project.py`), no de esta app. Confirmar ahí. Para canales con
+  biblioteca compartida, NO se generan brutos nuevos (se usan los de la biblioteca).
+- **`verify_locucion.py` duración**: NO es bug (el camino primario usa `is not None`; el fallback
+  con `duration=0` devuelve 0.0 igual). Descartado.
+- **`idea-pipeline.ts` doble-arranque**: NO es riesgo real — la sección crítica es síncrona en
+  un único proceso Node (sin `await` entre el check y el `updateIdea`). Descartado.
