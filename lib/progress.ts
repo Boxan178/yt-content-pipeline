@@ -62,6 +62,25 @@ async function sleepStoryHasScript(videoFolder: string): Promise<boolean> {
   }
 }
 
+/**
+ * ¿Hay un guion escrito como `guion*.md` (guion.md, guion-v2.md, guion-narration.md…)
+ * en la raíz del video folder o en _PACKAGING? SARA lo escribe ahí en el pipeline de
+ * ideas (verificado empíricamente: ~50KB). Cubre el caso de sleep stories cuyo texto
+ * largo es el guion y cuyo packaging.md puede ser fino (<2KB).
+ */
+async function folderHasGuion(videoFolder: string): Promise<boolean> {
+  for (const dir of [videoFolder, path.join(videoFolder, '_PACKAGING')]) {
+    const files = await safeReaddir(dir);
+    for (const f of files) {
+      if (/^guion[\w.-]*\.md$/i.test(f)) {
+        const s = await tryStat(path.join(dir, f));
+        if (s && s.isFile() && s.size >= SCRIPT_MIN_BYTES) return true;
+      }
+    }
+  }
+  return false;
+}
+
 export interface ComputeProgressOptions {
   /**
    * `true` si el canal tiene una biblioteca de brutos compartida con clips. En
@@ -90,7 +109,12 @@ export async function computeProgress(
   // con texto en tts-jobs.json. Cubre vídeos largos Moderni Stoici y sleep stories.
   const hasPackagingScript = !!pkgStat && pkgStat.size >= SCRIPT_MIN_BYTES;
   const hasSleepStoryScript = !hasPackagingScript ? await sleepStoryHasScript(videoFolder) : false;
-  const scriptWritten = hasPackagingScript || hasSleepStoryScript;
+  // SARA escribe el guion como `guion*.md` en la carpeta del vídeo (convención del
+  // pipeline de ideas; verificado ~50KB). Cuenta como "guion hecho" aunque el
+  // packaging.md sea fino (caso típico de sleep stories). Additivo: solo suma.
+  const hasGuionFile =
+    hasPackagingScript || hasSleepStoryScript ? false : await folderHasGuion(videoFolder);
+  const scriptWritten = hasPackagingScript || hasSleepStoryScript || hasGuionFile;
 
   const locucionFiles = await safeReaddir(locucionDir);
   const audioNames = locucionFiles.filter((f) =>
