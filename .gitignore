@@ -42,3 +42,6 @@ next-env.d.ts
 
 # claude code workspace (symlink a skills + scheduled-tasks local)
 .claude/
+
+# Artefactos de sesiones Playwright MCP (testing)
+.playwright-mcp/
