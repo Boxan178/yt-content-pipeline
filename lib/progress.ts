@@ -15,6 +15,12 @@ const TOTAL_HITS = 6;
 const SCRIPT_MIN_BYTES = 2 * 1024;
 const RENDER_MIN_BYTES = 50 * 1024 * 1024;
 const LOCUCION_MIN_FILES = 3;
+// Caso "una historia, un audio": un único MP3/WAV/M4A sustancial es una locución
+// completa por sí mismo (canales narrativos como Uncharted History / Vaultman, o
+// cualquier canal que entregue el audio entero en un solo archivo en vez de
+// chunks). Umbral conservador para descartar tests de pocos segundos. ~300KB de
+// MP3 ≈ 25-40s de voz; cualquier locución real lo supera de sobra.
+const LOCUCION_SINGLE_MIN_BYTES = 300 * 1024;
 
 const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 const VIDEO_EXT = new Set(['.mp4', '.mov', '.mkv']);
@@ -56,7 +62,20 @@ async function sleepStoryHasScript(videoFolder: string): Promise<boolean> {
   }
 }
 
-export async function computeProgress(videoFolder: string): Promise<Progress> {
+export interface ComputeProgressOptions {
+  /**
+   * `true` si el canal tiene una biblioteca de brutos compartida con clips. En
+   * ese caso el hito "brutos visuales" se da por cumplido aunque no haya material
+   * en `01_BRUTOS/_VÍDEO/` (caso Moderni Stoici / Moderno Estoico: el render toma
+   * los brutos de la biblioteca común, no hay material por vídeo).
+   */
+  sharedBrutosAvailable?: boolean;
+}
+
+export async function computeProgress(
+  videoFolder: string,
+  opts: ComputeProgressOptions = {},
+): Promise<Progress> {
   const packagingDir = path.join(videoFolder, '_PACKAGING');
   const packagingMdPath = path.join(packagingDir, 'packaging.md');
   const miniaturasDir = path.join(packagingDir, 'MINIATURAS');
@@ -74,16 +93,25 @@ export async function computeProgress(videoFolder: string): Promise<Progress> {
   const scriptWritten = hasPackagingScript || hasSleepStoryScript;
 
   const locucionFiles = await safeReaddir(locucionDir);
-  const audioCount = locucionFiles.filter((f) =>
+  const audioNames = locucionFiles.filter((f) =>
     MAIN_AUDIO_EXT.has(path.extname(f).toLowerCase()),
-  ).length;
-  const locucionReady = audioCount >= LOCUCION_MIN_FILES;
+  );
+  const audioCount = audioNames.length;
+  // Lista (≥3 chunks) → locución por chunks. Un único archivo sustancial →
+  // locución completa "una historia, un audio". Cualquiera de los dos cuenta.
+  let locucionReady = audioCount >= LOCUCION_MIN_FILES;
+  if (!locucionReady && audioCount === 1) {
+    const s = await tryStat(path.join(locucionDir, audioNames[0]));
+    locucionReady = !!s && s.size >= LOCUCION_SINGLE_MIN_BYTES;
+  }
 
   const videoFiles = await safeReaddir(videoDir);
-  const brutosVisuales = videoFiles.some((f) =>
-    VIDEO_EXT.has(path.extname(f).toLowerCase()) ||
-    IMAGE_EXT.has(path.extname(f).toLowerCase()),
-  );
+  const brutosVisuales =
+    opts.sharedBrutosAvailable === true ||
+    videoFiles.some((f) =>
+      VIDEO_EXT.has(path.extname(f).toLowerCase()) ||
+      IMAGE_EXT.has(path.extname(f).toLowerCase()),
+    );
 
   const renderFiles = await safeReaddir(renderDir);
   let renderPrincipal = false;

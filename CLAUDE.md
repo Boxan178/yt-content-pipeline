@@ -3,6 +3,8 @@
 App de escritorio que sirve como **ventana de supervisión + riendas** sobre el proceso de producción de YouTube de Pablo. Visualiza vídeos por canal en kanban, abre detalle por vídeo con todo el material (render, miniaturas, packaging, checklist), y permite **disparar skills** del equipo (SARA, ELENA, AMELIA, MARCUS HALE, LUIS, NORA+IRIS) directamente desde la UI via `claude -p` local.
 
 > **Antes de tocar nada, lee `ESTABILIZACION-2026-05-24.md`** (auditoría más reciente). Estado de salud, código que ya se eliminó como durmiente, riesgos latentes, próximos pasos. Sustituye al antiguo `STATUS-2026-05-22.md`, que mantiene contexto histórico pero ya no refleja el estado actual.
+>
+> **Si vas a usar la app desde el navegador o desde fuera del PC, lee `ACCESO-WEB.md`**. Resumen: el dev server escucha en `0.0.0.0:3001` y es accesible desde Chrome local, LAN (`192.168.1.46:3001`) y Tailscale (`100.86.173.107:3001` desde cualquier dispositivo del tailnet). El `.exe` v0.6.0 sigue siendo la versión "oficial-escritorio" intocable.
 
 ## Dónde vive y por qué
 
@@ -83,9 +85,11 @@ Cada `<vídeo>/` tiene `01_BRUTOS/`, `RENDER/`, `_PACKAGING/`. Los 6 hitos de pr
 - No subir `.env.local` (ya está en `.gitignore`).
 - Next.js dev en :3001 (youtube-dashboard usa :3000 si lo tienes activo).
 - Skills viven físicamente en `Y:\04_DEV\J.A.R.V.I.S\.claude\skills\`. Desde este proyecto son accesibles vía **symlink** en `C:\dev\yt-content-pipeline\.claude\skills` → `\\Servidornas\naspablo\04_DEV\J.A.R.V.I.S\.claude\skills`. **No editar skills desde aquí** — edita en J.A.R.V.I.S. y se ven al instante. El symlink se recrea desde PowerShell admin si se rompe: `New-Item -ItemType SymbolicLink -Path "C:\dev\yt-content-pipeline\.claude\skills" -Target "\\Servidornas\naspablo\04_DEV\J.A.R.V.I.S\.claude\skills"`. Cuando spawneamos `claude -p` con CWD en `Y:\04_DEV\J.A.R.V.I.S` (jobs de skills), también las ve por la ruta original — los dos caminos coexisten.
+- **Worktrees NO heredan el symlink de skills.** Cuando Claude Code crea un worktree bajo `.claude\worktrees\<slug>\`, le mete su propio `.claude\` vacío sin las skills. Resultado: `/sara`, `/miguel-angel`, etc. devuelven "Unknown command" desde esa sesión. Fix (no necesita admin, Dev Mode ya está activo): `cmd /c "mklink /D `"C:\dev\yt-content-pipeline\.claude\worktrees\<slug>\.claude\skills`" `"\\Servidornas\naspablo\04_DEV\J.A.R.V.I.S\.claude\skills`""` y reiniciar la sesión del worktree (las skills se indexan al arrancar). Documentado en [[reference_worktree_skills_symlink]].
 
 ## Referencias
 
+- `ACCESO-WEB.md` — URLs (local/LAN/Tailscale), funcionalidad web vs .exe, cómo arrancar la versión PROD compilada en :3002, mantenimiento y seguridad
 - `LAB-PLAN-2026-05-25.md` — plan del módulo `/lab` (decisiones, fases, archivos)
 - `ESTABILIZACION-2026-05-24.md` — auditoría actual (LEER PRIMERO)
 - `STATUS-2026-05-22.md` — cierre de sesión anterior, contexto histórico

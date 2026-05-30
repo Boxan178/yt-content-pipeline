@@ -30,8 +30,9 @@ export interface VideoCardData {
   scheduledUpload?: {
     id: string;
     scheduledFor: string;
-    status: 'pending' | 'uploading';
+    status: 'pending' | 'uploading' | 'done';
     privacyOnPublish: 'public' | 'unlisted' | 'private';
+    youtubeVideoId?: string;
   };
 }
 
@@ -152,14 +153,31 @@ export function VideoCard({ video, onArchived, onOpen, celebrate }: Props) {
           </div>
         )}
         {!isWorking && video.scheduledUpload && (
-          <div
-            className={`absolute top-1.5 right-1.5 flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white shadow-lg ${
-              video.scheduledUpload.status === 'uploading' ? 'bg-orange-500' : 'bg-sky-500/90'
-            }`}
-            title={`Programado para ${new Date(video.scheduledUpload.scheduledFor).toLocaleString('es-ES')} · privacy ${video.scheduledUpload.privacyOnPublish}`}
-          >
-            📅 {video.scheduledUpload.status === 'uploading' ? 'subiendo' : 'prog'}
-          </div>
+          video.scheduledUpload.status === 'done' ? (
+            <a
+              href={
+                video.scheduledUpload.youtubeVideoId
+                  ? `https://studio.youtube.com/video/${video.scheduledUpload.youtubeVideoId}/edit`
+                  : '#'
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="absolute top-1.5 right-1.5 flex items-center gap-1 rounded bg-emerald-500/90 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white shadow-lg transition hover:bg-emerald-400"
+              title="Subido como OCULTO a YouTube — prográmalo desde Studio"
+            >
+              🔗 oculto
+            </a>
+          ) : (
+            <div
+              className={`absolute top-1.5 right-1.5 flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white shadow-lg ${
+                video.scheduledUpload.status === 'uploading' ? 'bg-orange-500' : 'bg-sky-500/90'
+              }`}
+              title={`Programado para ${new Date(video.scheduledUpload.scheduledFor).toLocaleString('es-ES')} · privacy ${video.scheduledUpload.privacyOnPublish}`}
+            >
+              📅 {video.scheduledUpload.status === 'uploading' ? 'subiendo' : 'prog'}
+            </div>
+          )
         )}
       </div>
 

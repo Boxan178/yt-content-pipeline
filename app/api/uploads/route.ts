@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
  * Tick + lista actual de uploads programados.
  */
 export async function GET() {
-  const state = tickScheduler();
+  const state = await tickScheduler();
   return NextResponse.json({ ok: true, items: state.items });
 }
 

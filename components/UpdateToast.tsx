@@ -3,6 +3,13 @@
 import { useEffect, useState } from 'react';
 
 /**
+ * ⚠️ DESCONECTADO A PROPÓSITO (2026-05-29): Pablo eligió "silencio total" para
+ * las actualizaciones. electron/main.ts ya NO emite el evento
+ * `updater:downloaded`, y app/layout.tsx ya no renderiza este componente, así
+ * que nunca se monta. Se conserva por si se quiere reactivar un aviso opcional:
+ * volver a renderizarlo en el layout y re-emitir el evento en el handler
+ * `update-downloaded` de main.ts.
+ *
  * Toast que aparece abajo-derecha cuando electron-updater descarga una nueva
  * versión. Estilo discreto, dark, con flecha "→". Al click → quitAndInstall.
  *

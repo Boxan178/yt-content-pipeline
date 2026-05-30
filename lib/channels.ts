@@ -31,12 +31,37 @@ export interface Channel {
   /** Raíz donde viven los guiones por proyecto: <scriptsRoot>/<slug>/guion-v2.md. */
   scriptsRoot?: string;
   /**
+   * Biblioteca de brutos COMPARTIDA del canal (ruta absoluta). Si está definida,
+   * el hito "brutos visuales" se da por cumplido cuando la biblioteca tiene clips,
+   * porque los vídeos de estos canales NO traen brutos propios en
+   * `01_BRUTOS/_VÍDEO/`: el render los toma de esta biblioteca común y los coloca
+   * de forma aleatoria (no hay material por vídeo). Sin esto, el hito sale siempre
+   * desmarcado para Moderni Stoici / Moderno Estoico aunque haya material de sobra.
+   * Espejo de `brutos_library` en auto-edit/channels.json.
+   */
+  sharedBrutosLibrary?: string;
+  /**
    * ID del canal en YouTube (formato `UC...`). Usado para comprobar via RSS
    * público si un vídeo ya está subido (sin OAuth, sin cuota API).
    * Pablo: rellena con el ID real cuando lo tengas a mano. Si está vacío, el
    * endpoint /api/youtube/status devuelve `{ uploaded: false, configured: false }`.
    */
   youtubeChannelId?: string;
+  /**
+   * Si true, la columna "Ideas" del kanban permite "Iniciar pipeline" (crea la
+   * carpeta del vídeo y lanza a SARA en automático hasta listo para subir). Canal
+   * piloto: solo `moderni-stoici`. En el resto el botón sale deshabilitado.
+   */
+  autoPipeline?: boolean;
+  /**
+   * Si true, cuando un vídeo de este canal queda completo (render + miniatura +
+   * packaging) y sin jobs vivos, la app lo sube SOLA a YouTube como `unlisted`
+   * (oculto) con todo el packaging y avisa a Pablo por Telegram para que lo
+   * programe desde el móvil. Canal piloto: solo `moderni-stoici`. 100% hands-off.
+   * Ver `lib/auto-publish.ts`. Para activarlo en otro canal, basta poner `true`
+   * (requiere que el canal esté autorizado en el engine youtube-uploader).
+   */
+  autoPublishUnlisted?: boolean;
 }
 
 export const CHANNELS: Channel[] = [
@@ -58,6 +83,9 @@ export const CHANNELS: Channel[] = [
       '_REFERENCIA-THUMBNAILS-YOUTUBE',
     ],
     scriptsRoot: channelScriptsRoot('moderni-stoici'),
+    sharedBrutosLibrary: 'H:/YOUTUBE/CANALES ESTOICISMO/MODERNI STOICI/Biblioteca de Brutos',
+    autoPipeline: true,
+    autoPublishUnlisted: true,
   },
   // Placeholders — completar rootPath y stateFolders cuando se activen.
   {
@@ -76,6 +104,9 @@ export const CHANNELS: Channel[] = [
       'PENDIENTE DE REVISAR',
     ],
     scriptsRoot: channelScriptsRoot('moderno-estoico'),
+    // Réplica española de Moderni Stoici: comparte su misma biblioteca de brutos
+    // (no tiene una propia en disco).
+    sharedBrutosLibrary: 'H:/YOUTUBE/CANALES ESTOICISMO/MODERNI STOICI/Biblioteca de Brutos',
   },
   {
     // Canal de historias narrativas cortas. Reciclaje del canal YouTube
@@ -97,10 +128,107 @@ export const CHANNELS: Channel[] = [
       'Biblioteca de Brutos',
     ],
     scriptsRoot: channelScriptsRoot('vaultman'),
+    sharedBrutosLibrary: 'H:/YOUTUBE/THE VAULTMAN/Biblioteca de Brutos',
+  },
+  {
+    // Canal de historias narrativas cortas (en español). Activado 2026-05-27.
+    slug: 'uncharted-history',
+    name: 'Uncharted History',
+    enabled: true,
+    rootPath: 'H:/YOUTUBE/UNCHARTED HISTORY',
+    stateFolders: {
+      pending_locution: '_PENDIENTE LOCUCION',
+      production: '_EN PRODUCCIÓN',
+      ready: '_LISTOS PARA SUBIR',
+      uploaded: '_SUBIDOS',
+      archived: '_ARCHIVO',
+    },
+    ignoreFolders: [
+      'PENDIENTE DE REVISAR',
+      '_PACKAGING',
+      'branding',
+      'Historias cortas español',
+    ],
+    scriptsRoot: channelScriptsRoot('uncharted-history'),
+  },
+  // ── Canales SLEEP STORIES (creados 2026-05-29) ───────────────────────────
+  // Tres canales nuevos de historias para dormir bajo
+  // H:/YOUTUBE/CANALES SLEEP STORIES/. Estructura estándar, muy parecidos a
+  // Moderni Stoici. Brutos (Pablo, 2026-05-29):
+  //   - the-sleeping-stoic → reutiliza la biblioteca estoica de Moderni Stoici.
+  //   - drowsy-tales / the-sleepy-historian → PENDIENTE de crear su biblioteca;
+  //     de momento apuntan a _RECURSOS/Biblioteca Brutos compartida (vacía →
+  //     hito "brutos" sin marcar hasta llenarla; cuenta vídeos O fotos).
+  {
+    // Sleep story ESTOICO: reutiliza los mismos brutos (149 clips) y la música
+    // de Moderni Stoici, igual que Moderno Estoico. No necesita biblioteca
+    // propia — el render tira de la biblioteca estoica común. La voz también es
+    // la misma. (Pablo, 2026-05-29.)
+    slug: 'the-sleeping-stoic',
+    name: 'The Sleeping Stoic',
+    enabled: true,
+    rootPath: 'H:/YOUTUBE/CANALES SLEEP STORIES/THE SLEEPING STOIC',
+    stateFolders: {
+      pending_locution: '_PENDIENTE LOCUCION',
+      production: '_EN PRODUCCIÓN',
+      ready: '_LISTOS PARA SUBIR',
+      uploaded: '_SUBIDOS',
+      archived: '_ARCHIVO',
+    },
+    ignoreFolders: [
+      'PENDIENTE DE REVISAR',
+      'Biblioteca de Brutos',
+      '_PACKAGING',
+      'branding',
+    ],
+    scriptsRoot: channelScriptsRoot('the-sleeping-stoic'),
+    sharedBrutosLibrary: 'H:/YOUTUBE/CANALES ESTOICISMO/MODERNI STOICI/Biblioteca de Brutos',
+    autoPipeline: true,
+  },
+  {
+    slug: 'drowsy-tales',
+    name: 'Drowsy Tales',
+    enabled: true,
+    rootPath: 'H:/YOUTUBE/CANALES SLEEP STORIES/DROWSY TALES',
+    stateFolders: {
+      pending_locution: '_PENDIENTE LOCUCION',
+      production: '_EN PRODUCCIÓN',
+      ready: '_LISTOS PARA SUBIR',
+      uploaded: '_SUBIDOS',
+      archived: '_ARCHIVO',
+    },
+    ignoreFolders: [
+      'PENDIENTE DE REVISAR',
+      'Biblioteca de Brutos',
+      '_PACKAGING',
+      'branding',
+    ],
+    scriptsRoot: channelScriptsRoot('drowsy-tales'),
+    sharedBrutosLibrary: 'H:/YOUTUBE/CANALES SLEEP STORIES/_RECURSOS/Biblioteca Brutos compartida',
+  },
+  {
+    slug: 'the-sleepy-historian',
+    name: 'The Sleepy Historian',
+    enabled: true,
+    rootPath: 'H:/YOUTUBE/CANALES SLEEP STORIES/THE SLEEPY HISTORIAN',
+    stateFolders: {
+      pending_locution: '_PENDIENTE LOCUCION',
+      production: '_EN PRODUCCIÓN',
+      ready: '_LISTOS PARA SUBIR',
+      uploaded: '_SUBIDOS',
+      archived: '_ARCHIVO',
+    },
+    ignoreFolders: [
+      'PENDIENTE DE REVISAR',
+      'Biblioteca de Brutos',
+      '_PACKAGING',
+      'branding',
+    ],
+    scriptsRoot: channelScriptsRoot('the-sleepy-historian'),
+    sharedBrutosLibrary: 'H:/YOUTUBE/CANALES SLEEP STORIES/_RECURSOS/Biblioteca Brutos compartida',
   },
   { slug: 'dailydog',         name: 'Daily Dog',        enabled: false, rootPath: 'H:/YOUTUBE/DAILY DOG', stateFolders: { pending_locution: '', production: '', ready: '', uploaded: '', archived: '' }, ignoreFolders: [] },
   { slug: 'tail-tales',       name: 'Tail Tales',       enabled: false, rootPath: 'H:/YOUTUBE/TAIL TALES_EN', stateFolders: { pending_locution: '', production: '', ready: '', uploaded: '', archived: '' }, ignoreFolders: [] },
-  { slug: 'uncharted-history',name: 'Uncharted History', enabled: false, rootPath: '', stateFolders: { pending_locution: '', production: '', ready: '', uploaded: '', archived: '' }, ignoreFolders: [] },
   { slug: 'canal-espanol',    name: 'Canal Español',    enabled: false, rootPath: '', stateFolders: { pending_locution: '', production: '', ready: '', uploaded: '', archived: '' }, ignoreFolders: [] },
   { slug: 'canal-paranormal', name: 'Canal Paranormal', enabled: false, rootPath: '', stateFolders: { pending_locution: '', production: '', ready: '', uploaded: '', archived: '' }, ignoreFolders: [] },
 ];

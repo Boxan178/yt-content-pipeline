@@ -14,14 +14,57 @@ import { type Stats } from '@/lib/gamification-types';
  * accesos rápidos en surface .glass rounded-[28px] coherente con el
  * resto del refresh.
  */
+interface ChannelWork {
+  slug: string;
+  name: string;
+  liveJobs: number;
+  pending: number;
+  current: { videoTitle: string; skill: string; label: string; startedAt: string } | null;
+}
+interface WorkingSummary {
+  channels: Record<string, ChannelWork>;
+  totals: { liveJobs: number; pending: number; workingChannels: number };
+}
+
+const WORK_REFRESH_MS = 15_000;
+
+function elapsedLabel(startedAt: string): string {
+  const sec = Math.max(0, Math.round((Date.now() - new Date(startedAt).getTime()) / 1000));
+  if (sec < 60) return `${sec}s`;
+  const m = Math.floor(sec / 60);
+  if (m < 60) return `${m}m`;
+  return `${Math.floor(m / 60)}h ${m % 60}m`;
+}
+
 export default function HomePage() {
   const [stats, setStats] = useState<Stats | null>(null);
+  const [work, setWork] = useState<WorkingSummary | null>(null);
 
   useEffect(() => {
     fetchStats().then(setStats).catch(() => {});
   }, []);
 
-  const enabled = CHANNELS.filter((c) => c.enabled);
+  useEffect(() => {
+    let cancelled = false;
+    const tick = () => {
+      fetch('/api/working-summary', { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((d) => { if (!cancelled && d?.ok) setWork(d as WorkingSummary); })
+        .catch(() => {});
+    };
+    tick();
+    const id = setInterval(tick, WORK_REFRESH_MS);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
+  const workOf = (slug: string): ChannelWork | undefined => work?.channels?.[slug];
+
+  // Canales activos, con los que están trabajando primero (live > pending > resto).
+  const enabled = CHANNELS.filter((c) => c.enabled).slice().sort((a, b) => {
+    const wa = workOf(a.slug); const wb = workOf(b.slug);
+    const score = (w?: ChannelWork) => (w ? (w.liveJobs > 0 ? 2 : w.pending > 0 ? 1 : 0) : 0);
+    return score(wb) - score(wa);
+  });
   const comingSoon = CHANNELS.filter((c) => !c.enabled);
 
   return (
@@ -77,38 +120,87 @@ export default function HomePage() {
           </p>
         </div>
 
+        {/* Resumen "trabajando ahora" */}
+        {work && work.totals.workingChannels > 0 && (
+          <div className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-2xl border border-red-500/30 bg-red-500/[0.07] px-4 py-2.5 text-xs text-zinc-300">
+            <span className="inline-flex items-center gap-1.5 font-medium text-red-300">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" />
+              Trabajando ahora
+            </span>
+            <span className="text-zinc-500">·</span>
+            <span><span className="nums text-white">{work.totals.liveJobs}</span> en directo</span>
+            <span className="text-zinc-500">·</span>
+            <span><span className="nums text-white">{work.totals.pending}</span> en cola</span>
+            <span className="text-zinc-500">·</span>
+            <span><span className="nums text-white">{work.totals.workingChannels}</span> {work.totals.workingChannels === 1 ? 'canal' : 'canales'}</span>
+          </div>
+        )}
+
         {/* Activos */}
         {enabled.length > 0 && (
           <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {enabled.map((c) => (
+            {enabled.map((c) => {
+              const w = workOf(c.slug);
+              const live = w?.liveJobs ?? 0;
+              const pending = w?.pending ?? 0;
+              const isLive = live > 0;
+              return (
               <Link
                 key={c.slug}
                 href={`/channels/${c.slug}`}
-                className="glass glass-hover block rounded-[28px] p-5"
+                className={`glass glass-hover block rounded-[28px] p-5 transition ${
+                  isLive ? 'border-red-500/70 shadow-[0_0_0_2px_rgba(239,68,68,0.25)]' : ''
+                }`}
               >
                 <div className="mb-3 flex items-start justify-between gap-3">
                   <h3 className="font-display text-lg font-semibold tracking-display text-white">
                     {c.name}
                   </h3>
-                  <span className="pill-active flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-medium">
-                    <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
-                    activo
-                  </span>
+                  {isLive ? (
+                    <span className="flex shrink-0 items-center gap-1.5 rounded-full border border-red-500/40 bg-red-500/15 px-2.5 py-0.5 text-[10px] font-medium text-red-200">
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" />
+                      trabajando
+                    </span>
+                  ) : (
+                    <span className="pill-active flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-medium">
+                      <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
+                      activo
+                    </span>
+                  )}
                 </div>
-                <p className="mb-4 truncate font-mono text-[11px] text-zinc-500" title={c.rootPath}>
+                <p className="mb-3 truncate font-mono text-[11px] text-zinc-500" title={c.rootPath}>
                   {c.rootPath}
                 </p>
-                {/* Progress placeholder (futuro: leer counts reales) */}
-                <div className="flex gap-1">
-                  <div className="seg-done h-1.5 flex-1 rounded-full" />
-                  <div className="seg-done h-1.5 flex-1 rounded-full" />
-                  <div className="seg-empty h-1.5 flex-1 rounded-full" />
-                  <div className="seg-empty h-1.5 flex-1 rounded-full" />
-                  <div className="seg-empty h-1.5 flex-1 rounded-full" />
-                  <div className="seg-empty h-1.5 flex-1 rounded-full" />
-                </div>
+                {isLive && w?.current ? (
+                  <div className="rounded-2xl border border-red-500/20 bg-red-500/[0.06] px-3 py-2">
+                    <p className="truncate text-[11px] text-zinc-300" title={w.current.videoTitle}>
+                      <span className="font-semibold text-red-200">{w.current.label || w.current.skill}</span>
+                      {' · '}{w.current.videoTitle}
+                    </p>
+                    <p className="mt-0.5 text-[10px] text-zinc-500">
+                      {elapsedLabel(w.current.startedAt)} en marcha
+                      {live > 1 && <> · <span className="nums">{live}</span> jobs vivos</>}
+                      {pending > 0 && <> · <span className="nums">{pending}</span> en cola</>}
+                    </p>
+                  </div>
+                ) : pending > 0 ? (
+                  <p className="text-[11px] text-amber-300/90">
+                    <span className="nums">{pending}</span> en cola, a la espera
+                  </p>
+                ) : (
+                  /* Progress placeholder (futuro: leer counts reales) */
+                  <div className="flex gap-1">
+                    <div className="seg-done h-1.5 flex-1 rounded-full" />
+                    <div className="seg-done h-1.5 flex-1 rounded-full" />
+                    <div className="seg-empty h-1.5 flex-1 rounded-full" />
+                    <div className="seg-empty h-1.5 flex-1 rounded-full" />
+                    <div className="seg-empty h-1.5 flex-1 rounded-full" />
+                    <div className="seg-empty h-1.5 flex-1 rounded-full" />
+                  </div>
+                )}
               </Link>
-            ))}
+              );
+            })}
           </div>
         )}
 

@@ -4,7 +4,6 @@ import './globals.css';
 import { ChatDock } from '@/components/ChatDock';
 import { Sidebar } from '@/components/Sidebar';
 import { TopBar } from '@/components/TopBar';
-import { UpdateToast } from '@/components/UpdateToast';
 import { LevelUpToast } from '@/components/LevelUpToast';
 import { DevBanner } from '@/components/DevBanner';
 
@@ -63,9 +62,6 @@ export default function RootLayout({
         {/* Chat derecho persistente (sustituye a la terminal xterm vieja) */}
         <ChatDock />
         </div>
-
-        {/* Toast de actualización disponible (renderiza solo si llega evento Electron) */}
-        <UpdateToast />
 
         {/* Toast de subir de nivel / desbloquear logro (con confetti) */}
         <LevelUpToast />

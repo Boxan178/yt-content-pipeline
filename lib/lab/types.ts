@@ -134,6 +134,20 @@ export interface Idea {
   status: IdeaStatus;
   sourceResearchId: string | null;
   replicatedFromIdeaId: string | null;
+  /**
+   * Campos opcionales usados por la columna "Ideas" del kanban de canal
+   * (`/channels/[slug]`). No los toca el módulo `/lab`.
+   */
+  /** Carpeta de vídeo creada al pulsar "Iniciar pipeline". */
+  videoFolder?: string | null;
+  /** jobId del SARA lanzado al iniciar pipeline. */
+  pipelineJobId?: string | null;
+  /** ISO de cuándo se lanzó el pipeline. */
+  pipelineStartedAt?: string | null;
+  /** URL del vídeo propio que inspiró la idea (replicación). */
+  sourceVideoUrl?: string | null;
+  /** Título del vídeo propio que inspiró la idea. */
+  sourceVideoTitle?: string | null;
 }
 
 export interface IdeasState {

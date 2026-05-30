@@ -12,6 +12,11 @@ interface DecisionRequest {
   itemText: string;     // texto exacto del item del checklist
   decision: string;     // respuesta de Pablo
   rationale?: string;   // explicación opcional
+  /**
+   * Para decisiones "PENDIENTE ELECCIÓN DE PABLO" escritas como texto libre (no
+   * checkbox): línea EXACTA del packaging.md a sustituir por "✅ ELEGIDO: …".
+   */
+  statusAnchor?: string;
 }
 
 /**
@@ -54,7 +59,23 @@ export async function POST(req: NextRequest) {
   const tsHuman = ts.toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
 
   let updated = false;
-  if (re.test(md)) {
+
+  // Caso A — decisión "PENDIENTE ELECCIÓN DE PABLO" como texto libre: sustituimos
+  // la línea de Estado por el resultado para que deje de aparecer como pendiente.
+  if (body.statusAnchor?.trim()) {
+    const anchor = body.statusAnchor.trim();
+    const anchorEscaped = anchor.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const anchorRe = new RegExp(`^(\\s*)${anchorEscaped}\\s*$`, 'm');
+    if (anchorRe.test(md)) {
+      md = md.replace(anchorRe, (_m, indent: string) => {
+        updated = true;
+        return `${indent}**Estado:** ✅ ELEGIDO: ${body.decision} _(${tsHuman})_`;
+      });
+    }
+  }
+
+  // Caso B — checkbox markdown `- [ ] <texto>` → `- [x] …`.
+  if (!updated && re.test(md)) {
     md = md.replace(re, (_match, indent: string) => {
       updated = true;
       return `${indent}- [x] ${body.itemText}\n${indent}  → DECISIÓN: ${body.decision} _(${tsHuman})_`;

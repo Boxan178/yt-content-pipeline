@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 
-type Status = 'pending' | 'running' | 'done' | 'failed' | 'cancelled';
+type Status = 'pending' | 'running' | 'done' | 'failed' | 'cancelled' | 'blocked';
 
 interface QueueItem {
   id: string;
@@ -21,6 +21,9 @@ interface QueueItem {
   jobId?: string;
   pid?: number;
   failReason?: string;
+  attempts?: number;
+  maxAttempts?: number;
+  blockReason?: string;
 }
 
 const STATUS_PILL: Record<Status, string> = {
@@ -29,6 +32,7 @@ const STATUS_PILL: Record<Status, string> = {
   done: 'pill-active',
   failed: 'bg-red-500/20 border border-red-500/40 text-red-300 rounded-full px-2.5 py-0.5 text-[10px] font-medium inline-flex items-center gap-1',
   cancelled: 'pill-soon',
+  blocked: 'bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded-full px-2.5 py-0.5 text-[10px] font-medium inline-flex items-center gap-1',
 };
 
 function durationLabel(start: string, end?: string) {
@@ -96,6 +100,7 @@ export default function QueuePage() {
   const pending = items.filter((i) => i.status === 'pending').length;
   const running = items.filter((i) => i.status === 'running').length;
   const done = items.filter((i) => i.status === 'done').length;
+  const blocked = items.filter((i) => i.status === 'blocked').length;
   const failed = items.filter((i) => i.status === 'failed' || i.status === 'cancelled').length;
 
   return (
@@ -114,9 +119,10 @@ export default function QueuePage() {
             <span className="text-cyan-300">{running}</span> corriendo ·{' '}
             <span className="text-zinc-300">{pending}</span> pendientes ·{' '}
             <span className="text-green-300">{done}</span> done ·{' '}
+            <span className="text-amber-300">{blocked}</span> bloqueado ·{' '}
             <span className="text-red-300">{failed}</span> falló
           </span>
-          {done + failed > 0 && (
+          {done + failed + blocked > 0 && (
             <button onClick={cleanFinished} className="btn-glass text-xs">
               Limpiar terminados
             </button>
@@ -177,12 +183,20 @@ export default function QueuePage() {
                       <>{' · '}empezó: {new Date(it.startedAt).toLocaleTimeString('es-ES')}</>
                     )}
                     {it.startedAt && <>{' · '}{durationLabel(it.startedAt, it.finishedAt)}</>}
+                    {(it.attempts ?? 1) > 1 && (
+                      <>{' · '}turno <span className="text-zinc-300">{it.attempts}/{it.maxAttempts ?? 6}</span></>
+                    )}
                     {it.failReason && (
                       <>
                         {' · '}<span className="text-red-300">{it.failReason}</span>
                       </>
                     )}
                   </p>
+                  {it.status === 'blocked' && it.blockReason && (
+                    <p className="mt-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-200">
+                      🔒 Bloqueado: {it.blockReason} — se dejó para resolver a mano; la cola siguió.
+                    </p>
+                  )}
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1.5">
                   {it.jobId && (

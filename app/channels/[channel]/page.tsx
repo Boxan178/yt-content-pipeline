@@ -6,8 +6,11 @@ import { useParams } from 'next/navigation';
 import type { VideoState } from '@/lib/channels';
 import { VideoCard, type VideoCardData } from '@/components/VideoCard';
 import { VideoDetailModal } from '@/components/VideoDetailModal';
-import { NewCompilationModal } from '@/components/NewCompilationModal';
 import { BulkEnqueueModal } from '@/components/BulkEnqueueModal';
+import { IdeaCard } from '@/components/IdeaCard';
+import { ExploreIdeasModal } from '@/components/ExploreIdeasModal';
+import { StartIdeasQueueModal } from '@/components/StartIdeasQueueModal';
+import type { Idea } from '@/lib/lab/types';
 import { awardOnce } from '@/lib/gamification-client';
 
 interface Transition {
@@ -37,11 +40,14 @@ export default function ChannelPage() {
   const [error, setError] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [showScheduled, setShowScheduled] = useState(true);
+  const [showIdeas, setShowIdeas] = useState(true);
+  const [ideas, setIdeas] = useState<Idea[]>([]);
+  const [ideasAutoPipeline, setIdeasAutoPipeline] = useState(false);
+  const [showExplore, setShowExplore] = useState(false);
   const [batchArchiving, setBatchArchiving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [selected, setSelected] = useState<VideoCardData | null>(null);
   const [celebrating, setCelebrating] = useState<Set<string>>(new Set());
-  const [showCompilation, setShowCompilation] = useState(false);
   const [showBulkEnqueue, setShowBulkEnqueue] = useState(false);
   const [search, setSearch] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'compilation' | 'working' | 'incomplete'>('all');
@@ -58,6 +64,22 @@ export default function ChannelPage() {
       const payload = (await r.json()) as ApiResponse;
       setData(payload);
       setError(null);
+      // Ideas del canal (columna virtual). No bloquea si falla.
+      try {
+        const ir = await fetch(`/api/channels/${channelSlug}/ideas`, { cache: 'no-store' });
+        if (ir.ok) {
+          const ij = await ir.json();
+          if (ij.ok) {
+            setIdeas(Array.isArray(ij.ideas) ? ij.ideas : []);
+            setIdeasAutoPipeline(!!ij.autoPipeline);
+          }
+        }
+      } catch {}
+      // Tick de la cola: la cola es lazy (solo avanza cuando algo llama a
+      // /api/queue). Al refrescar el kanban la empujamos para que "Empezar
+      // cola" siga lanzando vídeos uno detrás de otro aunque Pablo no esté en
+      // /queue. Fire-and-forget.
+      fetch('/api/queue', { cache: 'no-store' }).catch(() => {});
       // Procesar transiciones: dispara XP + animación en la card.
       const trans = payload.transitions ?? [];
       if (trans.length > 0) {
@@ -106,8 +128,9 @@ export default function ChannelPage() {
   // VisualState = VideoState + 'scheduled' (columna virtual, no estado físico).
   // Un vídeo con scheduledUpload pendiente/subiendo se mueve VISUALMENTE a
   // 'scheduled' aunque físicamente esté en `ready` o `production`.
-  type VisualState = VideoState | 'scheduled';
+  type VisualState = VideoState | 'scheduled' | 'ideas';
   const VISUAL_LABEL: Record<VisualState, string> = {
+    ideas: 'Ideas',
     pending_locution: 'Pendiente locución',
     production: 'En producción',
     ready: 'Listos para subir',
@@ -118,7 +141,7 @@ export default function ChannelPage() {
 
   const grouped = useMemo(() => {
     const g: Record<VisualState, VideoCardData[]> = {
-      pending_locution: [], production: [], ready: [], scheduled: [], uploaded: [], archived: [],
+      ideas: [], pending_locution: [], production: [], ready: [], scheduled: [], uploaded: [], archived: [],
     };
     const q = search.trim().toLowerCase();
     for (const v of data?.videos ?? []) {
@@ -145,13 +168,16 @@ export default function ChannelPage() {
   }, [data, search, filterMode]);
 
   const visibleStates: VisualState[] = useMemo(() => {
-    const order: VisualState[] = ['pending_locution', 'production', 'ready', 'scheduled', 'uploaded', 'archived'];
+    const order: VisualState[] = ['ideas', 'pending_locution', 'production', 'ready', 'scheduled', 'uploaded', 'archived'];
     return order.filter((s) => {
+      if (s === 'ideas') return showIdeas;
       if (s === 'archived') return showArchived;
       if (s === 'scheduled') return showScheduled;
       return true;
     });
-  }, [showArchived, showScheduled]);
+  }, [showIdeas, showArchived, showScheduled]);
+
+  const [showStartQueue, setShowStartQueue] = useState(false);
 
   const archiveAllUploaded = async () => {
     const uploaded = grouped.uploaded;
@@ -208,6 +234,11 @@ export default function ChannelPage() {
       // del modal de detalle. Si arrastran aquí avisamos sin tocar disco.
       if (toState === 'scheduled') {
         flashToast('Para programar una subida usa el botón Subir del vídeo, no arrastrando.');
+        return;
+      }
+      // 'ideas' también es virtual (JSON), no carpeta física: no se arrastra aquí.
+      if (toState === 'ideas') {
+        flashToast('La columna Ideas se llena con "Explorar ideas", no arrastrando vídeos.');
         return;
       }
       const raw = e.dataTransfer.getData('text/x-ytcp-video');
@@ -281,6 +312,14 @@ export default function ChannelPage() {
 
         <div className="flex flex-wrap items-center gap-2">
           <button
+            onClick={() => setShowExplore(true)}
+            className="btn-gold"
+            title="MARIO analiza tu canal y propone ideas replicables"
+          >
+            <IconSpark />
+            Explorar ideas
+          </button>
+          <button
             onClick={() => setShowBulkEnqueue(true)}
             className="btn-glass"
             title="Encolar la misma skill sobre varios vídeos en serie"
@@ -288,14 +327,15 @@ export default function ChannelPage() {
             <IconList />
             Encolar lote
           </button>
-          <button
-            onClick={() => setShowCompilation(true)}
-            className="btn-gold"
-            title="Crear una recopilación de varias historias"
-          >
-            <IconStack />
-            Nueva recopilación
-          </button>
+          <label className="flex cursor-pointer items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-300 transition hover:bg-white/10">
+            <input
+              type="checkbox"
+              checked={showIdeas}
+              onChange={(e) => setShowIdeas(e.target.checked)}
+              className="h-3.5 w-3.5 cursor-pointer rounded border-white/20 bg-white/10 accent-accent"
+            />
+            Ideas
+          </label>
           <label className="flex cursor-pointer items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-300 transition hover:bg-white/10">
             <input
               type="checkbox"
@@ -395,8 +435,59 @@ export default function ChannelPage() {
           className="grid gap-4"
           style={{ gridTemplateColumns: `repeat(${visibleStates.length}, minmax(260px, 1fr))` }}
         >
-          {visibleStates.map((state) => (
-            <KanbanColumn
+          {visibleStates.map((state) => {
+            if (state === 'ideas') {
+              return (
+                <KanbanColumn<Idea>
+                  key={state}
+                  state={state}
+                  label={VISUAL_LABEL[state]}
+                  videos={ideas}
+                  emptyHint="Sin ideas — pulsa “Explorar ideas”"
+                  isDragOver={dragOverState === state}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    if (dragOverState !== state) setDragOverState(state);
+                  }}
+                  onDragLeave={(e) => {
+                    if (e.currentTarget === e.target) setDragOverState(null);
+                  }}
+                  onDrop={(e) => handleDropOnColumn(e, state)}
+                  actions={
+                    <>
+                      {ideas.length > 0 && ideasAutoPipeline && (
+                        <button
+                          onClick={() => setShowStartQueue(true)}
+                          title="Elige cuántas ideas meter en la cola; SARA las produce una detrás de otra"
+                          className="rounded-full border border-accent/40 bg-accent/10 px-2.5 py-0.5 text-[10px] text-accent transition hover:bg-accent/20"
+                        >
+                          ▶ Empezar cola
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setShowExplore(true)}
+                        className="rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-2.5 py-0.5 text-[10px] text-fuchsia-300 transition hover:bg-fuchsia-500/20"
+                      >
+                        + Explorar
+                      </button>
+                    </>
+                  }
+                  renderCard={(idea) => (
+                    <IdeaCard
+                      key={idea.id}
+                      idea={idea}
+                      channelSlug={channelSlug}
+                      autoPipeline={ideasAutoPipeline}
+                      onChanged={() => load()}
+                      onToast={flashToast}
+                    />
+                  )}
+                />
+              );
+            }
+            return (
+            <KanbanColumn<VideoCardData>
               key={state}
               state={state}
               label={VISUAL_LABEL[state]}
@@ -413,6 +504,15 @@ export default function ChannelPage() {
               onDrop={(e) => handleDropOnColumn(e, state)}
               actions={
                 <>
+                  {state === 'production' && grouped.production.length === 0 && (
+                    <button
+                      onClick={() => setShowExplore(true)}
+                      className="rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-2.5 py-0.5 text-[10px] text-fuchsia-300 transition hover:bg-fuchsia-500/20"
+                      title="No tienes nada en producción — explora ideas nuevas"
+                    >
+                      ✨ Explorar ideas
+                    </button>
+                  )}
                   {state === 'uploaded' && grouped.uploaded.length > 0 && (
                     <button
                       onClick={archiveAllUploaded}
@@ -443,25 +543,12 @@ export default function ChannelPage() {
                 />
               )}
             />
-          ))}
+            );
+          })}
         </section>
       )}
 
       {selected && <VideoDetailModal video={selected} onClose={handleCloseModal} />}
-
-      {showCompilation && data && (
-        <NewCompilationModal
-          channelSlug={channelSlug}
-          channelName={data.name}
-          videos={data.videos}
-          onClose={() => setShowCompilation(false)}
-          onCreated={(info) => {
-            setShowCompilation(false);
-            flashToast(`Recopilación creada: ${info.folderName}`);
-            load();
-          }}
-        />
-      )}
 
       {showBulkEnqueue && data && (
         <BulkEnqueueModal
@@ -472,24 +559,55 @@ export default function ChannelPage() {
           onEnqueued={(count) => flashToast(`Encolados ${count} item(s) — ver /queue`)}
         />
       )}
+
+      {showExplore && (
+        <ExploreIdeasModal
+          channelSlug={channelSlug}
+          channelName={data?.name ?? channelSlug}
+          onClose={() => setShowExplore(false)}
+          onIdeasAdded={(count) => {
+            flashToast(`Añadidas ${count} idea(s) a la columna Ideas`);
+            load();
+          }}
+        />
+      )}
+
+      {showStartQueue && (
+        <StartIdeasQueueModal
+          channelSlug={channelSlug}
+          channelName={data?.name ?? channelSlug}
+          ideas={ideas}
+          onClose={() => setShowStartQueue(false)}
+          onStarted={(enqueued, skipped) => {
+            flashToast(
+              skipped > 0
+                ? `Cola iniciada: ${enqueued} en cola, ${skipped} saltada(s). Ver /queue`
+                : `Cola iniciada: ${enqueued} vídeo(s), uno tras otro. Ver /queue`,
+            );
+            load();
+          }}
+        />
+      )}
     </main>
   );
 }
 
 /* ─────────────── KanbanColumn ─────────────── */
-interface KanbanColumnProps {
+interface KanbanColumnProps<T> {
   state: string;
   label: string;
-  videos: VideoCardData[];
+  videos: T[];
   isDragOver: boolean;
   onDragOver: (e: React.DragEvent) => void;
   onDragLeave: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent) => void;
   actions: React.ReactNode;
-  renderCard: (v: VideoCardData) => React.ReactNode;
+  renderCard: (v: T) => React.ReactNode;
+  /** Texto del estado vacío (default "vacío"). */
+  emptyHint?: string;
 }
 
-function KanbanColumn({
+function KanbanColumn<T>({
   state,
   label,
   videos,
@@ -499,7 +617,8 @@ function KanbanColumn({
   onDrop,
   actions,
   renderCard,
-}: KanbanColumnProps) {
+  emptyHint = 'vacío',
+}: KanbanColumnProps<T>) {
   return (
     <div
       onDragOver={onDragOver}
@@ -526,7 +645,7 @@ function KanbanColumn({
       >
         {videos.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-white/10 px-3 py-6 text-center text-xs text-zinc-600">
-            vacío
+            {emptyHint}
           </p>
         ) : (
           videos.map(renderCard)
@@ -559,10 +678,10 @@ function IconList() {
     </svg>
   );
 }
-function IconStack() {
+function IconSpark() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+      <path d="M12 3l1.6 4.6L18 9l-4.4 1.4L12 15l-1.6-4.6L6 9l4.4-1.4L12 3zM18 14l.8 2.2L21 17l-2.2.8L18 20l-.8-2.2L15 17l2.2-.8L18 14z" />
     </svg>
   );
 }

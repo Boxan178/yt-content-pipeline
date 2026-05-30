@@ -174,6 +174,22 @@ export function startJob(opts: StartJobOptions): ClaudeJob {
   // Para mitigar, el job se persiste en disco — al reabrir la app, readJob()
   // detecta el PID muerto y marca status='done' automáticamente.
   // Pablo en la práctica no cierra Electron a mitad de tarea.
+  // CLAVE — autenticación: el `claude` spawneado DEBE usar la suscripción Pro
+  // (credenciales en ~/.claude), NUNCA una API key. Si el server Next se arrancó
+  // desde un entorno que tiene ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN /
+  // ANTHROPIC_BASE_URL exportadas (p.ej. lanzado desde una sesión Claude Code o
+  // el SDK), heredarlas hace que el claude hijo intente autenticar con ese token
+  // de sesión y reviente con `401 Invalid authentication credentials` en el
+  // turno 1 (0 tokens, sin usar herramientas). Las quitamos del env del hijo para
+  // forzar el fallback a la suscripción. Ver CLAUDE.md: "subscription Pro siempre".
+  const {
+    ANTHROPIC_API_KEY: _omitApiKey,
+    ANTHROPIC_AUTH_TOKEN: _omitAuthToken,
+    ANTHROPIC_BASE_URL: _omitBaseUrl,
+    ...cleanEnv
+  } = process.env;
+  void _omitApiKey; void _omitAuthToken; void _omitBaseUrl;
+
   let child;
   try {
     child = spawn(claudeBin.exe, args, {
@@ -183,7 +199,7 @@ export function startJob(opts: StartJobOptions): ClaudeJob {
       windowsHide: true,
       stdio: ['ignore', out, err],
       env: {
-        ...process.env,
+        ...cleanEnv,
         TERM: 'dumb',
       },
     });

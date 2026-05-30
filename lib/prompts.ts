@@ -36,6 +36,21 @@ export interface BuiltPrompt {
   };
 }
 
+/**
+ * Bloque que se appendea a los prompts de SARA cuando corren dentro de la cola
+ * "vídeo de principio a fin". La cola NO avanza al siguiente vídeo hasta que
+ * este esté listo o bloqueado; SARA señala su estado con un marcador final.
+ */
+export const QUEUE_COMPLETION_INSTRUCTION = `
+
+---
+
+CONTEXTO DE EJECUCIÓN EN COLA (vídeo de principio a fin): te ejecuto en una cola que NO avanza al siguiente vídeo hasta que ESTE esté terminado. Avanza este vídeo lo más lejos posible en tu turno. Al cerrar, termina con UNA línea de estado EXACTA:
+- \`<<<VIDEO_DONE>>>\` si el vídeo está LISTO PARA SUBIR (todos los hitos: guion, locución, brutos, render principal y miniatura final).
+- \`<<<VIDEO_BLOCKED: motivo>>>\` si NO puedes avanzar más sin una decisión mía o por un fallo que requiere intervención humana (motivo en una frase).
+- Si no pones marcador, el sistema medirá el progreso real en disco y te re-lanzará otro turno para seguir.
+NUNCA subas a YouTube. No esperes respuesta interactiva — la sesión muere al cerrar tu turno; deja cualquier bloqueo en el marcador.`;
+
 /** Bloque común que se appendea a un prompt para activar el patrón "loop". */
 export const LOOP_INSTRUCTION = `
 
@@ -56,6 +71,36 @@ Si el resultado NO es óptimo todavía y crees que puedes mejorarlo en otro inte
 \`\`\`
 
 El sistema relanzará automáticamente el prompt si NO ve <<<DONE>>>. Hay un máximo de reintentos — no abuses, solo pide RETRY si de verdad crees que mejoras.`;
+
+/**
+ * Inyecta instrucciones adicionales de Pablo en un prompt ya construido.
+ * Se colocan como bloque prioritario y, si el prompt termina con el bloque
+ * LOOP_INSTRUCTION (patrón <<<DONE>>>), se insertan JUSTO ANTES de él para
+ * que la instrucción de cierre con marcador siga siendo lo último que lee
+ * el agente. Si `extra` está vacío o en blanco, devuelve `built` sin tocar.
+ */
+export function withExtraInstructions(built: BuiltPrompt, extra?: string): BuiltPrompt {
+  const trimmed = extra?.trim();
+  if (!trimmed) return built;
+
+  const block = `
+
+---
+
+INSTRUCCIONES ADICIONALES DE PABLO (prioritarias — aplican a TODAS las fases del proceso, anteponen a cualquier paso por defecto de la skill):
+
+${trimmed}`;
+
+  let prompt: string;
+  if (built.prompt.endsWith(LOOP_INSTRUCTION)) {
+    const base = built.prompt.slice(0, built.prompt.length - LOOP_INSTRUCTION.length);
+    prompt = base + block + LOOP_INSTRUCTION;
+  } else {
+    prompt = built.prompt + block;
+  }
+
+  return { ...built, prompt };
+}
 
 export interface VideoContext {
   channel: string;
@@ -196,6 +241,53 @@ TU TRABAJO (en este orden):
    - Próximo paso recomendado
 
 IMPORTANTE: te ejecuto desde una sesión no-interactiva (\`claude -p\`). NO puedes hacerme preguntas durante la sesión y esperar respuesta — la sesión muere al terminar tu turno. Cualquier input que necesites lo dejas en el brief final de PASO 16 y yo lo resuelvo después relanzándote con la decisión tomada.`,
+  };
+}
+
+// ── SARA — Arrancar un vídeo NUEVO desde una idea (columna Ideas) ─────────
+
+export interface IdeaSeed {
+  title: string;
+  description: string;
+  angle?: string | null;
+  sourceVideoTitle?: string | null;
+  sourceVideoUrl?: string | null;
+}
+
+/**
+ * Arranca el pipeline completo de un vídeo NUEVO a partir de una idea de la
+ * columna "Ideas". La carpeta ya está scaffolded (vacía salvo idea.md). SARA
+ * debe ejecutar de punta a punta hasta "listo para subir" SIN publicar.
+ *
+ * Reusa el cuerpo de buildSaraResume pero con el encuadre "desde cero, tengo
+ * una idea" en vez de "retoma lo que haya".
+ */
+export function buildSaraFromIdea(idea: IdeaSeed, v: VideoContext): BuiltPrompt {
+  const isStoic = v.channel === 'moderni-stoici' || v.channel === 'moderno-estoico';
+  const base = buildSaraResume(v);
+  const seed = `SARA, arranca un vídeo NUEVO desde una IDEA para el canal ${v.channel}.
+
+LA IDEA (semilla del vídeo):
+- Título tentativo: ${idea.title}
+- Descripción: ${idea.description}
+${idea.angle ? `- Ángulo/gancho: ${idea.angle}` : ''}
+${idea.sourceVideoTitle ? `- Inspirada en un vídeo propio que funcionó: "${idea.sourceVideoTitle}"${idea.sourceVideoUrl ? ` (${idea.sourceVideoUrl})` : ''}` : ''}
+
+La carpeta del proyecto YA está creada (vacía, recién scaffolded) en:
+${v.folderPath}
+Dentro tienes \`idea.md\` con esta misma semilla. El título de carpeta es provisional — el packaging final lo decides en Fase 1.
+
+OBJETIVO: llevar este vídeo DE CERO hasta **"listo para subir"** (todas las fases del pipeline + revisiones), pero **NO publicar en YouTube** — eso lo hago yo después manualmente. Párate en cualquier decisión que sea solo mía (elección de título/miniatura, validar un cambio de guion fuerte) y déjala anotada en el brief final.
+
+A partir de aquí sigue tu protocolo estándar de orquestación${isStoic ? ' para canal ESTOICO' : ''}:
+
+`;
+  // Sustituimos el encabezado "retoma el pipeline" por el encuadre de idea,
+  // conservando todo el cuerpo operativo (pasos 1-7, routing, Luna Media OS).
+  const bodyFromStep1 = base.prompt.slice(base.prompt.indexOf('TU TRABAJO (en este orden):'));
+  return {
+    ...base,
+    prompt: seed + bodyFromStep1,
   };
 }
 

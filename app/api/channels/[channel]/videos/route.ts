@@ -5,10 +5,16 @@ import { getChannel, type VideoState } from '@/lib/channels';
 import { computeProgress, type Progress } from '@/lib/progress';
 import { listActiveJobsForFolder, type ClaudeJob } from '@/lib/claude-jobs';
 import { diffAndUpdate, type Transition } from '@/lib/seen-states';
-import { readSchedule, type ScheduledUpload } from '@/lib/upload-schedule';
+import { readSchedule, tickScheduler, type ScheduledUpload } from '@/lib/upload-schedule';
+import { runAutoPublishTick } from '@/lib/auto-publish';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+// Throttle del backstop de auto-subida (cubre el acceso por web, sin el poller
+// de Electron). Como mucho un tick cada 60s, compartido entre peticiones.
+let lastAutoPublishTickAt = 0;
+const AUTO_PUBLISH_BACKSTOP_GAP_MS = 60_000;
 
 interface VideoDTO {
   channel: string;
@@ -28,12 +34,13 @@ interface VideoDTO {
   isCompilation: boolean;
   /** Si es recopilación, número de historias fuente. */
   compilationSources?: number;
-  /** Si tiene una subida programada (pending/uploading), su info. */
+  /** Si tiene una subida en cola, subiéndose o ya subida en oculto, su info. */
   scheduledUpload?: {
     id: string;
     scheduledFor: string;
-    status: 'pending' | 'uploading';
+    status: 'pending' | 'uploading' | 'done';
     privacyOnPublish: 'public' | 'unlisted' | 'private';
+    youtubeVideoId?: string;
   };
 }
 
@@ -62,6 +69,7 @@ async function inspectVideoFolder(
   rootPath: string,
   stateFolder: string,
   folderName: string,
+  sharedBrutosAvailable: boolean,
 ): Promise<VideoDTO | null> {
   const folderPath = path.join(rootPath, stateFolder, folderName);
   const st = await tryStat(folderPath);
@@ -123,7 +131,7 @@ async function inspectVideoFolder(
     warnings.push('Sin _PACKAGING');
   }
 
-  const progress = await computeProgress(folderPath);
+  const progress = await computeProgress(folderPath, { sharedBrutosAvailable });
 
   // Detección de recopilación: existe _PACKAGING/compilation.json
   let isCompilation = false;
@@ -180,8 +188,35 @@ export async function GET(
     return NextResponse.json({ error: `Channel disabled: ${channel.slug}` }, { status: 403 });
   }
 
+  // Backstop del detector de auto-subida oculta: cubre el acceso por web (donde
+  // no corre el poller de Electron). Throttled e idempotente; fire-and-forget
+  // para no frenar la respuesta del kanban.
+  if (channel.autoPublishUnlisted && Date.now() - lastAutoPublishTickAt > AUTO_PUBLISH_BACKSTOP_GAP_MS) {
+    lastAutoPublishTickAt = Date.now();
+    void (async () => {
+      try {
+        await runAutoPublishTick();
+        await tickScheduler();
+      } catch {}
+    })();
+  }
+
   const allVideos: VideoDTO[] = [];
   const stateEntries = Object.entries(channel.stateFolders) as [VideoState, string][];
+
+  // ¿La biblioteca de brutos compartida tiene clips? Se calcula UNA vez por canal
+  // (no por vídeo) y se propaga al cómputo de progreso. Para canales sin
+  // biblioteca compartida queda en false → comportamiento por-vídeo de siempre.
+  // Cuenta vídeos O fotos: los sleep stories pueden montarse con imágenes fijas
+  // (Ken Burns), no solo clips. Coherente con el chequeo por-vídeo de progress.ts.
+  let sharedBrutosAvailable = false;
+  if (channel.sharedBrutosLibrary) {
+    const lib = await safeReaddir(channel.sharedBrutosLibrary);
+    sharedBrutosAvailable = lib.some((f) => {
+      const ext = path.extname(f).toLowerCase();
+      return MAIN_VIDEO_EXT.has(ext) || IMAGE_EXT.has(ext);
+    });
+  }
 
   await Promise.all(
     stateEntries.map(async ([state, folder]) => {
@@ -189,7 +224,7 @@ export async function GET(
       const entries = await safeReaddir(folderPath);
       const results = await Promise.all(
         entries.map((name) =>
-          inspectVideoFolder(channel.slug, state, channel.rootPath, folder, name),
+          inspectVideoFolder(channel.slug, state, channel.rootPath, folder, name, sharedBrutosAvailable),
         ),
       );
       for (const r of results) if (r) allVideos.push(r);
@@ -200,21 +235,32 @@ export async function GET(
   // una entrada PENDING o UPLOADING cuyo videoFolder coincida (normalizado a /).
   try {
     const schedule = readSchedule();
-    const activeByFolder = new Map<string, ScheduledUpload>();
+    // Por carpeta nos quedamos con el item más relevante: activo (uploading >
+    // pending) por encima de done; a igualdad, el más reciente.
+    const rank = (s: ScheduledUpload['status']) =>
+      s === 'uploading' ? 3 : s === 'pending' ? 2 : s === 'done' ? 1 : 0;
+    const byFolder = new Map<string, ScheduledUpload>();
     for (const item of schedule.items) {
-      if (item.status === 'pending' || item.status === 'uploading') {
-        activeByFolder.set(item.videoFolder.replace(/\\/g, '/'), item);
+      if (rank(item.status) === 0) continue; // ignorar failed/cancelled
+      const key = item.videoFolder.replace(/\\/g, '/');
+      const existing = byFolder.get(key);
+      if (
+        !existing ||
+        rank(item.status) > rank(existing.status) ||
+        (rank(item.status) === rank(existing.status) && item.createdAt > existing.createdAt)
+      ) {
+        byFolder.set(key, item);
       }
     }
     for (const v of allVideos) {
-      const key = v.folderPath.replace(/\\/g, '/');
-      const upl = activeByFolder.get(key);
+      const upl = byFolder.get(v.folderPath.replace(/\\/g, '/'));
       if (upl) {
         v.scheduledUpload = {
           id: upl.id,
           scheduledFor: upl.scheduledFor,
-          status: upl.status === 'pending' ? 'pending' : 'uploading',
+          status: upl.status as 'pending' | 'uploading' | 'done',
           privacyOnPublish: upl.privacyOnPublish,
+          youtubeVideoId: upl.youtubeVideoId,
         };
       }
     }

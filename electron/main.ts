@@ -20,9 +20,12 @@ let mainWindow: BrowserWindow | null = null;
 let nextServerProcess: ChildProcess | null = null;
 let nextServerUrl: string | null = null;
 let notionPollerInterval: NodeJS.Timeout | null = null;
+let autoPublishPollerInterval: NodeJS.Timeout | null = null;
 
 /** Intervalo del poller Notion. Pablo lo fijó en 30s — ver task brief. */
 const NOTION_POLLER_INTERVAL_MS = 30_000;
+/** Intervalo del poller de auto-subida oculta a YouTube (detector + cola). */
+const AUTOPUBLISH_POLLER_INTERVAL_MS = 60_000;
 
 // ── Next standalone server (sólo en producción) ─────────────────────────
 
@@ -78,6 +81,11 @@ async function startNextServer(): Promise<string> {
       // Electron por defecto setea ELECTRON_RUN_AS_NODE para que el binario
       // se comporte como node puro al ejecutar el server.js standalone.
       ELECTRON_RUN_AS_NODE: '1',
+      // Scripts Python runtime empaquetados en resources/scripts/. El server
+      // corre con cwd en resources/standalone y sin process.resourcesPath
+      // fiable, así que le pasamos la ruta absoluta. verify-locucion.ts la lee
+      // como override; en dev (sin esta env) cae a process.cwd()/scripts/.
+      VERIFY_LOCUCION_SCRIPT: path.join(process.resourcesPath, 'scripts', 'verify_locucion.py'),
     },
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
@@ -196,22 +204,84 @@ function stopNotionPoller() {
   }
 }
 
+// ── Auto-publish poller (subida oculta a YouTube en background) ────────
+//
+// Cada 60s pega POST a /api/auto-publish/tick. El endpoint detecta vídeos
+// completos+idle de canales con autoPublishUnlisted, los encola en unlisted y
+// avanza la cola (lanza upload.py + avisa por Telegram al terminar). El endpoint
+// es idempotente y respeta los kill-switch por env, así que esta función no
+// necesita conocer la lógica. Mismo patrón que startNotionPoller.
+function startAutoPublishPoller() {
+  const baseUrl = isDev ? DEV_URL : nextServerUrl;
+  if (!baseUrl) {
+    console.warn('[auto-publish] no hay baseUrl, no se arranca');
+    return;
+  }
+  if (autoPublishPollerInterval) return; // ya arrancado
+
+  const tickOnce = async () => {
+    try {
+      const r = await fetch(`${baseUrl}/api/auto-publish/tick`, { method: 'POST' });
+      if (!r.ok) {
+        console.warn(`[auto-publish] tick respondió ${r.status}`);
+        return;
+      }
+      const data = (await r.json().catch(() => null)) as
+        | { ok: boolean; enqueued?: Array<{ action: string; title?: string }> }
+        | null;
+      const justEnqueued = (data?.enqueued ?? []).filter((e) => e.action === 'enqueued');
+      if (justEnqueued.length > 0 && Notification.isSupported()) {
+        try {
+          new Notification({
+            title: 'Subiendo a YouTube (oculto)',
+            body:
+              justEnqueued.length === 1
+                ? `"${justEnqueued[0].title ?? 'vídeo'}" subiéndose en oculto. Te aviso por Telegram al acabar.`
+                : `${justEnqueued.length} vídeos subiéndose en oculto. Te aviso por Telegram al acabar.`,
+            silent: false,
+          }).show();
+        } catch {}
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!msg.includes('ECONNREFUSED') && !msg.includes('fetch failed')) {
+        console.warn('[auto-publish] tick failed:', msg);
+      }
+    }
+  };
+
+  // Primer tick a los 10s (deja que SARA/LUÍS arranquen sus jobs antes).
+  setTimeout(tickOnce, 10_000);
+  autoPublishPollerInterval = setInterval(tickOnce, AUTOPUBLISH_POLLER_INTERVAL_MS);
+  console.log(`[auto-publish] interval ${AUTOPUBLISH_POLLER_INTERVAL_MS}ms armado (baseUrl=${baseUrl})`);
+}
+
+function stopAutoPublishPoller() {
+  if (autoPublishPollerInterval) {
+    clearInterval(autoPublishPollerInterval);
+    autoPublishPollerInterval = null;
+  }
+}
+
 // ── Auto-updater (electron-updater + GitHub Releases) ──────────────────
 
 /**
- * Configura el updater contra GitHub Releases. Sólo se activa si:
- *   - estamos en producción
- *   - la env var YTCP_UPDATER_ENABLED=1 (toggle para evitar checkForUpdates
- *     cuando todavía no se ha configurado el repo)
+ * Configura el updater contra GitHub Releases. Comportamiento "estilo Chrome":
+ *   - sólo en producción (en dev no hay nada que actualizar)
+ *   - descarga la nueva versión en background (autoDownload)
+ *   - la instala en SILENCIO al cerrar la app (autoInstallOnAppQuit)
+ *   - sin diálogos ni toasts: el usuario nunca ve la "ventanita" del instalador
  *
- * Cuando Pablo cree el repo y suba el primer release, basta con setear la env
- * var al arrancar la app (o quitar la guard de aquí) para que las siguientes
- * versiones se actualicen solas.
+ * Kill-switch: arrancar con YTCP_UPDATER_ENABLED=0 para desactivarlo (p.ej.
+ * depurando un release). Por defecto está ACTIVO en producción.
+ *
+ * Requisito: el repo de build.publish (GitHub Releases) debe ser público; si
+ * fuera privado el cliente necesitaría un token para descargar el .exe.
  */
 function setupAutoUpdater() {
   if (isDev) return;
-  if (process.env.YTCP_UPDATER_ENABLED !== '1') {
-    console.log('[updater] desactivado (YTCP_UPDATER_ENABLED!=1). Editar build.publish en package.json y poner la env var a 1 cuando esté el repo.');
+  if (process.env.YTCP_UPDATER_ENABLED === '0') {
+    console.log('[updater] desactivado por kill-switch (YTCP_UPDATER_ENABLED=0).');
     return;
   }
 
@@ -225,13 +295,11 @@ function setupAutoUpdater() {
     console.log(`[updater] update disponible: ${info.version}`);
   });
   autoUpdater.on('update-downloaded', (info) => {
-    // En vez de un diálogo modal, mandamos un evento al renderer para que
-    // pinte un toast inline ("Reiniciar para actualizar" + versión). Si el
-    // renderer no responde (ventana cerrada, race), el autoInstallOnAppQuit
-    // garantiza que se aplique en el próximo cierre.
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('updater:downloaded', { version: info.version });
-    }
+    // Silencio total: NO avisamos al renderer. autoInstallOnAppQuit aplica la
+    // actualización sola en el próximo cierre de la app — sin ventanas, sin
+    // toasts, sin reinicios forzados. El usuario solo nota que al reabrir ya
+    // está en la versión nueva.
+    console.log(`[updater] update descargada: ${info.version} (se instalará al cerrar la app).`);
   });
 
   // Comprobar al arrancar + cada 4h mientras la app esté abierta.
@@ -374,10 +442,12 @@ app.whenReady().then(async () => {
   createWindow();
   setupAutoUpdater();
   startNotionPoller();
+  startAutoPublishPoller();
 });
 
 app.on('window-all-closed', () => {
   stopNotionPoller();
+  stopAutoPublishPoller();
   // Matar el server Next si está vivo (sólo en producción)
   if (nextServerProcess) {
     try { nextServerProcess.kill(); } catch {}

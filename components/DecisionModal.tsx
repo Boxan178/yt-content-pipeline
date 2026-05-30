@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { planForDecision } from '@/lib/decision-types';
+import { planForDecision, type DecisionKind, type DecisionPlan } from '@/lib/decision-types';
 
 interface Props {
   itemText: string;
@@ -9,12 +9,43 @@ interface Props {
   videoFolder: string;
   /** Lista de miniaturas disponibles si la decisión es thumbnail_pick. */
   thumbnailOptions?: Array<{ name: string; url: string }>;
+  /** Override del tipo de decisión (para decisiones de packaging ya tipadas). */
+  presetKind?: DecisionKind;
+  /** Override de opciones (candidatos extraídos del packaging.md). */
+  presetOptions?: string[];
+  /** Override de la pregunta mostrada. */
+  presetQuestion?: string;
+  /** Recomendación del equipo a mostrar como pista. */
+  presetRecommendation?: string;
+  /** Línea de Estado del packaging.md a voltear al resolver (decisiones libres). */
+  statusAnchor?: string;
   onClose: () => void;
   onResolved?: () => void;
 }
 
-export function DecisionModal({ itemText, videoFolder, thumbnailOptions, onClose, onResolved }: Props) {
-  const plan = useMemo(() => planForDecision(itemText), [itemText]);
+export function DecisionModal({
+  itemText,
+  videoFolder,
+  thumbnailOptions,
+  presetKind,
+  presetOptions,
+  presetQuestion,
+  presetRecommendation,
+  statusAnchor,
+  onClose,
+  onResolved,
+}: Props) {
+  const plan = useMemo<DecisionPlan>(() => {
+    if (presetKind) {
+      return {
+        kind: presetKind,
+        question: presetQuestion ?? 'Elige una opción',
+        options: presetOptions,
+        hint: presetRecommendation ? `Recomendación del equipo: ${presetRecommendation}` : undefined,
+      };
+    }
+    return planForDecision(itemText);
+  }, [itemText, presetKind, presetOptions, presetQuestion, presetRecommendation]);
   const [decision, setDecision] = useState('');
   const [rationale, setRationale] = useState('');
   const [busy, setBusy] = useState(false);
@@ -45,6 +76,7 @@ export function DecisionModal({ itemText, videoFolder, thumbnailOptions, onClose
           itemText,
           decision: decision.trim(),
           rationale: rationale.trim() || undefined,
+          statusAnchor: statusAnchor || undefined,
         }),
       });
       const data = await r.json();

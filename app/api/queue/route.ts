@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
  * Devuelve estado actual de la cola (tickea antes de devolver).
  */
 export async function GET() {
-  const q = tickQueue();
+  const q = await tickQueue();
   return NextResponse.json({ ok: true, queue: q });
 }
 

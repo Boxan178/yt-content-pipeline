@@ -6,7 +6,10 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { VideoCardData } from './VideoCard';
 import { ChecklistPanel } from './ChecklistPanel';
+import { PabloDecisionsPanel } from './PabloDecisionsPanel';
+import { VerifyLocucionButton } from './VerifyLocucionButton';
 import { ShortsGrid } from './ShortsGrid';
+import { parsePabloDecisions } from '@/lib/parse-pablo-decisions';
 import { ClaudeRunButton } from './ClaudeRunButton';
 import { ThumbnailsPanel } from './ThumbnailsPanel';
 import { parseChecklists } from '@/lib/parse-checkboxes';
@@ -280,6 +283,7 @@ export function VideoDetailModal({ video, onClose }: Props) {
                     </p>
                   </div>
                 )}
+                <VerifyLocucionButton folder={detail.folderPath.replace(/\\/g, '/')} />
               </section>
             )}
 
@@ -348,7 +352,7 @@ export function VideoDetailModal({ video, onClose }: Props) {
                 ? 'MARCUS HALE necesita el render final para hacer el viewer-test.'
                 : undefined;
               const luisDisabled = !det.locucionReady
-                ? 'LUIS necesita locución lista (hito 3/6 — al menos 3 MP3s en _LOCUCION/). Pasa antes por CALIOPE.'
+                ? 'LUIS necesita la locución lista (hito 3/6): un único MP3 largo en _LOCUCION/ vale, o varios chunks. Si ya hay audio y sigue bloqueado, pulsa "Verificar locución". Si falta, pasa por CALIOPE.'
                 : !det.scriptWritten
                 ? 'LUIS necesita el guion para el forced alignment de subs. Falta el guion.'
                 : undefined;
@@ -505,6 +509,17 @@ export function VideoDetailModal({ video, onClose }: Props) {
                 </section>
               );
             })()}
+
+            {detail?.packagingMd && (
+              <PabloDecisionsPanel
+                decisions={parsePabloDecisions(detail.packagingMd)}
+                videoFolder={detail.folderPath.replace(/\\/g, '/')}
+                thumbnailOptions={detail.images
+                  .filter((img) => /(^|\/)_PACKAGING\/MINIATURAS\//i.test(img.relPath))
+                  .map((img) => ({ name: img.name, url: mediaUrl(img.relPath) }))}
+                onResolved={reloadDetail}
+              />
+            )}
 
             {detail?.packagingMd && (
               <ChecklistPanel

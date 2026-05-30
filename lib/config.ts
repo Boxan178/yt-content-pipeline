@@ -49,6 +49,15 @@ export const TTS_JOBS_EN = `${SLEEP_STORIES_CONTENT}/tts-jobs-en.json`;
 /** Punto de entrada Python de kie-bridge (Visual Lab y NORA+IRIS lo invocan). */
 export const KIE_BRIDGE_PY = `${LAB_ROOT}/kie-bridge/kie.py`;
 
+/** Engine de subida a YouTube (skill youtube-uploader). CLI directo upload.py:
+ *  multi-canal (refresh_token por canal en channels.json), sube título +
+ *  descripción + tags + miniatura en una llamada. Defaults puros (sin
+ *  process.env porque este archivo es browser-safe); los overrides por env se
+ *  aplican en lib/upload-schedule.ts (server-only). */
+export const YOUTUBE_UPLOADER_DIR = `${LAB_ROOT}/youtube-uploader`;
+export const YOUTUBE_UPLOADER_PY = `${YOUTUBE_UPLOADER_DIR}/upload.py`;
+export const YOUTUBE_UPLOADER_PYTHON = `${YOUTUBE_UPLOADER_DIR}/.venv/Scripts/python.exe`;
+
 /** Prefijos válidos para CWD / videoFolder en endpoints API. */
 export const ALLOWED_PATH_PREFIXES = [JARVIS_ROOT, H_YOUTUBE_PREFIX];
 

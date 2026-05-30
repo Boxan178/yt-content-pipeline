@@ -9,6 +9,7 @@ import {
   buildNoraIris,
   buildCaliopeFullAudio,
   buildMarcoAurelioRewrite,
+  withExtraInstructions,
   type VideoContext,
 } from '@/lib/prompts';
 
@@ -60,6 +61,7 @@ interface Props {
 export function BulkEnqueueModal({ channelSlug, channelName, videos, onClose, onEnqueued }: Props) {
   const [skill, setSkill] = useState<SkillKey>('luis');
   const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [extraInstructions, setExtraInstructions] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,6 +75,9 @@ export function BulkEnqueueModal({ channelSlug, channelName, videos, onClose, on
 
   const enriched = useMemo(() => {
     return videos
+      // Los archivados NO se encolan (eran ruido en la lista). Tampoco los
+      // subidos: la cola es para avanzar vídeos en producción.
+      .filter((v) => v.state !== 'archived' && v.state !== 'uploaded')
       .map((v) => ({
         v,
         blocker: skillSpec.requirement?.(v),
@@ -139,6 +144,7 @@ export function BulkEnqueueModal({ channelSlug, channelName, videos, onClose, on
         case 'caliope': built = buildCaliopeFullAudio(ctx); break;
         case 'marco-aurelio': built = buildMarcoAurelioRewrite(ctx); break;
       }
+      built = withExtraInstructions(built!, extraInstructions);
       try {
         const r = await fetch('/api/queue', {
           method: 'POST',
@@ -214,6 +220,22 @@ export function BulkEnqueueModal({ channelSlug, channelName, videos, onClose, on
           </div>
 
           <div>
+            <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">
+              Instrucciones adicionales <span className="font-normal lowercase tracking-normal text-zinc-500">(opcional)</span>
+            </label>
+            <textarea
+              value={extraInstructions}
+              onChange={(e) => setExtraInstructions(e.target.value)}
+              rows={3}
+              placeholder="Ej: Cierra el pipeline completo (miniaturas, títulos, todo) PERO no audites ni reescribas el guion, ni relances la locución — déjalos tal cual están."
+              className="w-full resize-y rounded border border-border bg-bg px-3 py-2 text-sm text-white placeholder:text-zinc-600"
+            />
+            <p className="mt-1 text-[10px] text-muted">
+              Esta frase se inyecta como instrucción prioritaria en el prompt de TODOS los vídeos seleccionados, aplicada a todas las fases del proceso.
+            </p>
+          </div>
+
+          <div>
             <div className="mb-2 flex items-center justify-between text-xs">
               <span className="font-medium uppercase tracking-wider text-muted">
                 Selecciona vídeos · {pickedEligible} marcados (de {eligibleCount} elegibles)
@@ -229,7 +251,9 @@ export function BulkEnqueueModal({ channelSlug, channelName, videos, onClose, on
             </div>
             <div className="max-h-80 overflow-y-auto rounded border border-border bg-bg/40">
               {enriched.length === 0 ? (
-                <p className="px-3 py-4 text-center text-xs text-muted">No hay vídeos en este canal.</p>
+                <p className="px-3 py-4 text-center text-xs text-muted">
+                  No hay vídeos en producción en este canal. (Las ideas se lanzan con “Empezar cola” en la columna Ideas, no aquí.)
+                </p>
               ) : (
                 <ul className="divide-y divide-border">
                   {enriched.map(({ v, blocker }) => {

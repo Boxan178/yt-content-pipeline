@@ -2,19 +2,46 @@
 // cuando llega la hora; YouTube NO lo programa. Esto sortea el límite de 30
 // días y la restricción `private → public` del scheduling nativo.
 //
+// Motor: invoca DIRECTO el engine de la skill youtube-uploader
+// (lab/youtube-uploader/upload.py vía su venv) — sin pasar por `claude -p`.
+// Determinista, barato y fiable: sube título + descripción + tags + miniatura
+// en una sola llamada. Ver lib/config.ts (YOUTUBE_UPLOADER_*).
+//
 // Persistencia: ~/.yt-content-pipeline/scheduled-uploads.json
-// Worker: lazy. El tick ocurre al pedir GET /api/uploads (cliente polleia).
+// Worker: lazy. El tick ocurre al pedir GET /api/uploads (cliente polleia) y
+// desde el poller en background de Electron (/api/auto-publish/tick).
 
 import 'server-only';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+  openSync,
+  closeSync,
+  readdirSync,
+  statSync,
+} from 'node:fs';
+import { rename } from 'node:fs/promises';
+import { spawn } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { startJob, readJob, jobsDirFor, cancelJob } from './claude-jobs';
-import { JARVIS_ROOT } from './config';
+import { isPidAlive, killPid } from './claude-jobs';
+import { getChannel } from './channels';
+import { notifyUploadDone } from './notify';
+import { YOUTUBE_UPLOADER_DIR, YOUTUBE_UPLOADER_PY, YOUTUBE_UPLOADER_PYTHON } from './config';
 
 const DIR = path.join(os.homedir(), '.yt-content-pipeline');
 const FILE = path.join(DIR, 'scheduled-uploads.json');
+
+const RENDER_MIN_BYTES = 50 * 1024 * 1024;
+const VIDEO_EXT = new Set(['.mp4', '.mov', '.mkv']);
+
+// Engine youtube-uploader: defaults desde config + overrides por env (tests).
+const UPLOADER_DIR = process.env.YOUTUBE_UPLOADER_DIR || YOUTUBE_UPLOADER_DIR;
+const UPLOADER_PY = process.env.YOUTUBE_UPLOADER_PY || YOUTUBE_UPLOADER_PY;
+const UPLOADER_PYTHON = process.env.YOUTUBE_UPLOADER_PYTHON || YOUTUBE_UPLOADER_PYTHON;
 
 export type UploadStatus = 'pending' | 'uploading' | 'done' | 'failed' | 'cancelled';
 export type Privacy = 'public' | 'unlisted' | 'private';
@@ -37,9 +64,18 @@ export interface ScheduledUpload {
   createdAt: string;
   startedAt?: string;
   finishedAt?: string;
-  jobId?: string;
+  /** PID del proceso upload.py (motor directo). */
+  pid?: number;
+  /** Path del log del proceso de subida. */
+  logPath?: string;
+  /** Subida creada por el detector automático (lib/auto-publish.ts). */
+  auto?: boolean;
+  /** Ya se mandó la notificación de cierre (evita avisos duplicados). */
+  notified?: boolean;
   youtubeVideoId?: string;
   failReason?: string;
+  /** @deprecated motor antiguo basado en `claude -p`. Solo lectura legacy. */
+  jobId?: string;
 }
 
 interface State {
@@ -82,6 +118,8 @@ export interface AddUploadOptions {
   thumbnailFilename: string;
   privacyOnPublish: Privacy;
   scheduledFor: string;
+  /** Marca la subida como creada por el detector automático. */
+  auto?: boolean;
 }
 
 export function addUpload(opts: AddUploadOptions): ScheduledUpload {
@@ -99,11 +137,26 @@ export function addUpload(opts: AddUploadOptions): ScheduledUpload {
     scheduledFor: opts.scheduledFor,
     status: 'pending',
     createdAt: new Date().toISOString(),
+    auto: opts.auto,
   };
   s.items.push(item);
   save(s);
-  tickScheduler();
+  void tickScheduler().catch(() => {});
   return item;
+}
+
+/**
+ * ¿Hay ya una subida para esta carpeta en alguno de los estados dados? Lo usa el
+ * detector automático para no encolar dos veces el mismo vídeo.
+ */
+export function hasUploadForFolder(
+  videoFolder: string,
+  statuses: UploadStatus[] = ['pending', 'uploading', 'done'],
+): boolean {
+  const norm = videoFolder.replace(/\\/g, '/');
+  return readSchedule().items.some(
+    (i) => i.videoFolder.replace(/\\/g, '/') === norm && statuses.includes(i.status),
+  );
 }
 
 export function cancelUpload(id: string): boolean {
@@ -116,11 +169,10 @@ export function cancelUpload(id: string): boolean {
     save(s);
     return true;
   }
-  if (item.status === 'uploading' && item.jobId) {
-    try {
-      const jobPath = path.join(jobsDirFor(item.videoFolder), `${item.jobId}.json`);
-      cancelJob(jobPath);
-    } catch {}
+  if (item.status === 'uploading') {
+    if (item.pid) {
+      try { killPid(item.pid); } catch {}
+    }
     item.status = 'cancelled';
     item.finishedAt = new Date().toISOString();
     save(s);
@@ -140,84 +192,173 @@ export function removeUpload(id: string): boolean {
   return false;
 }
 
-function buildUploadPrompt(item: ScheduledUpload): string {
-  return `Sube el vídeo "${item.videoTitle}" del canal ${item.channel} a YouTube usando la skill \`youtube-seo-optimizer\`.
+/** Localiza el render principal de la carpeta: .mp4/.mov/.mkv ≥ 50MB, no "Short N". */
+function findRenderPrincipal(videoFolder: string): string | null {
+  const renderDir = path.join(videoFolder, 'RENDER');
+  let files: string[];
+  try {
+    files = readdirSync(renderDir);
+  } catch {
+    return null;
+  }
+  for (const f of files) {
+    const ext = path.extname(f).toLowerCase();
+    if (!VIDEO_EXT.has(ext)) continue;
+    if (/^Short\s+\d/i.test(f)) continue;
+    try {
+      const s = statSync(path.join(renderDir, f));
+      if (s.isFile() && s.size >= RENDER_MIN_BYTES) return path.join(renderDir, f);
+    } catch {}
+  }
+  return null;
+}
 
-Carpeta del proyecto: ${item.videoFolder}
+/** Spawnea upload.py detached. Devuelve pid + logPath. Lanza si falta el render. */
+function launchUpload(item: ScheduledUpload): { pid: number; logPath: string } {
+  const jobsDir = path.join(item.videoFolder, '.upload-jobs');
+  if (!existsSync(jobsDir)) mkdirSync(jobsDir, { recursive: true });
+  const logPath = path.join(jobsDir, `${item.id}.log`);
+  const descPath = path.join(jobsDir, `${item.id}.description.txt`);
+  writeFileSync(descPath, item.description ?? '', 'utf-8');
 
-METADATA EXACTA A APLICAR (NO modifiques, ya está validada por el usuario):
+  const renderFile = findRenderPrincipal(item.videoFolder);
+  if (!renderFile) throw new Error('No se encontró render principal (.mp4 ≥ 50MB) en RENDER/');
 
-**Título YouTube**:
-${item.title}
+  const args: string[] = [
+    UPLOADER_PY,
+    '--channel', item.channel,
+    '--file', renderFile,
+    '--title', item.title || item.videoTitle,
+    '--description-file', descPath,
+    '--privacy', item.privacyOnPublish,
+  ];
+  if (item.tags?.length) args.push('--tags', item.tags.join(','));
+  const thumbPath = item.thumbnailFilename
+    ? path.join(item.videoFolder, '_PACKAGING', 'MINIATURAS', item.thumbnailFilename)
+    : '';
+  if (thumbPath && existsSync(thumbPath)) args.push('--thumbnail', thumbPath);
 
-**Descripción**:
-${item.description}
+  writeFileSync(
+    logPath,
+    `[ytcp upload] startedAt=${new Date().toISOString()}\n` +
+      `[ytcp upload] channel=${item.channel} privacy=${item.privacyOnPublish} auto=${!!item.auto}\n` +
+      `[ytcp upload] file=${renderFile}\n` +
+      `[ytcp upload] thumb=${thumbPath && existsSync(thumbPath) ? thumbPath : '(none)'}\n\n` +
+      `--- upload.py output ---\n\n`,
+    'utf-8',
+  );
+  const out = openSync(logPath, 'a');
+  const err = openSync(logPath, 'a');
+  let child;
+  try {
+    child = spawn(UPLOADER_PYTHON, args, {
+      cwd: UPLOADER_DIR,
+      shell: false,
+      detached: false,
+      windowsHide: true,
+      stdio: ['ignore', out, err],
+    });
+  } catch (e) {
+    try { closeSync(out); closeSync(err); } catch {}
+    throw new Error(`spawn upload.py falló: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  try { closeSync(out); closeSync(err); } catch {}
+  if (!child.pid) throw new Error('spawn upload.py no devolvió PID');
+  child.unref();
+  return { pid: child.pid, logPath };
+}
 
-**Tags**:
-${item.tags.join(', ')}
+/** Parsea el log de upload.py buscando el video_id. */
+function parseUploadLog(logPath?: string): { videoId?: string; error?: string } {
+  if (!logPath) return { error: 'sin log' };
+  let log: string;
+  try {
+    log = readFileSync(logPath, 'utf-8');
+  } catch {
+    return { error: 'log no legible' };
+  }
+  const m =
+    log.match(/Done\.\s*Video ID:\s*([A-Za-z0-9_-]{6,})/) ||
+    log.match(/youtu\.be\/([A-Za-z0-9_-]{6,})/);
+  if (m) return { videoId: m[1] };
+  const tail = log.split(/\r?\n/).filter(Boolean).slice(-6).join(' ').slice(-300);
+  return { error: tail || 'upload.py terminó sin video_id' };
+}
 
-**Miniatura**: ${item.videoFolder}/_PACKAGING/MINIATURAS/${item.thumbnailFilename}
+/** Mueve la carpeta a `_LISTOS PARA SUBIR` si no está ya ahí. Devuelve la nueva ruta. */
+async function moveToReady(item: ScheduledUpload): Promise<string | null> {
+  const channel = getChannel(item.channel);
+  if (!channel) return null;
+  const readyFolder = channel.stateFolders.ready;
+  if (!readyFolder) return null;
+  const src = item.videoFolder;
+  const normSrc = src.replace(/\\/g, '/');
+  const parentName = path.basename(path.dirname(normSrc));
+  if (parentName === readyFolder) return null; // ya está en ready
+  const folderName = path.basename(normSrc);
+  const dst = path.join(channel.rootPath, readyFolder, folderName);
+  if (existsSync(dst)) return null; // no pisar
+  await rename(src, dst);
+  return dst.replace(/\\/g, '/');
+}
 
-**Privacy**: ${item.privacyOnPublish}
-
-Pasos:
-1. Verifica OAuth válido de YouTube. Si falta, aborta con error claro.
-2. Localiza el render principal en ${item.videoFolder}/RENDER/ (.mp4 > 50MB, NO los Shorts).
-3. Sube el vídeo con la metadata exacta de arriba. Privacy: ${item.privacyOnPublish}.
-4. Sube la miniatura indicada.
-5. Devuelve el video ID y la URL.
-
-NO modifiques la metadata. Si tienes dudas sobre algún campo, repórtalas y aborta.
-
-Termina tu respuesta con:
-\`\`\`
-<<<YOUTUBE_VIDEO_ID: el-id-aquí>>>
-<<<DONE>>>
-\`\`\``;
+/** Cierre tras subida OK: notifica a Pablo (solo auto) y mueve a ready. */
+async function onUploadDone(item: ScheduledUpload): Promise<void> {
+  // Notificación + movimiento SOLO para subidas automáticas (las manuales las
+  // conduce Pablo desde la app; no metemos ruido ni movemos sus carpetas).
+  if (!item.auto) return;
+  if (!item.notified) {
+    const channel = getChannel(item.channel);
+    try {
+      await notifyUploadDone({
+        channelName: channel?.name ?? item.channel,
+        videoTitle: item.title || item.videoTitle,
+        youtubeVideoId: item.youtubeVideoId,
+        privacy: item.privacyOnPublish,
+      });
+    } catch {}
+    item.notified = true;
+  }
+  if (item.privacyOnPublish !== 'public') {
+    try {
+      const newFolder = await moveToReady(item);
+      if (newFolder) item.videoFolder = newFolder;
+    } catch {}
+  }
 }
 
 /**
- * Tick: para cada upload pendiente cuya fecha ya llegó, lanza el upload.
- * Para los uploading, comprueba estado y marca done/failed.
+ * Tick: para cada upload pendiente cuya fecha ya llegó, lanza upload.py.
+ * Para los uploading, comprueba el pid y marca done/failed parseando el log.
  */
-export function tickScheduler(): State {
+export async function tickScheduler(): Promise<State> {
   const s = readSchedule();
   let dirty = false;
   const now = Date.now();
+  const postActions: Array<() => Promise<void>> = [];
 
   // 1) Estado de los uploading
   for (const item of s.items) {
     if (item.status !== 'uploading') continue;
-    if (!item.jobId) {
+    if (!item.pid) {
       item.status = 'failed';
-      item.failReason = 'sin jobId';
+      item.failReason = 'sin pid (subida no lanzada)';
       item.finishedAt = new Date().toISOString();
       dirty = true;
       continue;
     }
-    const jobPath = path.join(jobsDirFor(item.videoFolder), `${item.jobId}.json`);
-    const job = readJob(jobPath);
-    if (!job) {
-      item.status = 'failed';
-      item.failReason = 'job desapareció';
-      item.finishedAt = new Date().toISOString();
-      dirty = true;
-      continue;
-    }
-    if (job.status === 'done') {
-      // Intentar extraer YOUTUBE_VIDEO_ID del log si está
-      try {
-        const log = readFileSync(job.logPath, 'utf-8');
-        const m = log.match(/<<<YOUTUBE_VIDEO_ID:\s*([a-zA-Z0-9_-]{6,32})\s*>>>/);
-        if (m) item.youtubeVideoId = m[1];
-      } catch {}
+    if (isPidAlive(item.pid)) continue; // sigue subiendo
+    const parsed = parseUploadLog(item.logPath);
+    if (parsed.videoId) {
       item.status = 'done';
-      item.finishedAt = job.finishedAt ?? new Date().toISOString();
+      item.youtubeVideoId = parsed.videoId;
+      item.finishedAt = new Date().toISOString();
       dirty = true;
-    } else if (job.status === 'failed' || job.status === 'timeout' || job.status === 'cancelled') {
+      postActions.push(() => onUploadDone(item));
+    } else {
       item.status = 'failed';
-      item.failReason = job.status;
-      item.finishedAt = job.finishedAt ?? new Date().toISOString();
+      item.failReason = parsed.error;
+      item.finishedAt = new Date().toISOString();
       dirty = true;
     }
   }
@@ -228,18 +369,11 @@ export function tickScheduler(): State {
     const scheduledMs = new Date(item.scheduledFor).getTime();
     if (Number.isNaN(scheduledMs) || scheduledMs > now) continue;
     try {
-      const job = startJob({
-        skill: 'upload-youtube',
-        label: `Upload: ${item.videoTitle}`,
-        prompt: buildUploadPrompt(item),
-        cwd: JARVIS_ROOT,
-        timeoutMs: 30 * 60 * 1000,
-        videoFolder: item.videoFolder,
-        model: 'sonnet',
-      });
+      const { pid, logPath } = launchUpload(item);
       item.status = 'uploading';
-      item.jobId = job.jobId;
-      item.startedAt = job.startedAt;
+      item.pid = pid;
+      item.logPath = logPath;
+      item.startedAt = new Date().toISOString();
       dirty = true;
     } catch (e) {
       item.status = 'failed';
@@ -250,5 +384,12 @@ export function tickScheduler(): State {
   }
 
   if (dirty) save(s);
+  // Acciones post-cierre (notificar + mover). Mutan item.videoFolder → re-guardar.
+  if (postActions.length) {
+    for (const a of postActions) {
+      try { await a(); } catch {}
+    }
+    save(s);
+  }
   return s;
 }
