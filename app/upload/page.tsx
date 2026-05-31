@@ -173,17 +173,24 @@ function UploadPage() {
     setBusy(true);
     setError(null);
     try {
-      const scheduledFor =
-        scheduleMode === 'now'
-          ? new Date(Date.now() + 30 * 1000).toISOString() // dentro de 30s
-          : scheduledLocal
-          ? localInputToIso(scheduledLocal)
-          : null;
-      if (!scheduledFor) {
-        setError('Elige cuándo subir');
-        setBusy(false);
-        return;
+      const isScheduled = scheduleMode === 'scheduled';
+      let publishAt: string | undefined;
+      if (isScheduled) {
+        if (!scheduledLocal) {
+          setError('Elige la fecha/hora de publicación');
+          setBusy(false);
+          return;
+        }
+        publishAt = localInputToIso(scheduledLocal);
+        if (new Date(publishAt).getTime() <= Date.now()) {
+          setError('La fecha de publicación debe ser futura');
+          setBusy(false);
+          return;
+        }
       }
+      // El archivo se sube YA (mientras el PC está encendido). Si es programado,
+      // YouTube lo publica SOLO en publishAt (sin PC a esa hora); exige public.
+      const scheduledFor = new Date(Date.now() + 30 * 1000).toISOString();
       const r = await fetch('/api/uploads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -198,8 +205,9 @@ function UploadPage() {
             .map((t) => t.trim().replace(/^#/, ''))
             .filter(Boolean),
           thumbnailFilename: thumbnail,
-          privacyOnPublish: privacy,
+          privacyOnPublish: isScheduled ? 'public' : privacy,
           scheduledFor,
+          publishAt,
         }),
       });
       const data = await r.json();
@@ -326,6 +334,11 @@ function UploadPage() {
                 </button>
               ))}
             </div>
+            {scheduleMode === 'scheduled' && (
+              <p className="mt-1 text-[10px] text-amber-300/80">
+                En modo Programar se sube como 🌍 Público con publicación diferida (lo exige YouTube).
+              </p>
+            )}
           </div>
 
           <div>
@@ -375,7 +388,9 @@ function UploadPage() {
                   className="w-full rounded border border-border bg-bg px-3 py-2 text-sm text-white focus:border-accent/60 focus:outline-none"
                 />
                 <p className="mt-1 text-[10px] text-muted">
-                  La app se encarga de subir el vídeo en ese momento. Sin límite de 30 días.
+                  Programación <b>nativa de YouTube</b>: se sube ahora (con el PC encendido) y YouTube
+                  lo publica solo en esa fecha — <b>no hace falta el PC encendido a esa hora</b>. Se
+                  publica como 🌍 Público. Sin límite de 30 días.
                 </p>
               </>
             )}

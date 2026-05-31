@@ -58,8 +58,15 @@ export interface ScheduledUpload {
   /** Nombre del archivo de miniatura en _PACKAGING/MINIATURAS/, sin path. */
   thumbnailFilename: string;
   privacyOnPublish: Privacy;
-  /** ISO 8601. Si es <= now al tick, se sube. */
+  /** ISO 8601. Si es <= now al tick, se sube (cuándo la APP sube el archivo). */
   scheduledFor: string;
+  /**
+   * ISO 8601 opcional — PROGRAMACIÓN NATIVA de YouTube. Si está, el vídeo se
+   * sube como `private` con `publishAt` y YouTube lo hace público SOLO a esta
+   * hora, SIN necesidad de que el PC esté encendido a esa hora (lo hace YouTube).
+   * Fuerza privacy 'public' (publishAt es incompatible con unlisted en upload.py).
+   */
+  publishAt?: string;
   status: UploadStatus;
   createdAt: string;
   startedAt?: string;
@@ -118,6 +125,8 @@ export interface AddUploadOptions {
   thumbnailFilename: string;
   privacyOnPublish: Privacy;
   scheduledFor: string;
+  /** ISO 8601 opcional: publishAt nativo de YouTube (ver ScheduledUpload). */
+  publishAt?: string;
   /** Marca la subida como creada por el detector automático. */
   auto?: boolean;
 }
@@ -135,6 +144,7 @@ export function addUpload(opts: AddUploadOptions): ScheduledUpload {
     thumbnailFilename: opts.thumbnailFilename,
     privacyOnPublish: opts.privacyOnPublish,
     scheduledFor: opts.scheduledFor,
+    publishAt: opts.publishAt,
     status: 'pending',
     createdAt: new Date().toISOString(),
     auto: opts.auto,
@@ -227,14 +237,18 @@ function launchUpload(item: ScheduledUpload): { pid: number; logPath: string } {
   const renderFile = findRenderPrincipal(item.videoFolder);
   if (!renderFile) throw new Error('No se encontró render principal (.mp4 ≥ 50MB) en RENDER/');
 
+  // publishAt = programación NATIVA de YouTube: se sube como private + --publish-at
+  // y YouTube lo flipa a público a esa hora (sin PC). Exige privacidad 'public'.
+  const effectivePrivacy: Privacy = item.publishAt ? 'public' : item.privacyOnPublish;
   const args: string[] = [
     UPLOADER_PY,
     '--channel', item.channel,
     '--file', renderFile,
     '--title', item.title || item.videoTitle,
     '--description-file', descPath,
-    '--privacy', item.privacyOnPublish,
+    '--privacy', effectivePrivacy,
   ];
+  if (item.publishAt) args.push('--publish-at', item.publishAt);
   if (item.tags?.length) args.push('--tags', item.tags.join(','));
   const thumbPath = item.thumbnailFilename
     ? path.join(item.videoFolder, '_PACKAGING', 'MINIATURAS', item.thumbnailFilename)
@@ -244,7 +258,7 @@ function launchUpload(item: ScheduledUpload): { pid: number; logPath: string } {
   writeFileSync(
     logPath,
     `[ytcp upload] startedAt=${new Date().toISOString()}\n` +
-      `[ytcp upload] channel=${item.channel} privacy=${item.privacyOnPublish} auto=${!!item.auto}\n` +
+      `[ytcp upload] channel=${item.channel} privacy=${effectivePrivacy}${item.publishAt ? ` publishAt=${item.publishAt}` : ''} auto=${!!item.auto}\n` +
       `[ytcp upload] file=${renderFile}\n` +
       `[ytcp upload] thumb=${thumbPath && existsSync(thumbPath) ? thumbPath : '(none)'}\n\n` +
       `--- upload.py output ---\n\n`,

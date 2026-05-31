@@ -36,6 +36,15 @@ export async function POST(req: NextRequest) {
   if (!Array.isArray(body.tags)) {
     return NextResponse.json({ ok: false, error: 'tags debe ser array' }, { status: 400 });
   }
+  if (body.publishAt) {
+    const t = Date.parse(body.publishAt);
+    if (Number.isNaN(t)) {
+      return NextResponse.json({ ok: false, error: 'publishAt no es una fecha válida' }, { status: 400 });
+    }
+    if (t <= Date.now()) {
+      return NextResponse.json({ ok: false, error: 'publishAt debe ser en el futuro' }, { status: 400 });
+    }
+  }
   const item = addUpload(body as AddUploadOptions);
   return NextResponse.json({ ok: true, item });
 }
