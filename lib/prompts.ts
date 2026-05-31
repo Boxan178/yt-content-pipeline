@@ -7,7 +7,7 @@
 // - timeoutMs solo si la skill puede tardar > 10 min (SARA, LUIS, etc.)
 
 import type { ProgressDetails } from './progress-types';
-import { JARVIS_ROOT, YOUTUBE_OS_ROOT, KIE_BRIDGE_PY, TTS_JOBS_ES, TTS_JOBS_EN } from './config';
+import { JARVIS_ROOT, YOUTUBE_OS_ROOT, TTS_JOBS_ES, TTS_JOBS_EN } from './config';
 
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
 const LONG_TIMEOUT_MS = 30 * 60 * 1000;
@@ -227,7 +227,7 @@ TU TRABAJO (en este orden):
    - Fase 2: ${isStoic ? 'MARCO AURELIO' : 'VÍCTOR'} → ELENA → refinado${isStoic ? ' → MARCUS HALE (gate)' : ''}
    ${isStoic ? '- Fase Visual: IRIS (image_prompts) → CIRO (video_prompts)' : ''}
    - Fase Audio: ${isStoic ? 'CERVANTES/ORWELL' : 'CERVANTES'} → CICERÓN → CALIOPE
-   - Fase Edición: LUÍS
+   - Fase Edición: LUÍS (render vía tools/render_project.py — NUNCA el MCP mcp__premiere-pro__*, es nuevo y sin probar)
    - Fase 3 Pre-publicación: youtube-seo-optimizer → chapters (con timestamps reales sobre MP4)
 
 5. **Escribe el output de cada agente en Luna Media OS** según tu protocolo (MARCOS → pipeline_items_titles, NORA → pipeline_items_thumbnail_prompts con brief, IRIS → UPDATE image_prompt, ${isStoic ? 'MARCO AURELIO' : 'VÍCTOR'} → pipeline_items.script_content). Verifica con SELECT que cada apartado quedó escrito antes de pasar al siguiente.
@@ -337,7 +337,7 @@ Si NO encuentras un tts-jobs.json relevante, devuelve un brief explicando qué n
   };
 }
 
-// ── NORA + IRIS — Generar concepto visual + ejecutar imagen vía kie-bridge ──
+// ── NORA + IRIS — Generar concepto visual + ejecutar miniatura vía Algrow MCP ──
 
 export function buildNoraIris(v: VideoContext): BuiltPrompt {
   const isStoic = v.channel === 'moderni-stoici' || v.channel === 'moderno-estoico';
@@ -358,25 +358,29 @@ Flujo (en este orden):
 
 2. **IRIS** (skill nano-banana-iris) — recibe el brief de NORA. Construye el prompt técnico final. Entrega IRIS_SCORE, IRIS_VEREDICTO, prompt principal + 2 variantes A/B.
 
-${isStoic ? '3. **MARCUS HALE** (gate viewer-persona) — review rápido del concepto. Veredicto: "haría clic" / "haría clic con dudas" / "no haría clic" + qué cambiarías. Si destroza el concepto, vuelve a NORA antes de generar.\n\n' : ''}**EJECUCIÓN DIRECTA (Ruta A de IRIS, sin portapapeles)**:
+${isStoic ? '3. **MARCUS HALE** (gate viewer-persona) — review rápido del concepto. Veredicto: "haría clic" / "haría clic con dudas" / "no haría clic" + qué cambiarías. Si destroza el concepto, vuelve a NORA antes de generar.\n\n' : ''}**EJECUCIÓN — Ruta A de IRIS: SIEMPRE vía MCP de Algrow (\`mcp__algrow__generate_thumbnail\`)**:
 
-Usa la **Ruta A — Ejecución directa vía kie-bridge** que ya está en tu skill. NO pongas el prompt en el portapapeles, NO menciones Flow. Genera la imagen directamente en disco invocando kie-bridge con \`nano-banana-2\`:
+Política fijada por Pablo el 2026-05-30: TODA miniatura de YouTube se genera con \`mcp__algrow__generate_thumbnail\`, **NUNCA con kie-bridge**. El flujo viejo (kie-bridge + nano-banana-2) devolvió miniaturas CUADRADAS (1:1) aunque se le pasara \`--aspect 16:9\`; \`generate_thumbnail\` fuerza el aspect ratio y elimina ese fallo. NO uses kie-bridge para la miniatura, NO uses el portapapeles, NO menciones Flow.
 
-\`\`\`powershell
-python ${KIE_BRIDGE_PY} \`
-  --model nano-banana-2 \`
-  --prompt-file <archivo_temporal_con_prompt_principal> \`
-  --aspect 16:9 \`
-  --resolution 2K \`
-  --format jpg \`
-  --out "${miniaturesDir}/v$(timestamp).jpg"
-\`\`\`
+Por cada una de las **3 variantes** (prompt principal + A + B) que cerró IRIS:
 
-Donde \`$(timestamp)\` sigue el patrón \`YYYY-MM-DD_HHmmss\` para no sobrescribir. Por ejemplo: \`v2026-05-22_001530.jpg\`.
+1. Llama a la tool:
+   \`\`\`
+   mcp__algrow__generate_thumbnail(
+     prompt       = "<prompt de IRIS en inglés, CON el texto on-image incluido>",
+     aspect_ratio = "16:9",          # SIEMPRE 16:9 para este vídeo long-form (9:16 solo si fuera un Short). NUNCA 1:1.
+     resolution   = "2K",
+     model        = "gpt-image-2",    # default fiable para texto on-image; sube a seedream-5.0-lite / nano-banana-pro si el realismo CGI no convence
+     style_preset = "faceless"        # estatuas CGI / objetos simbólicos (formatos A/C/D/E). Usa "person_focal" solo si hay un rostro humano real protagonista
+   )
+   \`\`\`
+2. La tool devuelve un \`task_id\`. **Estás en una sesión headless (\`claude -p\`) — NO hay widget inline que haga el polling por ti.** Haz polling tú mismo con \`mcp__algrow__check_thumbnail_status(task_id=...)\` cada pocos segundos hasta que el render esté listo y obtengas la URL del resultado.
+3. Descarga esa URL al disco con \`Invoke-WebRequest\` (NO con kie-bridge) a su propio archivo en ${miniaturesDir}/, con el patrón \`v<YYYY-MM-DD_HHmmss>-<principal|varA|varB>.jpg\` para no sobrescribir. Ejemplo: \`v2026-05-30_174530-principal.jpg\`.
+4. Verifica que el archivo descargado es 16:9 (landscape, ≈1280×720 o equivalente, NUNCA cuadrado). Si por lo que sea saliera cuadrado, NO lo des por bueno: reintenta el mismo prompt o cambia de \`model\`.
 
-Genera **3 variantes** (prompt principal + A + B) ejecutadas, cada una a su propio archivo en ${miniaturesDir}/. Así Pablo puede comparar en la galería de la app sin pasar por Flow.
+Así Pablo puede comparar las 3 variantes en la galería de la app, todas con el aspect ratio correcto garantizado.
 
-Tras cada generación reporta brevemente el archivo creado y el tiempo de kie-bridge.
+Tras cada generación reporta brevemente el archivo creado y el tiempo de Algrow.
 
 Al final, deja un mini-resumen:
 - Las 3 rutas archivos generadas (paths absolutos)
@@ -403,7 +407,7 @@ Aplica tu flujo end-to-end completo (skill luis):
 
 1. STATE 1 — Captura y validación. Verifica que existen guion (en ${YOUTUBE_OS_ROOT}/youtube/${v.channel}/guiones/<slug>/guion-v2.md o guion.md como fallback), locución (01_BRUTOS/_LOCUCION/ con al menos 3 MP3s), biblioteca de brutos del canal y biblioteca de música.
 2. STATE 2 — Si el proyecto está en _PENDIENTE LOCUCION/ y la locución está hecha, muévelo a _EN PRODUCCIÓN/ antes de renderizar.
-3. STATE 3 — Lanza el render en background con tools/render_project.py. Monitoriza el log. Tiempo típico 18-25 min para long-form.
+3. STATE 3 — Lanza el render en background con tools/render_project.py (tu método NORMAL: venv C:\\.venvs\\auto-edit). Monitoriza el log. Tiempo típico 18-25 min para long-form. **NO uses el MCP de Premiere Pro (mcp__premiere-pro__*) — es nuevo, sin probar, y bloquea el render. El render normal NO pasa por Premiere.**
 4. STATE 4 — Auto-audit visual con /watch sobre el MP4 final (24 frames). Verifica capa oscura, subs 1 línea, sin asteriscos visibles, último frame limpio.
 5. STATE 5 — Delegar a AMELIA. Audita el MP4 como producto digital del canal ${v.channel}. Customer persona: MARCUS HALE.
 6. STATE 6 — Delegar a MARCUS HALE. Review como viewer-persona.
