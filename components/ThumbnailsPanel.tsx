@@ -189,10 +189,10 @@ export function ThumbnailsPanel({
         </div>
       )}
 
-      {/* Acción: generar nueva miniatura con NORA + IRIS (ejecuta kie-bridge directo) */}
+      {/* Acción: generar nueva miniatura con NORA + IRIS (ejecuta Algrow generate_thumbnail, 16:9 forzado) */}
       <ClaudeRunButton
         label={minis.length === 0 ? 'Generar miniatura con NORA + IRIS' : 'Iterar miniatura con NORA + IRIS'}
-        hint="NORA define concepto + IRIS construye prompt + ejecuta kie-bridge (nano-banana-2) directo. Genera 3 variantes a disco."
+        hint="NORA define concepto + IRIS construye prompt + ejecuta Algrow (generate_thumbnail, 16:9 garantizado). Genera 3 variantes a disco."
         prompt={nora.prompt}
         cwd={nora.cwd}
         videoFolder={videoFolder}

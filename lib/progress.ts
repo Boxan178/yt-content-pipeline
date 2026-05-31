@@ -7,6 +7,7 @@ import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import type { ProgressDetails, Progress } from './progress-types';
 import { TTS_JOBS_ES, TTS_JOBS_EN } from './config';
+import { readImageSize } from './image-size';
 
 export type { ProgressDetails, Progress } from './progress-types';
 export { HIT_LABELS, HIT_ORDER } from './progress-types';
@@ -25,6 +26,14 @@ const LOCUCION_SINGLE_MIN_BYTES = 300 * 1024;
 const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 const VIDEO_EXT = new Set(['.mp4', '.mov', '.mkv']);
 const MAIN_AUDIO_EXT = new Set(['.mp3', '.wav', '.m4a']);
+
+// Una miniatura de YouTube válida es 16:9 (landscape). El flujo viejo de
+// kie-bridge + nano-banana-2 devolvía a veces imágenes CUADRADAS (1:1) que NO
+// sirven como miniatura, y aun así contaban como "hito miniatura hecho". Ahora
+// exigimos al menos una imagen landscape. Umbral 1.4: 16:9 ≈ 1.78 y 1376×768 ≈
+// 1.79 pasan; 1:1 = 1.0 y cualquier vertical se rechazan. (Política 2026-05-30:
+// las miniaturas se generan con mcp__algrow__generate_thumbnail, que fuerza 16:9.)
+const THUMB_MIN_ASPECT = 1.4;
 
 async function safeReaddir(p: string): Promise<string[]> {
   try {
@@ -79,6 +88,30 @@ async function folderHasGuion(videoFolder: string): Promise<boolean> {
     }
   }
   return false;
+}
+
+/**
+ * ¿Existe al menos una miniatura landscape (≈16:9) en `dir`? Mide cada imagen
+ * por su cabecera y la acepta si su ratio ≥ THUMB_MIN_ASPECT. Las cuadradas
+ * (1:1) y verticales NO cuentan como hito cumplido.
+ *
+ * Fallback conservador: si NINGUNA imagen se puede medir (formato raro,
+ * archivo corrupto, cabecera ilegible), volvemos al comportamiento anterior
+ * (basta con que exista una imagen) para no marcar como incompleto un vídeo que
+ * sí tiene miniatura válida pero que no supimos medir.
+ */
+async function hasLandscapeThumbnail(dir: string, imageNames: string[]): Promise<boolean> {
+  if (imageNames.length === 0) return false;
+  let measuredAny = false;
+  for (const name of imageNames) {
+    const size = await readImageSize(path.join(dir, name));
+    if (!size) continue;
+    measuredAny = true;
+    if (size.width / size.height >= THUMB_MIN_ASPECT) return true;
+  }
+  // Medimos alguna y ninguna era landscape → no hay miniatura válida (false).
+  // No pudimos medir ninguna → fallback "existe = hecho" (true).
+  return !measuredAny;
 }
 
 export interface ComputeProgressOptions {
@@ -150,9 +183,10 @@ export async function computeProgress(
   }
 
   const miniaturasFiles = await safeReaddir(miniaturasDir);
-  const miniaturaFinal = miniaturasFiles.some((f) =>
+  const miniaturaImageNames = miniaturasFiles.filter((f) =>
     IMAGE_EXT.has(path.extname(f).toLowerCase()),
   );
+  const miniaturaFinal = await hasLandscapeThumbnail(miniaturasDir, miniaturaImageNames);
 
   const details: ProgressDetails = {
     hasPackagingMd,
