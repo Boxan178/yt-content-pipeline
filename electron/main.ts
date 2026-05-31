@@ -444,7 +444,10 @@ function createWindow() {
 
 ipcMain.handle('updater:quit-and-install', () => {
   try {
-    autoUpdater.quitAndInstall();
+    // isSilent=true → instala SIN ventana del instalador; isForceRunAfter=true →
+    // relanza la app tras instalar. El camino normal (autoInstallOnAppQuit) ya es
+    // silencioso; esto blinda también el path del toast por si se reactiva.
+    autoUpdater.quitAndInstall(true, true);
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
