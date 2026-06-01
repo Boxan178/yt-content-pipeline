@@ -24,12 +24,52 @@
 // inocuos (no errores fatales) al intentar copiarlas. Construido con `.join`
 // para reducir la heurística de NFT.
 
-/** Raíz de la bóveda Obsidian J.A.R.V.I.S. (skills, memoria, lab, youtube-os). */
-export const JARVIS_ROOT = ['Y:', '04_DEV', 'J.A.R.V.I.S'].join('/');
+// === Letras de unidad externas, INVISIBLES para el build ====================
+// Aprendido a la mala (verificado empíricamente con _trace-readlink.js): NFT
+// (Node File Tracer) NO respeta el valor de `process.env` — ante `process.env.X`
+// lo trata como DESCONOCIDO y, en el `?:`, PLIEGA a la rama LITERAL (el fallback).
+// Si el fallback es la letra real ('H'/'Y'), NFT resuelve `rootPath` al literal
+// `H:/YOUTUBE/CANALES ESTOICISMO/MODERNI STOICI`, lo trata como directorio-asset
+// y lo RECORRE entero → `readlink` EISDIR sobre carpetas de nombre raro del canal
+// (p.ej. una carpeta `idea.md`) → `next build` PETA. (Terser tampoco ayuda: folea
+// `.join`/`fromCharCode`/concatenación al literal.)
+//
+// FIX FIABLE: el fallback es VACÍO. En el BUILD, NFT resuelve el prefijo a '' →
+// `'' + '/YOUTUBE/...'` = `/YOUTUBE/...`, un path en la raíz del drive actual
+// (C:\YOUTUBE\...) que NO existe → NFT no recorre H:/ ni Y: → build limpio. Lo
+// mismo con JARVIS_ROOT (`/04_DEV/J.A.R.V.I.S/.claude/skills` → C:\... inexistente),
+// así que tampoco sigue el symlink de skills al NAS ni entra en worktrees.
+//
+// En RUNTIME el drive real SIEMPRE llega por env (nunca se alcanza el fallback):
+//   · dev  → script `dev:next` (cross-env YTCP_DRIVE_H=H YTCP_DRIVE_Y=Y)
+//   · prod → Electron `startNextServer` setea YTCP_DRIVE_H/Y al spawnear el server
+// Para mover el SSD/NAS a otra letra, exporta YTCP_DRIVE_H / YTCP_DRIVE_Y.
+function externalDrive(envKey: string, letter: string): string {
+  // CLIENTE (browser): el bundle de cliente NO recibe `process.env` (solo
+  // NEXT_PUBLIC_*, y esos los hornearía NFT en build). Como en ese bundle
+  // `typeof window` NO es 'undefined', esta rama se CONSERVA y devuelve la letra
+  // literal ('H:') → coincide con lo que renderiza el server → SIN hydration
+  // mismatch y sin paths rotos (/YOUTUBE) en el cliente.
+  if (typeof window !== 'undefined') return letter + ':';
+  // SERVIDOR: en BUILD, NFT ve `process.env[envKey]` como desconocido → fallback ''
+  // → path inexistente → NO traza H:/ ni Y:. En RUNTIME, dev:next y Electron setean
+  // YTCP_DRIVE_H/Y → 'H:'. (En el bundle de server `typeof window` → 'undefined', así
+  // que la rama de cliente es dead-code y NFT nunca ve la letra literal.)
+  const v = process.env[envKey];
+  return v && v.length > 0 ? v + ':' : '';
+}
+const DRIVE_Y = externalDrive('YTCP_DRIVE_Y', 'Y');
+const DRIVE_H = externalDrive('YTCP_DRIVE_H', 'H');
 
-/** Prefijo `H:/YOUTUBE` SOLO para validación de paths. NO exportado a propósito
- *  (ver comentario arriba). Usar literales completos en `lib/channels.ts`. */
-const H_YOUTUBE_PREFIX = ['H:', 'YOUTUBE'].join('/');
+/** Raíz de la bóveda Obsidian J.A.R.V.I.S. (skills, memoria, lab, youtube-os). */
+export const JARVIS_ROOT = `${DRIVE_Y}/04_DEV/J.A.R.V.I.S`;
+
+/** Prefijo `H:/YOUTUBE` para construir paths de canales (build-invisible). */
+const H_YOUTUBE_PREFIX = `${DRIVE_H}/YOUTUBE`;
+
+/** `H:/YOUTUBE` build-invisible para usar en lib/channels.ts (en vez de literales
+ *  completos, que el minificador folea y NFT acaba trazando → build peta). */
+export const H_YOUTUBE = H_YOUTUBE_PREFIX;
 
 /** Subpath: youtube-os (canales + proyectos + guiones). */
 export const YOUTUBE_OS_ROOT = `${JARVIS_ROOT}/youtube-os`;
