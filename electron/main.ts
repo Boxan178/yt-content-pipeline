@@ -22,6 +22,8 @@ let nextServerUrl: string | null = null;
 let notionPollerInterval: NodeJS.Timeout | null = null;
 let autoPublishPollerInterval: NodeJS.Timeout | null = null;
 let queuePollerInterval: NodeJS.Timeout | null = null;
+let telegramPollerInterval: NodeJS.Timeout | null = null;
+let gapNotifyPollerInterval: NodeJS.Timeout | null = null;
 
 /** Intervalo del poller Notion. Pablo lo fijó en 30s — ver task brief. */
 const NOTION_POLLER_INTERVAL_MS = 30_000;
@@ -29,6 +31,12 @@ const NOTION_POLLER_INTERVAL_MS = 30_000;
 const AUTOPUBLISH_POLLER_INTERVAL_MS = 60_000;
 /** Intervalo del poller que avanza la cola serial de SARA (loop vídeo-a-vídeo). */
 const QUEUE_POLLER_INTERVAL_MS = 30_000;
+/** Intervalo del listener de aprobaciones por Telegram (rápido: respuesta casi
+ *  instantánea a los botones desde el móvil). */
+const TELEGRAM_POLLER_INTERVAL_MS = 3_000;
+/** Intervalo del aviso de huecos de calendario (lento: la cadencia no cambia
+ *  rápido; el endpoint dedupea a ~1 aviso/día). 4 veces al día. */
+const GAP_NOTIFY_POLLER_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
 // ── Next standalone server (sólo en producción) ─────────────────────────
 
@@ -81,6 +89,12 @@ async function startNextServer(): Promise<string> {
       NODE_ENV: 'production',
       PORT: String(port),
       HOSTNAME: '127.0.0.1',
+      // Letras de unidad para lib/config.ts. El build deja el fallback VACÍO
+      // (para que NFT no recorra H:/ ni Y: y `next build` no pete); el runtime
+      // DEBE proveer el drive real por env o config resolvería paths inválidos.
+      // Override externo respetado (mover el SSD/NAS a otra letra).
+      YTCP_DRIVE_H: process.env.YTCP_DRIVE_H || 'H',
+      YTCP_DRIVE_Y: process.env.YTCP_DRIVE_Y || 'Y',
       // Electron por defecto setea ELECTRON_RUN_AS_NODE para que el binario
       // se comporte como node puro al ejecutar el server.js standalone.
       ELECTRON_RUN_AS_NODE: '1',
@@ -323,6 +337,116 @@ function stopQueuePoller() {
   }
 }
 
+// ── Telegram poller (listener de aprobaciones interactivas) ─────────────
+//
+// Cada ~3s pega POST a /api/telegram/poll. El endpoint hace getUpdates, enruta
+// los taps de botón (✅/❌/📝) y la captura de notas a la solicitud pendiente,
+// resuelve packaging.md y RE-LANZA el job gated con la decisión inyectada. La
+// detección de decisiones nuevas (escaneo de packaging.md) va throttled dentro
+// del mismo endpoint. Idempotente (mutex interno). Mismo patrón que los otros 3
+// pollers. Toda la lógica vive server-side; aquí solo es el disparador.
+//
+// OJO (heredado del queue-poller): esto solo corre con Electron abierto.
+//
+// Kill-switch: arrancar con YTCP_TELEGRAM_POLLER_ENABLED=0 para desactivarlo.
+function startTelegramPoller() {
+  if (process.env.YTCP_TELEGRAM_POLLER_ENABLED === '0') {
+    console.log('[telegram-poller] desactivado por kill-switch (YTCP_TELEGRAM_POLLER_ENABLED=0).');
+    return;
+  }
+  const baseUrl = isDev ? DEV_URL : nextServerUrl;
+  if (!baseUrl) {
+    console.warn('[telegram-poller] no hay baseUrl, no se arranca');
+    return;
+  }
+  if (telegramPollerInterval) return; // ya arrancado
+
+  const tickOnce = async () => {
+    try {
+      const r = await fetch(`${baseUrl}/api/telegram/poll`, { method: 'POST' });
+      if (r.status === 409) {
+        // Otro consumidor usa getUpdates sobre este bot. Avisamos una vez por
+        // arranque y seguimos (no spameamos el log).
+        console.warn('[telegram-poller] 409: otro consumidor de getUpdates activo sobre el bot. ¿Token compartido?');
+        return;
+      }
+      if (!r.ok) {
+        console.warn(`[telegram-poller] tick respondió ${r.status}`);
+      }
+    } catch (e) {
+      // Silencioso — el server puede estar reiniciando.
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!msg.includes('ECONNREFUSED') && !msg.includes('fetch failed')) {
+        console.warn('[telegram-poller] tick failed:', msg);
+      }
+    }
+  };
+
+  // Primer tick a los 6s del arranque (deja que el server se estabilice).
+  setTimeout(tickOnce, 6_000);
+  telegramPollerInterval = setInterval(tickOnce, TELEGRAM_POLLER_INTERVAL_MS);
+  console.log(`[telegram-poller] interval ${TELEGRAM_POLLER_INTERVAL_MS}ms armado (baseUrl=${baseUrl})`);
+}
+
+function stopTelegramPoller() {
+  if (telegramPollerInterval) {
+    clearInterval(telegramPollerInterval);
+    telegramPollerInterval = null;
+  }
+}
+
+// ── Gap-notify poller (avisos de huecos de calendario) ──────────────────
+//
+// Cada 6h pega POST a /api/calendar/gaps/notify. El endpoint cruza la cadencia
+// objetivo por canal con lo ya programado/planificado y, si hay déficit en la
+// ventana próxima, avisa a Pablo por Telegram + push. Es idempotente y dedupea
+// (~1 aviso/día por firma), así que esta función no necesita conocer la lógica.
+// Mismo patrón que los otros pollers. Toda la lógica vive server-side.
+//
+// OJO (heredado): solo corre con Electron abierto.
+//
+// Kill-switch: arrancar con YTCP_GAP_NOTIFY_POLLER_ENABLED=0 para desactivarlo.
+// (El endpoint además respeta YTCP_GAP_NOTIFY_ENABLED=0 para silenciar el aviso
+// sin parar el poller.)
+function startGapNotifyPoller() {
+  if (process.env.YTCP_GAP_NOTIFY_POLLER_ENABLED === '0') {
+    console.log('[gap-notify] desactivado por kill-switch (YTCP_GAP_NOTIFY_POLLER_ENABLED=0).');
+    return;
+  }
+  const baseUrl = isDev ? DEV_URL : nextServerUrl;
+  if (!baseUrl) {
+    console.warn('[gap-notify] no hay baseUrl, no se arranca');
+    return;
+  }
+  if (gapNotifyPollerInterval) return; // ya arrancado
+
+  const tickOnce = async () => {
+    try {
+      const r = await fetch(`${baseUrl}/api/calendar/gaps/notify`, { method: 'POST' });
+      if (!r.ok) {
+        console.warn(`[gap-notify] tick respondió ${r.status}`);
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!msg.includes('ECONNREFUSED') && !msg.includes('fetch failed')) {
+        console.warn('[gap-notify] tick failed:', msg);
+      }
+    }
+  };
+
+  // Primer tick a los 20s del arranque (deja que el server se estabilice).
+  setTimeout(tickOnce, 20_000);
+  gapNotifyPollerInterval = setInterval(tickOnce, GAP_NOTIFY_POLLER_INTERVAL_MS);
+  console.log(`[gap-notify] interval ${GAP_NOTIFY_POLLER_INTERVAL_MS}ms armado (baseUrl=${baseUrl})`);
+}
+
+function stopGapNotifyPoller() {
+  if (gapNotifyPollerInterval) {
+    clearInterval(gapNotifyPollerInterval);
+    gapNotifyPollerInterval = null;
+  }
+}
+
 // ── Auto-updater (electron-updater + GitHub Releases) ──────────────────
 
 /**
@@ -355,11 +479,20 @@ function setupAutoUpdater() {
     console.log(`[updater] update disponible: ${info.version}`);
   });
   autoUpdater.on('update-downloaded', (info) => {
-    // Silencio total: NO avisamos al renderer. autoInstallOnAppQuit aplica la
-    // actualización sola en el próximo cierre de la app — sin ventanas, sin
-    // toasts, sin reinicios forzados. El usuario solo nota que al reabrir ya
-    // está en la versión nueva.
-    console.log(`[updater] update descargada: ${info.version} (se instalará al cerrar la app).`);
+    // Beta (2026-06-01): avisamos al renderer para que aparezca la "ventanita"
+    // (UpdateToast abajo-derecha) y Pablo pueda aplicar la actualización al
+    // momento con un click. El instalador sigue siendo SILENCIOSO
+    // (quitAndInstall(true,true) → sin ventana NSIS). Y si Pablo ignora el toast,
+    // autoInstallOnAppQuit la aplica igual al cerrar la app. Reactivación del
+    // "silencio total" anterior, pedida por Pablo para ver/aplicar updates en beta.
+    console.log(`[updater] update descargada: ${info.version} → aviso al renderer (UpdateToast).`);
+    try {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('updater:downloaded', { version: info.version });
+      }
+    } catch (e) {
+      console.error('[updater] no pude avisar al renderer:', e instanceof Error ? e.message : String(e));
+    }
   });
 
   // Comprobar al arrancar + cada 4h mientras la app esté abierta.
@@ -507,12 +640,16 @@ app.whenReady().then(async () => {
   startNotionPoller();
   startAutoPublishPoller();
   startQueuePoller();
+  startTelegramPoller();
+  startGapNotifyPoller();
 });
 
 app.on('window-all-closed', () => {
   stopNotionPoller();
   stopAutoPublishPoller();
   stopQueuePoller();
+  stopTelegramPoller();
+  stopGapNotifyPoller();
   // Matar el server Next si está vivo (sólo en producción)
   if (nextServerProcess) {
     try { nextServerProcess.kill(); } catch {}
@@ -525,6 +662,8 @@ app.on('before-quit', () => {
   stopNotionPoller();
   stopAutoPublishPoller();
   stopQueuePoller();
+  stopTelegramPoller();
+  stopGapNotifyPoller();
   if (nextServerProcess) {
     try { nextServerProcess.kill(); } catch {}
     nextServerProcess = null;

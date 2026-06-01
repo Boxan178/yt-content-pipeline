@@ -5,6 +5,7 @@ import { ChatDock } from '@/components/ChatDock';
 import { Sidebar } from '@/components/Sidebar';
 import { TopBar } from '@/components/TopBar';
 import { LevelUpToast } from '@/components/LevelUpToast';
+import { UpdateToast } from '@/components/UpdateToast';
 import { DevBanner } from '@/components/DevBanner';
 
 // Apple-grade typography stack (refresh 2026-05-27):
@@ -65,6 +66,10 @@ export default function RootLayout({
 
         {/* Toast de subir de nivel / desbloquear logro (con confetti) */}
         <LevelUpToast />
+
+        {/* Ventanita "Reiniciar para actualizar" (abajo-derecha) cuando el
+            electron-updater descarga una versión nueva. Instalador silencioso. */}
+        <UpdateToast />
       </body>
     </html>
   );
