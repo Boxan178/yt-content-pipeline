@@ -17,7 +17,8 @@ import { existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { CHANNELS, type Channel } from './channels';
-import { computeProgress } from './progress';
+import { computeProgress, THUMB_MIN_ASPECT } from './progress';
+import { readImageSize } from './image-size';
 import { listActiveJobsForFolder } from './claude-jobs';
 import { extractMetadata } from './extract-metadata';
 import { addUpload, hasUploadForFolder } from './upload-schedule';
@@ -87,14 +88,26 @@ async function newestRender(videoFolder: string): Promise<{ path: string; mtimeM
   return best;
 }
 
+/** ¿La imagen es landscape (≈16:9)? No medible → true (fallback conservador, no
+ *  descartar). Medible y por debajo del umbral (cuadrada 1:1 / vertical) → false. */
+async function isLandscapeThumb(filePath: string): Promise<boolean> {
+  const size = await readImageSize(filePath);
+  if (!size || size.height <= 0) return true;
+  return size.width / size.height >= THUMB_MIN_ASPECT;
+}
+
 async function pickThumbnail(packagingDir: string): Promise<string | null> {
   const minisDir = path.join(packagingDir, 'MINIATURAS');
-  // 1) miniatura marcada como elegida (.selected-thumb)
+  // 1) miniatura marcada como elegida (.selected-thumb) — SOLO si es landscape.
   try {
     const sel = (await readFile(path.join(minisDir, '.selected-thumb'), 'utf-8')).trim();
-    if (sel && existsSync(path.join(minisDir, sel))) return sel;
+    const selPath = path.join(minisDir, sel);
+    if (sel && existsSync(selPath) && (await isLandscapeThumb(selPath))) return sel;
   } catch {}
-  // 2) la más reciente
+  // 2) la más reciente que sea LANDSCAPE. CLAVE: en una subida 100% hands-off NO
+  //    podemos subir una miniatura CUADRADA (1:1). El hito 'miniaturaFinal' valida
+  //    que EXISTE una landscape, pero antes esto cogía la más reciente por mtime
+  //    aunque fuera 1:1 → validaba una imagen y subía otra inválida. Ahora filtra.
   let files: string[];
   try {
     files = await readdir(minisDir);
@@ -104,8 +117,10 @@ async function pickThumbnail(packagingDir: string): Promise<string | null> {
   let best: { name: string; mtimeMs: number } | null = null;
   for (const f of files) {
     if (!IMAGE_EXT.has(path.extname(f).toLowerCase())) continue;
-    const s = await stat(path.join(minisDir, f)).catch(() => null);
+    const full = path.join(minisDir, f);
+    const s = await stat(full).catch(() => null);
     if (!s || !s.isFile()) continue;
+    if (!(await isLandscapeThumb(full))) continue; // descarta cuadradas/verticales medibles
     if (!best || s.mtimeMs > best.mtimeMs) best = { name: f, mtimeMs: s.mtimeMs };
   }
   return best?.name ?? null;

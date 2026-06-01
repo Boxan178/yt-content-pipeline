@@ -53,11 +53,14 @@ export interface QueueItem {
   loopUntilComplete?: boolean;
   /** Turnos de SARA ejecutados sobre este vídeo. */
   attempts?: number;
-  /** Tope de turnos antes de marcar bloqueado (default 6). */
+  /** Backstop anti-runaway de turnos TOTALES (default 20). El detector real de
+   *  atasco es stalledRuns>=2 (2 turnos seguidos sin avance de %); este tope solo
+   *  corta un bucle que ni progresa ni se estanca de forma detectable. Antes era 6
+   *  y estrangulaba pipelines largos sanos (los bloqueaba a 1 hito del final). */
   maxAttempts?: number;
   /** Último % de progreso observado (para detectar estancamiento). */
   lastPercent?: number;
-  /** Turnos consecutivos sin avance de %. */
+  /** Turnos consecutivos sin avance de %. Detector PRIMARIO de atasco (>=2 → blocked). */
   stalledRuns?: number;
   /** Motivo si quedó bloqueado (decisión de Pablo / sin progreso / máx turnos). */
   blockReason?: string;
@@ -301,7 +304,9 @@ async function tickInner(): Promise<QueueState> {
         const progress = await progressOfVideo(running.videoFolder);
         const percent = progress.percent;
         const attempts = running.attempts ?? 1;
-        const maxAttempts = running.maxAttempts ?? 6;
+        // 20 = backstop anti-runaway (era 6 → estrangulaba pipelines largos sanos).
+        // El atasco real lo detecta stalledRuns>=2 mucho antes.
+        const maxAttempts = running.maxAttempts ?? 20;
         const markers = detectMarkers(job.logPath);
         if (percent >= 100 || markers.done) {
           running.status = 'done';

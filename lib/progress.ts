@@ -33,7 +33,7 @@ const MAIN_AUDIO_EXT = new Set(['.mp3', '.wav', '.m4a']);
 // exigimos al menos una imagen landscape. Umbral 1.4: 16:9 ≈ 1.78 y 1376×768 ≈
 // 1.79 pasan; 1:1 = 1.0 y cualquier vertical se rechazan. (Política 2026-05-30:
 // las miniaturas se generan con mcp__algrow__generate_thumbnail, que fuerza 16:9.)
-const THUMB_MIN_ASPECT = 1.4;
+export const THUMB_MIN_ASPECT = 1.4;
 
 async function safeReaddir(p: string): Promise<string[]> {
   try {

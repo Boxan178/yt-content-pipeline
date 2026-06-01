@@ -8,6 +8,7 @@ import { mkdirSync, openSync, closeSync, readFileSync, writeFileSync, existsSync
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import os from 'node:os';
+import { parseStreamLog } from './stream-events';
 
 /**
  * Config MCP mínima para los jobs `claude -p` spawneados. Cargar los ~20 MCP
@@ -282,9 +283,34 @@ export function startJob(opts: StartJobOptions): ClaudeJob {
 }
 
 /**
+ * Inspecciona el log stream-json del job y devuelve el veredicto de su evento
+ * `result` final: 'success' (is_error=false / subtype success), 'error' (result
+ * con is_error o subtype de error), o null si NO hay evento result — el proceso
+ * no llegó a terminar limpio (crash, OOM, 401 en turno 1, matado por el SO).
+ */
+function jobResultFromLog(logPath: string): 'success' | 'error' | null {
+  try {
+    const events = parseStreamLog(readFileSync(logPath, 'utf-8'));
+    for (let i = events.length - 1; i >= 0; i--) {
+      const ev = events[i] as { type: string; is_error?: boolean; subtype?: string };
+      if (ev.type === 'result') {
+        if (ev.is_error === true) return 'error';
+        if (ev.subtype && ev.subtype !== 'success') return 'error';
+        return 'success';
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Lee un job de disco por su .json file. Si está marcado como running pero el
- * PID está muerto, actualiza el estado a 'done' (si claude exit 0 implícito por
- * log) o 'failed'.
+ * PID está muerto, decide el estado mirando el evento `result` del log: 'done'
+ * SOLO si terminó con éxito; si crasheó/erroró → 'failed'; si superó el timeout
+ * sin result → 'timeout'. (Antes asumía 'done' para cualquier muerte de proceso,
+ * así que un claude que crasheaba/401 contaba como éxito.)
  */
 export function readJob(jobPath: string): ClaudeJob | null {
   try {
@@ -299,12 +325,18 @@ export function readJob(jobPath: string): ClaudeJob | null {
     if (job.status === 'running') {
       const alive = isPidAlive(job.pid);
       if (!alive) {
-        // Check timeout
+        // El PID murió. NO asumir éxito: mirar el evento `result` del stream-json.
+        const verdict = jobResultFromLog(job.logPath);
         const elapsedMs = Date.now() - new Date(job.startedAt).getTime();
-        if (elapsedMs >= job.timeoutMs) {
+        if (verdict === 'success') {
+          job.status = 'done';
+        } else if (verdict === 'error') {
+          job.status = 'failed';
+        } else if (elapsedMs >= job.timeoutMs) {
           job.status = 'timeout';
         } else {
-          job.status = 'done';
+          // Sin evento result y sin agotar timeout → crash / kill / 401 temprano.
+          job.status = 'failed';
         }
         job.finishedAt = new Date().toISOString();
         try {
