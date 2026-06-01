@@ -95,6 +95,41 @@ export function ClaudeRunButton({
   const lastNotifiedStatus = useRef<JobStatus | null>(null);
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Notifica + otorga XP en la transición running→terminal. Se invoca tanto desde
+  // el polling como desde el refetch del evento `done` de SSE. ANTES vivía inline
+  // SOLO en el polling → en el camino normal (SSE) no había NI notificación NI XP
+  // al terminar un job. El ref `lastNotifiedStatus` garantiza que dispare una vez.
+  const notifyJobTransition = (newStatus: JobStatus, jobId: string) => {
+    if (lastNotifiedStatus.current !== 'running' || newStatus === 'running') return;
+    const kindMap: Record<string, 'job-done' | 'job-failed' | 'job-cancelled' | 'job-timeout'> = {
+      done: 'job-done',
+      failed: 'job-failed',
+      cancelled: 'job-cancelled',
+      timeout: 'job-timeout',
+    };
+    const verb =
+      newStatus === 'done' ? 'terminó OK'
+      : newStatus === 'failed' ? 'falló'
+      : newStatus === 'cancelled' ? 'fue cancelado'
+      : 'timeout';
+    addNotification({
+      kind: kindMap[newStatus] ?? 'info',
+      title: `${jobLabel ?? skill} · ${verb}`,
+      body: videoTitle ? `Sobre "${videoTitle}"` : (videoFolder ?? 'job global'),
+      videoFolder,
+      videoTitle,
+      skill,
+    });
+    if (newStatus === 'done') {
+      awardOnce({
+        dedupId: jobId,
+        kind: 'job_done',
+        label: `${jobLabel ?? skill}${videoTitle ? ` · ${videoTitle}` : ''}`,
+      });
+    }
+    lastNotifiedStatus.current = newStatus;
+  };
+
   // SSE: stream de eventos en vivo mientras el job corre. Si falla, fallback a polling.
   useEffect(() => {
     if (!job || !videoFolder) return;
@@ -121,6 +156,7 @@ export function ClaudeRunButton({
             .then((r) => r.json())
             .then((data) => {
               if (data.ok && data.job) {
+                notifyJobTransition(data.job.status as JobStatus, data.job.jobId);
                 setJob({
                   jobId: data.job.jobId,
                   status: data.job.status,
@@ -160,35 +196,7 @@ export function ClaudeRunButton({
         if (cancelled) return;
         if (data.ok && data.job) {
           const newStatus = data.job.status as JobStatus;
-          if (
-            lastNotifiedStatus.current === 'running' &&
-            newStatus !== 'running'
-          ) {
-            const kindMap: Record<string, 'job-done' | 'job-failed' | 'job-cancelled' | 'job-timeout'> = {
-              done: 'job-done',
-              failed: 'job-failed',
-              cancelled: 'job-cancelled',
-              timeout: 'job-timeout',
-            };
-            const verb = newStatus === 'done' ? 'terminó OK' : newStatus === 'failed' ? 'falló' : newStatus === 'cancelled' ? 'fue cancelado' : 'timeout';
-            addNotification({
-              kind: kindMap[newStatus] ?? 'info',
-              title: `${jobLabel ?? skill} · ${verb}`,
-              body: videoTitle ? `Sobre "${videoTitle}"` : (videoFolder ?? 'job global'),
-              videoFolder,
-              videoTitle,
-              skill,
-            });
-            // Gamificación: XP solo cuando el job termina bien
-            if (newStatus === 'done') {
-              awardOnce({
-                dedupId: data.job.jobId,
-                kind: 'job_done',
-                label: `${jobLabel ?? skill}${videoTitle ? ` · ${videoTitle}` : ''}`,
-              });
-            }
-            lastNotifiedStatus.current = newStatus;
-          }
+          notifyJobTransition(newStatus, data.job.jobId);
           setJob({
             jobId: data.job.jobId,
             status: newStatus,

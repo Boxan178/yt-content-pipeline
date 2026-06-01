@@ -37,12 +37,22 @@ function occupiedDatesByChannel(): Map<string, Date[]> {
     arr.push(d);
     map.set(channel, arr);
   };
-  for (const u of readSchedule().items) {
+  const schedule = readSchedule().items;
+  for (const u of schedule) {
     // Las canceladas/fallidas no cuentan como "cubierto".
     if (u.status === 'cancelled' || u.status === 'failed') continue;
     push(u.channel, u.publishAt ?? u.scheduledFor);
   }
-  for (const p of readContentCalendar().items) push(p.channel, p.date);
+  // Dedup planificado↔subida (misma lógica que GET /api/calendar): un item del
+  // plan editorial que YA es una subida real (misma carpeta) NO debe contar otra
+  // vez — si no, infla `scheduled` y oculta huecos reales que sí hay que cubrir.
+  const baseOf = (f?: string) =>
+    (f || '').replace(/\\/g, '/').split('/').filter(Boolean).pop()?.normalize('NFC') ?? '';
+  const uploadFolderBases = new Set(schedule.map((u) => baseOf(u.videoFolder)).filter(Boolean));
+  for (const p of readContentCalendar().items) {
+    if (p.videoFolder && uploadFolderBases.has(baseOf(p.videoFolder))) continue;
+    push(p.channel, p.date);
+  }
   return map;
 }
 

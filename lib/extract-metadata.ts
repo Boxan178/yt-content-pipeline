@@ -54,7 +54,9 @@ export function extractMetadata(md: string): ExtractedMetadata {
     () => {
       // Línea de tabla "🏆 Marcus Aurelius ..." (MARCOS pone trofeo a la elegida)
       const m = md.match(/^\|\s*🏆\s*([^|]+?)\s*\|/m);
-      return m ? cleanValue(m[1]) : null;
+      const c = m ? cleanValue(m[1]) : null;
+      // Mismo piso de longitud que la estrategia #1: una celda casi vacía no es título.
+      return c && c.length > 1 ? c : null;
     },
     () => {
       const m = md.match(/\*\*T[ií]tulo\s+(?:FINAL|YouTube|ELEGIDO|v\d+)[^*:\n]*\*\*\s*[:：]\s*([^\n]+)/i);

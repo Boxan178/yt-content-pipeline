@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readdir, stat, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { isSafePathSegment } from '@/lib/config';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,6 +25,10 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: { sessionId: string } },
 ) {
+  // Defensa en profundidad: el segmento se interpola en un nombre de fichero.
+  if (!isSafePathSegment(params.sessionId)) {
+    return NextResponse.json({ ok: false, error: 'invalid session id' }, { status: 400 });
+  }
   const wanted = `${params.sessionId}.jsonl`;
   const projects = await tryReaddir(CLAUDE_DIR);
   for (const project of projects) {

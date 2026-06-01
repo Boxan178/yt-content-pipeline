@@ -148,8 +148,20 @@ export async function GET(
     if (!match) {
       return new Response('Bad Range', { status: 416 });
     }
-    const start = match[1] ? parseInt(match[1], 10) : 0;
-    const end = match[2] ? parseInt(match[2], 10) : size - 1;
+    // RFC 7233: `bytes=-N` (sufijo) = los últimos N bytes. Sin esta rama,
+    // match[1]='' caía a start=0 y servía desde el principio (rango incorrecto).
+    const hasStart = match[1] !== '';
+    const hasEnd = match[2] !== '';
+    let start: number;
+    let end: number;
+    if (!hasStart && hasEnd) {
+      const suffix = parseInt(match[2], 10);
+      start = Math.max(0, size - suffix);
+      end = size - 1;
+    } else {
+      start = hasStart ? parseInt(match[1], 10) : 0;
+      end = hasEnd ? parseInt(match[2], 10) : size - 1;
+    }
     if (start > end || end >= size) {
       return new Response('Range not satisfiable', {
         status: 416,

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Research, ValidationVerdict } from '@/lib/lab/types';
 import type { ClaudeJob } from '@/lib/claude-jobs';
@@ -107,13 +107,21 @@ export function ResearchPanel({ initialItems }: Props) {
   const [jobId, setJobId] = useState<string | null>(null);
   const [parsed, setParsed] = useState<ParsedResearch | null>(null);
   const [launching, setLaunching] = useState(false);
+  const [jobRunning, setJobRunning] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const router = useRouter();
+  // ANTES `canLaunch` exigía `!jobId`, pero jobId no se limpiaba nunca al terminar
+  // → el botón quedaba deshabilitado PARA SIEMPRE (no se podía lanzar una 2ª
+  // investigación sin recargar la página). Rastreamos "running" aparte y lo
+  // liberamos cuando el job alcanza estado terminal (ResearchJobView.onFinished),
+  // conservando jobId para que la vista del job siga visible.
+  const handleJobFinished = useCallback(() => setJobRunning(false), []);
 
   async function launch() {
     setErr(null);
     setParsed(null);
     setJobId(null);
+    setJobRunning(false);
     setLaunching(true);
     try {
       const r = await fetch('/api/lab/research', {
@@ -124,6 +132,7 @@ export function ResearchPanel({ initialItems }: Props) {
       const j = await r.json();
       if (!r.ok || !j.ok) throw new Error(j.error ?? `HTTP ${r.status}`);
       setJobId(j.job.jobId);
+      setJobRunning(true);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -166,7 +175,7 @@ export function ResearchPanel({ initialItems }: Props) {
     }
   }
 
-  const canLaunch = niche.trim().length >= 3 && !launching && !jobId;
+  const canLaunch = niche.trim().length >= 3 && !launching && !jobRunning;
 
   return (
     <div className="space-y-5">
@@ -274,7 +283,7 @@ export function ResearchPanel({ initialItems }: Props) {
         )}
       </div>
 
-      {jobId && <ResearchJobView jobId={jobId} onParsed={setParsed} />}
+      {jobId && <ResearchJobView jobId={jobId} onParsed={setParsed} onFinished={handleJobFinished} />}
 
       {parsed && (
         <div className="glass rounded-[24px] p-5">
@@ -456,9 +465,11 @@ function ModeBtn({
 function ResearchJobView({
   jobId,
   onParsed,
+  onFinished,
 }: {
   jobId: string;
   onParsed: (p: ParsedResearch) => void;
+  onFinished: () => void;
 }) {
   const [job, setJob] = useState<ClaudeJob | null>(null);
   const [tail, setTail] = useState('');
@@ -484,9 +495,15 @@ function ResearchJobView({
         }
         if (data.job.status === 'running') {
           timer = setTimeout(poll, 3000);
+        } else {
+          // terminal (done/failed/cancelled/timeout) → liberar el botón "Investigar".
+          onFinished();
         }
       } catch (e) {
-        if (!cancelled) setErr(e instanceof Error ? e.message : String(e));
+        if (!cancelled) {
+          setErr(e instanceof Error ? e.message : String(e));
+          onFinished(); // no dejar el botón bloqueado si el poll falla
+        }
       }
     }
     poll();
@@ -494,7 +511,7 @@ function ResearchJobView({
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [jobId, onParsed, doneCalled]);
+  }, [jobId, onParsed, onFinished, doneCalled]);
 
   if (err) {
     return (

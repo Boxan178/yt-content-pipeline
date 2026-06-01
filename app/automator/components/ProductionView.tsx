@@ -277,8 +277,10 @@ export function ProductionView({
 
       {/* Lista de escenas */}
       <div className="space-y-3">
-        {scenes.map((s) => (
-          <SceneCard key={s.scene_number} scene={s} onRetry={onRetry} />
+        {scenes.map((s, i) => (
+          // key compuesta con el índice: dos escenas pueden compartir scene_number
+          // (texto/JSON con números repetidos) → keys duplicadas y reconciliación rota.
+          <SceneCard key={`${s.scene_number}-${i}`} scene={s} onRetry={onRetry} />
         ))}
       </div>
     </div>

@@ -70,9 +70,13 @@ function sanitize(input: Partial<ChannelCadence> & { channel: string }): Channel
  *  null si el canal no existe en lib/channels.ts. */
 export function upsertCadence(input: Partial<ChannelCadence> & { channel: string }): ChannelCadence | null {
   if (!getChannel(input.channel)) return null;
-  const clean = sanitize(input);
   const s = readCadence();
   const idx = s.items.findIndex((c) => c.channel === input.channel);
+  // Merge contra el registro previo ANTES de sanear: el PATCH del panel solo
+  // manda {channel,enabled,targetPerWeek,preferredWeekdays} y sin merge se
+  // perdería `hour` (sanitize lo forzaría a 12 en cada guardado).
+  const prev = idx === -1 ? undefined : s.items[idx];
+  const clean = sanitize({ ...prev, ...input });
   if (idx === -1) s.items.push(clean);
   else s.items[idx] = clean;
   save(s);

@@ -30,14 +30,24 @@ export async function POST(req: Request) {
   form.append("project", project);
   form.append("scene_number", sceneNumber);
 
-  const res = await fetch(`${BACKEND_URL.replace(/\/$/, "")}/regenerate`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${BACKEND_TOKEN}` },
-    body: form,
-    signal: req.signal,
-    // @ts-expect-error — Node fetch acepta duplex en streaming
-    duplex: "half",
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BACKEND_URL.replace(/\/$/, "")}/regenerate`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${BACKEND_TOKEN}` },
+      body: form,
+      signal: req.signal,
+      // @ts-expect-error — Node fetch acepta duplex en streaming
+      duplex: "half",
+    });
+  } catch (e) {
+    // Sin try/catch, un backend caído o un abort del cliente lanzaba un 500 sin
+    // manejar (inconsistente con projects/balance, que devuelven 502 limpio).
+    if (e instanceof Error && e.name === "AbortError") {
+      return new Response("Client aborted", { status: 499 });
+    }
+    return new Response("Backend unreachable", { status: 502 });
+  }
   if (!res.ok || !res.body) {
     const text = await res.text().catch(() => "");
     return new Response(`Backend error: HTTP ${res.status} ${text}`, { status: 502 });

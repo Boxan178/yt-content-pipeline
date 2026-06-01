@@ -527,6 +527,15 @@ export default function AutomatorPage() {
       refreshBalance();
       return;
     }
+    if (kind === "api_end") {
+      // El runner local terminó. Si salió con código != 0 sin un `end`/`fatal`
+      // explícito, la UI se quedaba "idle" sin señal de fallo → reflejamos el error.
+      const code = ev.exit_code;
+      if (typeof code === "number" && code !== 0) {
+        setRunError((prev) => prev ?? `El motor terminó con código ${code} sin completar.`);
+      }
+      return;
+    }
     if (kind === "fatal" || kind === "api_error") {
       setRunError(String(ev.error ?? "fatal"));
       return;

@@ -55,6 +55,21 @@ export function writeSettings(next: Partial<AppSettings>): AppSettings {
   ensureDir();
   const current = readSettings();
   const merged: AppSettings = { ...current, ...next };
+  // Saneado defensivo: el POST acepta JSON arbitrario. Sin esto, un
+  // pollIntervalMs=0/NaN dispararía un bucle de polling caliente y un
+  // channelNasPaths no-objeto rompería los consumidores `?.[slug]`.
+  if (typeof merged.pollIntervalMs !== 'number' || !Number.isFinite(merged.pollIntervalMs)) {
+    merged.pollIntervalMs = DEFAULTS.pollIntervalMs;
+  }
+  merged.pollIntervalMs = Math.min(300000, Math.max(5000, Math.round(merged.pollIntervalMs)));
+  if (!merged.channelNasPaths || typeof merged.channelNasPaths !== 'object' || Array.isArray(merged.channelNasPaths)) {
+    merged.channelNasPaths = {};
+  }
+  merged.enableConfetti = !!merged.enableConfetti;
+  merged.enableNativeNotifications = !!merged.enableNativeNotifications;
+  merged.showCompilationBadge = !!merged.showCompilationBadge;
+  merged.defaultEffortMax = !!merged.defaultEffortMax;
+  merged.archiveMoveDeleteLocal = !!merged.archiveMoveDeleteLocal;
   writeFileSync(FILE, JSON.stringify(merged, null, 2), 'utf-8');
   return merged;
 }

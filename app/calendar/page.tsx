@@ -182,7 +182,8 @@ export default function CalendarPage() {
     }).catch(() => {});
     loadItems();
     loadGaps();
-  }, [loadItems, loadGaps]);
+    loadBacklog(); // una idea arrastrada al calendario debe salir del backlog
+  }, [loadItems, loadGaps, loadBacklog]);
 
   const movePlanned = useCallback(async (plannedId: string, date: string) => {
     await fetch(`/api/calendar/${plannedId}`, {
@@ -218,7 +219,9 @@ export default function CalendarPage() {
     }
     setBusyId(null);
     loadItems();
-  }, [loadItems]);
+    loadGaps();   // el slot recién programado ya no es un hueco
+    loadBacklog(); // la idea consumida debe salir del backlog
+  }, [loadItems, loadGaps, loadBacklog]);
 
   const saveCadence = useCallback(async (patch: CadenceCfg) => {
     await fetch('/api/calendar/cadence', {

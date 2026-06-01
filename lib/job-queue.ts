@@ -233,7 +233,11 @@ function relaunchSara(item: QueueItem, progress: Progress): void {
     cwd: resume.cwd,
     timeoutMs: resume.timeoutMs,
     videoFolder: item.videoFolder,
-    model: resume.model,
+    // Conservar el modelo y effort que eligió Pablo al encolar — antes la
+    // continuación caía siempre al default del modelo (perdía el effort y, si
+    // había override de modelo, lo degradaba a mitad del pipeline).
+    model: item.model ?? resume.model,
+    effort: item.effort,
   });
   item.jobId = job.jobId;
   item.pid = job.pid;

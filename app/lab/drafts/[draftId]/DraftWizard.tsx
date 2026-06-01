@@ -167,6 +167,7 @@ function Step2Analysis({ draft, persist, onNext, onBack }: StepProps) {
           scriptSample: parsed.scriptSample,
           currentStep: 2,
         });
+        setJobId(null); // volver a la vista de resultados (no quedarse en el JobView del re-lanzamiento)
       } catch (e) {
         setErr(e instanceof Error ? e.message : String(e));
       }
@@ -202,7 +203,7 @@ function Step2Analysis({ draft, persist, onNext, onBack }: StepProps) {
           </dl>
         </div>
 
-        {hasAnalysis ? (
+        {hasAnalysis && !jobId ? (
           <div className="space-y-4">
             <ParsedBlock title="Análisis del canal" body={draft.channelAnalysis ?? ''} />
             <ParsedBlock title="Style DNA" body={draft.styleDna ?? ''} />
@@ -299,6 +300,7 @@ function Step3Visuals({ draft, persist, onNext, onBack: _onBack }: StepProps) {
           visualStyleProfile: parsed.visualStyleProfile,
           thumbnailStyleProfile: parsed.thumbnailStyleProfile,
         });
+        setJobId(null); // volver a la vista de resultados (no quedarse en el JobView del re-lanzamiento)
       } catch (e) {
         setErr(e instanceof Error ? e.message : String(e));
       }
@@ -335,7 +337,7 @@ function Step3Visuals({ draft, persist, onNext, onBack: _onBack }: StepProps) {
           max={3}
         />
 
-        {hasVisuals ? (
+        {hasVisuals && !jobId ? (
           <div className="space-y-4">
             <ParsedBlock title="Visual style profile" body={draft.visualStyleProfile ?? ''} />
             <ParsedBlock title="Thumbnail style profile" body={draft.thumbnailStyleProfile ?? ''} />
@@ -403,6 +405,7 @@ function Step4Validation({ draft, persist, onNext, onBack }: StepProps) {
       }
       try {
         await persist({ validation: parsed, currentStep: 4 });
+        setJobId(null); // volver a la vista del informe (no quedarse en el JobView del re-lanzamiento)
       } catch (e) {
         setErr(e instanceof Error ? e.message : String(e));
       }
@@ -422,7 +425,7 @@ function Step4Validation({ draft, persist, onNext, onBack }: StepProps) {
       onNext={() => onNext()}
     >
       <div className="mx-auto max-w-4xl space-y-5">
-        {report ? (
+        {report && !jobId ? (
           <>
             <ValidationReportView report={report} />
 

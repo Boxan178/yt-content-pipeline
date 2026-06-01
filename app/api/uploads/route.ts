@@ -36,6 +36,14 @@ export async function POST(req: NextRequest) {
   if (!Array.isArray(body.tags)) {
     return NextResponse.json({ ok: false, error: 'tags debe ser array' }, { status: 400 });
   }
+  // El cuerpo se castea a AddUploadOptions sin más validación; un privacy fuera
+  // del enum se persistiría y rompería upload.py al subir. Lo validamos aquí.
+  if (!['public', 'unlisted', 'private'].includes(String(body.privacyOnPublish))) {
+    return NextResponse.json(
+      { ok: false, error: 'privacyOnPublish inválido (public|unlisted|private)' },
+      { status: 400 },
+    );
+  }
   if (body.publishAt) {
     const t = Date.parse(body.publishAt);
     if (Number.isNaN(t)) {

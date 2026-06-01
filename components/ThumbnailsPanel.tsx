@@ -59,11 +59,14 @@ export function ThumbnailsPanel({
 
   const loadSelected = useCallback(async () => {
     try {
-      const r = await fetch(selectUrl, { cache: 'no-store' });
+      // URL construida aquí dentro para depender de [channel, videoTitle] y no
+      // de `selectUrl` (string recreado en cada render → re-fetch en cada render).
+      const url = `/api/channels/${encodeURIComponent(channel)}/videos/${encodeURIComponent(videoTitle)}/select-thumbnail`;
+      const r = await fetch(url, { cache: 'no-store' });
       const data = await r.json();
       if (data.ok) setSelected(data.selected ?? null);
     } catch {}
-  }, [selectUrl]);
+  }, [channel, videoTitle]);
 
   useEffect(() => {
     loadSelected();

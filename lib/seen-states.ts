@@ -23,7 +23,13 @@ export function readSeen(): { map: SeenMap; isFirstRun: boolean } {
   if (!existsSync(FILE)) return { map: {}, isFirstRun: true };
   try {
     const raw = readFileSync(FILE, 'utf-8');
-    return { map: JSON.parse(raw) as SeenMap, isFirstRun: false };
+    const parsed = JSON.parse(raw);
+    // Validar forma: un JSON corrupto/parcial puede parsear a null, número o
+    // array. Cualquiera de esos rompería `map[folder]` aguas abajo.
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return { map: {}, isFirstRun: true };
+    }
+    return { map: parsed as SeenMap, isFirstRun: false };
   } catch {
     return { map: {}, isFirstRun: true };
   }

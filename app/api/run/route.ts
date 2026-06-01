@@ -55,14 +55,23 @@ async function proxyToBackend(req: Request, projectJson: string, refFile: File |
   upstream.append("project", projectJson);
   if (refFile) upstream.append("ref_file", refFile);
 
-  const res = await fetch(`${BACKEND_URL.replace(/\/$/, "")}/run`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${BACKEND_TOKEN}` },
-    body: upstream,
-    // @ts-expect-error — Node 18+ fetch acepta duplex en streaming
-    duplex: "half",
-    signal: req.signal,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BACKEND_URL.replace(/\/$/, "")}/run`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${BACKEND_TOKEN}` },
+      body: upstream,
+      // @ts-expect-error — Node 18+ fetch acepta duplex en streaming
+      duplex: "half",
+      signal: req.signal,
+    });
+  } catch (e) {
+    // Backend caído / abort del cliente → 502 limpio en vez de un 500 sin manejar.
+    if (e instanceof Error && e.name === "AbortError") {
+      return new Response("Client aborted", { status: 499 });
+    }
+    return new Response("Backend unreachable", { status: 502 });
+  }
 
   if (!res.ok || !res.body) {
     const text = await res.text().catch(() => "");

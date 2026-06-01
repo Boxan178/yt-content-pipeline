@@ -189,11 +189,17 @@ export function recordEvent(kind: XPEventKind, label?: string): AwardResult {
   const { level } = deriveLevel(stats.xp);
   stats.level = level;
 
-  // 5) Logros (puede dar más XP, y eso puede subir nivel otra vez)
-  const achievementsUnlocked = checkAchievements(stats);
-  if (achievementsUnlocked.length > 0) {
-    const { level: lvl2 } = deriveLevel(stats.xp);
-    stats.level = lvl2;
+  // 5) Logros. Cada lote puede dar XP extra, eso puede subir de nivel, y un
+  //    nivel nuevo puede a su vez desbloquear logros de nivel (level_5/10/20).
+  //    Iteramos hasta punto fijo para que no queden desbloqueos diferidos al
+  //    siguiente evento. El set de logros es finito → termina solo.
+  const achievementsUnlocked: Achievement[] = [];
+  for (let guard = 0; guard < ACHIEVEMENTS.length + 1; guard++) {
+    const batch = checkAchievements(stats);
+    if (batch.length === 0) break;
+    achievementsUnlocked.push(...batch);
+    const { level: lvlN } = deriveLevel(stats.xp);
+    stats.level = lvlN;
   }
 
   const newLevel = stats.level;

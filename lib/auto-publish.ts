@@ -439,31 +439,44 @@ async function ensureBaseline(): Promise<boolean> {
  * Escanea todos los canales con `autoPublishUnlisted` y encola la subida oculta
  * de los vídeos completos+idle que aún no se hayan publicado. Idempotente.
  */
+// Mutex de proceso: el poller de Electron (POST /api/auto-publish/tick) y el
+// backstop del GET del kanban pueden entrar a la vez. Sin esto, ambos pasan el
+// `hasUploadForFolder()` (check) y, varios await después, hacen `addUpload()`
+// (act) del MISMO vídeo → subida DUPLICADA a YouTube. El scheduler serializa el
+// LANZAMIENTO, pero no el ENCOLADO; este guard cierra esa ventana.
+let autoPublishTicking = false;
+
 export async function runAutoPublishTick(): Promise<AutoPublishResult[]> {
   if (!isEnabled()) return [];
-  // Primera activación: solo baseline del backlog existente, sin subir nada.
-  if (await ensureBaseline()) return [];
-  const results: AutoPublishResult[] = [];
-  for (const channel of CHANNELS) {
-    if (!channel.enabled || !channel.autoPublishUnlisted) continue;
-    for (const stateFolder of candidateStateFolders(channel)) {
-      const base = path.join(channel.rootPath, stateFolder);
-      let names: string[];
-      try {
-        names = await readdir(base);
-      } catch {
-        continue; // carpeta no existe en este canal
-      }
-      for (const name of names) {
-        if (channel.ignoreFolders.includes(name)) continue;
+  if (autoPublishTicking) return [];
+  autoPublishTicking = true;
+  try {
+    // Primera activación: solo baseline del backlog existente, sin subir nada.
+    if (await ensureBaseline()) return [];
+    const results: AutoPublishResult[] = [];
+    for (const channel of CHANNELS) {
+      if (!channel.enabled || !channel.autoPublishUnlisted) continue;
+      for (const stateFolder of candidateStateFolders(channel)) {
+        const base = path.join(channel.rootPath, stateFolder);
+        let names: string[];
         try {
-          const r = await considerVideo(channel, path.join(base, name), name);
-          if (r) results.push(r);
+          names = await readdir(base);
         } catch {
-          // un vídeo problemático no debe tumbar el tick entero
+          continue; // carpeta no existe en este canal
+        }
+        for (const name of names) {
+          if (channel.ignoreFolders.includes(name)) continue;
+          try {
+            const r = await considerVideo(channel, path.join(base, name), name);
+            if (r) results.push(r);
+          } catch {
+            // un vídeo problemático no debe tumbar el tick entero
+          }
         }
       }
     }
+    return results;
+  } finally {
+    autoPublishTicking = false;
   }
-  return results;
 }

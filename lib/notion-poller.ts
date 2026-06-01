@@ -409,16 +409,24 @@ export async function tick(opts: { force?: boolean } = {}): Promise<TickResult> 
 
     let pages: Page[];
     try {
-      const params: QueryDataSourceParameters = {
-        data_source_id: getDataSourceId(),
-        filter: {
-          property: PROP_ARRANCAR,
-          checkbox: { equals: true },
-        },
-        page_size: 25,
-      };
-      const resp = await client.dataSources.query(params);
-      pages = resp.results.filter(isFullPage);
+      // Paginar: antes cogía SOLO las primeras 25 filas con Arrancar=true; las
+      // filas 26+ no se procesaban (ni se contaban) hasta liberar las primeras.
+      pages = [];
+      let cursor: string | undefined;
+      do {
+        const params: QueryDataSourceParameters = {
+          data_source_id: getDataSourceId(),
+          filter: {
+            property: PROP_ARRANCAR,
+            checkbox: { equals: true },
+          },
+          page_size: 100,
+          ...(cursor ? { start_cursor: cursor } : {}),
+        };
+        const resp = await client.dataSources.query(params);
+        pages.push(...resp.results.filter(isFullPage));
+        cursor = resp.has_more ? resp.next_cursor ?? undefined : undefined;
+      } while (cursor);
     } catch (e) {
       const err = describeErr(e);
       const consecutive = state.consecutiveErrors + 1;

@@ -37,6 +37,8 @@ export async function GET(
   const encoder = new TextEncoder();
   let watcher: FSWatcher | null = null;
   let pollTimer: ReturnType<typeof setInterval> | null = null;
+  let heartbeat: ReturnType<typeof setInterval> | null = null;
+  let deadline: ReturnType<typeof setTimeout> | null = null;
   let lastSize = 0;
   let buffer = '';
   let closed = false;
@@ -63,6 +65,14 @@ export async function GET(
         if (pollTimer) {
           clearInterval(pollTimer);
           pollTimer = null;
+        }
+        if (heartbeat) {
+          clearInterval(heartbeat);
+          heartbeat = null;
+        }
+        if (deadline) {
+          clearTimeout(deadline);
+          deadline = null;
         }
       }
 
@@ -146,33 +156,34 @@ export async function GET(
       } catch {}
       pollTimer = setInterval(readDelta, 2000);
 
-      // Heartbeat para mantener viva la conexión y detectar desconexiones
-      const heartbeat = setInterval(() => {
+      // Heartbeat para mantener viva la conexión y detectar desconexiones.
+      // Hoisted al scope externo para que cleanup()/cancel() lo puedan limpiar.
+      heartbeat = setInterval(() => {
         if (closed) {
-          clearInterval(heartbeat);
+          if (heartbeat) clearInterval(heartbeat);
+          heartbeat = null;
           return;
         }
         safeEnqueue(`: ping\n\n`);
       }, 15000);
 
-      // Cerrar a los 30 minutos por si acaso
-      const deadline = setTimeout(() => {
+      // Cerrar a los 30 minutos por si acaso. ANTES era `const` local de start()
+      // → cancel() no lo podía limpiar y el timer (con su closure del controller
+      // cerrado) sobrevivía hasta 30 min por cada conexión desconectada.
+      deadline = setTimeout(() => {
         if (closed) return;
         sseEvent('done', { reason: 'timeout' });
         try { controller.close(); } catch {}
         closed = true;
         cleanup();
-        clearInterval(heartbeat);
       }, 30 * 60 * 1000);
-
-      // Cleanup al cancelar la conexión
-      // No hay un cancel listener directo aquí; el ReadableStream tiene cancel() arriba.
-      const _ = deadline; // referencia para evitar GC
     },
     cancel() {
       closed = true;
       if (watcher) { try { watcher.close(); } catch {} }
       if (pollTimer) clearInterval(pollTimer);
+      if (heartbeat) clearInterval(heartbeat);
+      if (deadline) clearTimeout(deadline);
     },
   });
 

@@ -113,6 +113,9 @@ export default function HistorialClient() {
     fetch("/api/projects", { cache: "no-store" })
       .then((r) => r.json())
       .then(setData)
+      // Sin catch, un fallo de red dejaba data=null y NINGUNA rama de render
+      // casaba → pantalla en blanco. Mostramos el estado de error en su lugar.
+      .catch((e) => setData({ projects: [], error: e instanceof Error ? e.message : String(e) }))
       .finally(() => setLoading(false));
   }, []);
 
