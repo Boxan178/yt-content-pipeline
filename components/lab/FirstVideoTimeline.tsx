@@ -237,8 +237,11 @@ export function FirstVideoTimeline({ draft }: Props) {
               key={p.index}
               className="glass flex items-start gap-4 rounded-2xl p-4"
             >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-300">
-                <span className="nums font-display text-sm font-semibold">
+              {/* Numerales neutros (zinc) + forma cuadrada: deliberadamente
+                  distintos de los badges fuchsia/redondos del wizard, para que
+                  esta timeline informativa no se lea como un 6º paso del wizard. */}
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-zinc-400">
+                <span className="nums font-mono text-sm font-semibold">
                   {p.index}
                 </span>
               </div>

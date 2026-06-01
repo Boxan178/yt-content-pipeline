@@ -252,7 +252,7 @@ export function ChecklistItemRow({ item, ctx, thumbnailOptions, onResolved }: Pr
 
       {startError && (
         <div className="border-t border-yellow-500/20 px-3 py-1.5">
-          <p className="text-[10px] text-red-300">{startError}</p>
+          <p className="whitespace-pre-wrap break-words text-[10px] text-red-300">{startError}</p>
         </div>
       )}
 

@@ -51,13 +51,18 @@ export function DecisionModal({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ESC para cerrar
+  // ESC para cerrar + scroll-lock del body mientras está montado
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
   }, [onClose]);
 
   const submit = async () => {
@@ -93,8 +98,16 @@ export function DecisionModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm">
-      <div className="glass-premium flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-[28px]">
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        onMouseDown={(e) => e.stopPropagation()}
+        className="glass-premium flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-[28px]"
+      >
         <header className="flex items-center justify-between border-b border-white/10 px-6 py-4">
           <h2 className="font-display text-lg font-semibold tracking-display text-white">
             Tu decisión
@@ -115,7 +128,7 @@ export function DecisionModal({
             <p className="text-[10px] font-medium uppercase tracking-label text-yellow-300/70">
               Item del checklist
             </p>
-            <p className="mt-1 text-sm text-zinc-200">{itemText}</p>
+            <p className="mt-1 break-words text-sm text-zinc-200">{itemText}</p>
           </div>
 
           <div>
@@ -141,7 +154,7 @@ export function DecisionModal({
                       onChange={() => setDecision(opt)}
                       className="mt-0.5 accent-accent"
                     />
-                    <span className="flex-1">{opt}</span>
+                    <span className="min-w-0 flex-1 break-words">{opt}</span>
                   </label>
                 ))}
                 <p className="mt-2 text-[10px] text-zinc-500">¿Ninguna de estas? Escribe tu propia abajo.</p>
@@ -173,7 +186,7 @@ export function DecisionModal({
                 type="datetime-local"
                 value={decision}
                 onChange={(e) => setDecision(e.target.value)}
-                className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white transition focus:border-accent/60 focus:bg-white/10 focus:outline-none"
+                className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white transition [color-scheme:dark] focus:border-accent/60 focus:bg-white/10 focus:outline-none"
               />
             )}
 

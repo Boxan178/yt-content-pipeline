@@ -150,10 +150,12 @@ export function Sidebar() {
       className="flex h-screen w-16 shrink-0 flex-col items-center py-4"
       style={{ backgroundColor: '#0d0f15', borderRight: '1px solid rgba(255,255,255,0.06)' }}
     >
-      {/* Logo / título compacto — squircle con look nav-active */}
+      {/* Logo / título compacto — squircle con tinte gold ESTÁTICO de marca.
+          NO usa nav-active (borde gold fuerte + glow) para no competir con el
+          item de navegación realmente seleccionado: borde neutro, sin glow. */}
       <Link
         href="/"
-        className="nav-active mb-5 flex h-10 w-10 items-center justify-center rounded-2xl font-display text-sm font-bold tracking-tight"
+        className="mb-5 flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-[rgba(201,169,106,0.10)] font-display text-sm font-bold tracking-tight text-[#e8d4a8] transition hover:bg-[rgba(201,169,106,0.16)]"
         title="YouTube Content Pipeline"
       >
         YT

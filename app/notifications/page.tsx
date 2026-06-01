@@ -29,6 +29,18 @@ const KIND_LABEL: Record<AppNotification['kind'], string> = {
   info: 'Info',
 };
 
+// Mismo formateador relativo que usa la campanita (NotificationBell) para que el
+// histórico hable igual ("hace 3 min") en vez de una fecha absoluta cruda.
+function relTime(iso: string) {
+  const diff = (new Date(iso).getTime() - Date.now()) / 1000;
+  const abs = Math.abs(diff);
+  const fmt = new Intl.RelativeTimeFormat('es-ES', { numeric: 'auto' });
+  if (abs < 60) return fmt.format(Math.round(diff), 'second');
+  if (abs < 3600) return fmt.format(Math.round(diff / 60), 'minute');
+  if (abs < 86400) return fmt.format(Math.round(diff / 3600), 'hour');
+  return fmt.format(Math.round(diff / 86400), 'day');
+}
+
 export default function NotificationsPage() {
   const [items, setItems] = useState<AppNotification[]>([]);
 
@@ -95,7 +107,9 @@ export default function NotificationsPage() {
                     {n.body}
                   </p>
                   <p className="nums mt-0.5 text-[10px] text-zinc-500">
-                    {new Date(n.createdAt).toLocaleString('es-ES')}
+                    <span title={new Date(n.createdAt).toLocaleString('es-ES')}>
+                      {relTime(n.createdAt)}
+                    </span>
                     {n.skill && (
                       <>
                         {' · '}skill: <span className="font-mono text-zinc-400">{n.skill}</span>

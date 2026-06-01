@@ -39,11 +39,9 @@ interface FindResponse {
 const STATUS_PILL: Record<JobStatus, string> = {
   running: 'pill-away',
   done: 'pill-active',
-  failed:
-    'bg-red-500/20 border border-red-500/40 text-red-300 rounded-full px-2.5 py-0.5 text-[10px] font-medium inline-flex items-center gap-1',
+  failed: 'pill-err',
   cancelled: 'pill-soon',
-  timeout:
-    'bg-orange-500/15 border border-orange-500/40 text-orange-300 rounded-full px-2.5 py-0.5 text-[10px] font-medium inline-flex items-center gap-1',
+  timeout: 'pill-timeout',
 };
 
 function formatDuration(ms: number) {
@@ -203,7 +201,7 @@ export default function JobDetailPage() {
         </div>
         <div className="flex flex-col items-end gap-1 text-right">
           <span className={`${STATUS_PILL[j.status]} shrink-0`}>
-            {isRunning && <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />}
+            {isRunning && <span className="h-1.5 w-1.5 rounded-full bg-sky-400 animate-pulse" />}
             {j.status}
             {j.approval === 'approved' && (
               <span className="ml-1 text-green-400">

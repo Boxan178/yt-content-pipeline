@@ -53,6 +53,11 @@ function toolIcon(name: string) {
 }
 
 export function ChatDock() {
+  // `hydrated` evita el flash SSR→cliente: el HTML del server pinta un placeholder
+  // de ancho fijo neutro; sólo tras montar (y leer localStorage) decidimos si el
+  // dock va abierto o colapsado. Antes el server pintaba el dock ancho y se
+  // colapsaba en cada carga para quien lo tiene cerrado (tirón visible).
+  const [hydrated, setHydrated] = useState(false);
   const [open, setOpen] = useState<boolean>(true);
   const [width, setWidth] = useState<number>(DEFAULT_W);
   const [model, setModel] = useState<Model>('sonnet');
@@ -78,6 +83,7 @@ export function ChatDock() {
       const o = localStorage.getItem(STORAGE_KEY_OPEN);
       if (o === '0') setOpen(false);
     } catch {}
+    setHydrated(true);
   }, []);
 
   // Persistir width/model/effort
@@ -233,11 +239,18 @@ export function ChatDock() {
     }
   };
 
+  // Pre-hidratación: placeholder neutro de ancho fijo. Coincide con el render del
+  // server (no sabemos aún si está abierto/cerrado), así que reservamos el ancho
+  // por defecto sin pintar contenido. Evita el tirón al colapsar tras leer LS.
+  if (!hydrated) {
+    return <aside aria-hidden className="chat-sliver shrink-0" style={{ width: DEFAULT_W }} />;
+  }
+
   if (!open) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="fixed right-2 top-1/2 z-20 -translate-y-1/2 rounded-l-md border border-r-0 border-border bg-panel px-1.5 py-3 text-[10px] text-muted hover:text-white"
+        className="chat-sliver fixed right-2 top-1/2 z-20 -translate-y-1/2 rounded-l-md border-r-0 px-1.5 py-3 text-[10px] text-zinc-400 hover:text-white"
         title="Abrir chat"
       >
         ←<br />C<br />h<br />a<br />t
@@ -247,7 +260,7 @@ export function ChatDock() {
 
   return (
     <aside
-      className="relative flex shrink-0 flex-col border-l border-border bg-panel"
+      className="chat-sliver relative flex shrink-0 flex-col"
       style={{ width }}
     >
       {/* Resizer */}
@@ -258,7 +271,7 @@ export function ChatDock() {
       />
 
       {/* Header */}
-      <header className="flex items-center gap-2 border-b border-border px-3 py-2">
+      <header className="flex items-center gap-2 border-b border-white/10 px-3 py-2">
         <span className="text-sm font-semibold text-white">Chat</span>
         <button
           onClick={() => setModel((m) => (m === 'sonnet' ? 'opus' : 'sonnet'))}
@@ -277,7 +290,7 @@ export function ChatDock() {
             const i = list.indexOf(effort);
             setEffort(list[(i + 1) % list.length]);
           }}
-          className="rounded border border-border bg-bg px-1.5 py-0.5 text-[10px] font-mono uppercase text-zinc-300"
+          className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] font-mono uppercase text-zinc-300 hover:bg-white/10"
           title="Cambiar effort"
         >
           {effort}
@@ -286,14 +299,14 @@ export function ChatDock() {
           <button
             onClick={newConversation}
             disabled={busy}
-            className="rounded border border-border bg-bg px-2 py-0.5 text-[10px] text-muted hover:text-white disabled:opacity-50"
+            className="rounded border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-zinc-400 hover:bg-white/10 hover:text-white disabled:opacity-50"
             title="Nueva conversación"
           >
             + nueva
           </button>
           <button
             onClick={() => setOpen(false)}
-            className="rounded border border-border bg-bg px-1.5 py-0.5 text-[10px] text-muted hover:text-white"
+            className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:bg-white/10 hover:text-white"
             title="Cerrar"
           >
             →
@@ -304,7 +317,7 @@ export function ChatDock() {
       {/* Mensajes */}
       <div ref={scrollerRef} className="flex-1 space-y-3 overflow-y-auto p-3">
         {turns.length === 0 && !busy && (
-          <div className="rounded-lg border border-dashed border-border px-3 py-8 text-center text-xs text-muted">
+          <div className="rounded-lg border border-dashed border-white/10 px-3 py-8 text-center text-xs text-zinc-400">
             Habla con claude. Tiene acceso a todas tus skills (SARA, ELENA, MARCO AURELIO, IRIS, etc.) y al filesystem.
           </div>
         )}
@@ -325,8 +338,8 @@ export function ChatDock() {
       </div>
 
       {/* Input */}
-      <div className="border-t border-border p-2">
-        <div className="flex items-end gap-2 rounded-lg border border-border bg-bg p-2 focus-within:border-accent/60">
+      <div className="border-t border-white/10 p-2">
+        <div className="flex items-end gap-2 rounded-lg border border-white/10 bg-white/5 p-2 focus-within:border-accent/60">
           <textarea
             ref={inputRef}
             value={input}

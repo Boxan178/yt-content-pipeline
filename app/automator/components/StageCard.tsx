@@ -11,7 +11,7 @@ interface Props {
 const KIND_LABEL: Record<StageKind, string> = {
   first_frame: "First Frame",
   last_frame: "Last Frame",
-  video: "Video",
+  video: "Vídeo",
   drive_upload: "Drive Upload",
 };
 

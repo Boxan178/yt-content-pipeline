@@ -68,6 +68,11 @@ export const CALENDAR_STATUS_STYLE: Record<CalendarItemStatus | PlannedStatus, {
   cancelled: { label: 'Cancelado', cls: 'bg-zinc-500/15 text-zinc-400 border-zinc-500/30' },
 };
 
+/** Etiquetas de día (lunes→domingo) compartidas entre la rejilla del mes
+ *  (MonthGrid) y el editor de cadencia (app/calendar/page.tsx) para que no
+ *  discrepen. Single-letter porque los botones de cadencia son de 24×24px. */
+export const WEEKDAY_LABELS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+
 /** Payload que viaja en el dataTransfer del drag-drop del calendario. */
 export type CalendarDragPayload =
   | { kind: 'idea'; ideaId: string; title: string; channel: string | null }

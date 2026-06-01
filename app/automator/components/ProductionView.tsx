@@ -197,7 +197,7 @@ export function ProductionView({
                 options={[
                   { value: "gemini", label: "Gemini" },
                   { value: "kie", label: "Kie" },
-                  { value: "genaipro", label: "GenAlPro" },
+                  { value: "genaipro", label: "GenAIPro" },
                 ]}
                 onChange={() => {}}
               />
@@ -210,17 +210,17 @@ export function ProductionView({
             </div>
 
             <div className="flex flex-wrap items-center gap-3 text-sm">
-              <span className="text-xs text-zinc-400 min-w-[120px]">Proveedor de video</span>
+              <span className="text-xs text-zinc-400 min-w-[120px]">Proveedor de vídeo</span>
               <Segmented
                 value="kie"
                 options={[
                   { value: "kie", label: "Kie" },
-                  { value: "genaipro", label: "GenAlPro" },
+                  { value: "genaipro", label: "GenAIPro" },
                   { value: "replicate", label: "Replicate" },
                 ]}
                 onChange={() => {}}
               />
-              <span className="text-xs text-zinc-400 ml-2">Modelo de video</span>
+              <span className="text-xs text-zinc-400 ml-2">Modelo de vídeo</span>
               <Segmented
                 value={config.video_model}
                 options={videoModels.map((m) => ({ value: m.slug, label: m.label }))}
@@ -264,9 +264,11 @@ export function ProductionView({
             {estimatedCredits !== null ? (
               <>
                 <span className="font-semibold text-zinc-100">
-                  {estimatedCredits} credits para {sceneCount} escena{sceneCount === 1 ? "" : "s"}
+                  {estimatedCredits.toLocaleString("es-ES")} credits para {sceneCount} escena{sceneCount === 1 ? "" : "s"}
                 </span>{" "}
-                <span className="text-zinc-500">(€{estimatedEur})</span>
+                {estimatedEur != null && (
+                  <span className="text-zinc-500">(€{estimatedEur})</span>
+                )}
               </>
             ) : (
               <span className="text-zinc-500">—</span>
@@ -280,7 +282,7 @@ export function ProductionView({
         {scenes.map((s, i) => (
           // key compuesta con el índice: dos escenas pueden compartir scene_number
           // (texto/JSON con números repetidos) → keys duplicadas y reconciliación rota.
-          <SceneCard key={`${s.scene_number}-${i}`} scene={s} onRetry={onRetry} />
+          <SceneCard key={`${s.scene_number}-${i}`} scene={s} onRetry={onRetry} runActive={isRunning} />
         ))}
       </div>
     </div>

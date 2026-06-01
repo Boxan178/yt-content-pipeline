@@ -188,11 +188,27 @@ export function IdeasPanel({ initialIdeas }: Props) {
 
       {/* Listado */}
       {visible.length === 0 ? (
-        <p className="text-sm text-zinc-500">
-          {tab === 'bank'
-            ? 'El banco está vacío.'
-            : 'No hay ideas asignadas a canal todavía.'}
-        </p>
+        <div className="glass flex flex-col items-center gap-2 rounded-[24px] px-6 py-10 text-center">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-300">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z" />
+            </svg>
+          </div>
+          <p className="text-sm text-zinc-500">
+            {tab === 'bank'
+              ? 'El banco está vacío.'
+              : 'No hay ideas asignadas a canal todavía.'}
+          </p>
+        </div>
       ) : (
         <ul className="space-y-2">
           {visible.map((i) => (

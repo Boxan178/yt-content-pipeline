@@ -3,6 +3,8 @@
 // Modal de configuración de proveedor/modelo. Replica el modal de TubeNext
 // (capturas: "Proveedor de imagen" / "Proveedor de video").
 
+import { useEffect } from "react";
+
 interface ModelInfo {
   slug: string;
   label: string;
@@ -155,6 +157,21 @@ export function ProviderModal({
   onSelectProvider,
   onSelectModel,
 }: Props) {
+  // Scroll-lock del body + cierre con Escape mientras el modal está abierto.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open, onClose]);
+
   if (!open) return null;
 
   const provider = providers.find((p) => p.id === selectedProvider);

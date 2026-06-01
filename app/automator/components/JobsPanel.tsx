@@ -93,7 +93,7 @@ function StatCard({
         </span>
         {label}
       </div>
-      <div className={`text-3xl font-semibold ${valueColor}`}>{value}</div>
+      <div className={`nums text-2xl font-semibold ${valueColor}`}>{value}</div>
     </div>
   );
 }

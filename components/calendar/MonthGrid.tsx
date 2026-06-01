@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import type { CalendarItem, CalendarDragPayload } from '@/lib/calendar-types';
+import { WEEKDAY_LABELS, type CalendarItem, type CalendarDragPayload } from '@/lib/calendar-types';
 
 /**
  * Rejilla de un mes (semana empezando en lunes). Render + drag-drop; la
@@ -21,8 +21,6 @@ interface MonthGridProps {
   onAddToDay?: (day: number) => void;
 }
 
-const WEEKDAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-
 /** Glifo de estado breve para el chip (sin recargar la celda). */
 const STATUS_GLYPH: Record<CalendarItem['status'], { mark: string; cls: string }> = {
   planned: { mark: '', cls: '' },
@@ -36,13 +34,20 @@ const STATUS_GLYPH: Record<CalendarItem['status'], { mark: string; cls: string }
 
 export function MonthGrid({ year, month, items, onItemClick, onDropOnDay, onAddToDay }: MonthGridProps) {
   const [dragOverDay, setDragOverDay] = useState<number | null>(null);
+  // Mientras se arrastra un chip, los chips quedan pointer-events-none para que
+  // dragenter/dragleave no salten en sus fronteras (evita el parpadeo del borde
+  // de drag-over al pasar el puntero por encima de los chips hijos).
+  const [dragging, setDragging] = useState(false);
 
-  const { daysInMonth, firstDayOffset } = useMemo(() => {
+  const { daysInMonth, firstDayOffset, trailing } = useMemo(() => {
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const firstDay = new Date(year, month, 1).getDay();
     // getDay(): domingo=0. Queremos lunes=0 → desplazar.
     const firstDayOffset = (firstDay + 6) % 7;
-    return { daysInMonth, firstDayOffset };
+    // Celdas de relleno al final para completar la última semana (borde inferior
+    // recto en meses cuyo último día no cae en domingo).
+    const trailing = (7 - ((firstDayOffset + daysInMonth) % 7)) % 7;
+    return { daysInMonth, firstDayOffset, trailing };
   }, [year, month]);
 
   const itemsByDay = useMemo(() => {
@@ -69,6 +74,7 @@ export function MonthGrid({ year, month, items, onItemClick, onDropOnDay, onAddT
   function handleDrop(e: React.DragEvent, day: number) {
     e.preventDefault();
     setDragOverDay(null);
+    setDragging(false);
     const raw = e.dataTransfer.getData('application/json');
     if (!raw) return;
     try {
@@ -79,14 +85,17 @@ export function MonthGrid({ year, month, items, onItemClick, onDropOnDay, onAddT
   return (
     <div>
       <div className="mb-2 grid grid-cols-7 gap-2">
-        {WEEKDAYS.map((wd) => (
-          <div key={wd} className="text-center text-[11px] font-medium uppercase tracking-label text-zinc-500">
+        {WEEKDAY_LABELS.map((wd, i) => (
+          <div key={i} className="text-center text-[11px] font-medium uppercase tracking-label text-zinc-500">
             {wd}
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-2">
+      <div
+        className="grid grid-cols-7 gap-2"
+        onDragEnd={() => { setDragging(false); setDragOverDay(null); }}
+      >
         {Array.from({ length: firstDayOffset }).map((_, i) => (
           <div key={`empty-${i}`} className="min-h-[104px] rounded-2xl border border-white/[0.03] bg-white/[0.01]" />
         ))}
@@ -96,14 +105,13 @@ export function MonthGrid({ year, month, items, onItemClick, onDropOnDay, onAddT
           const dayItems = itemsByDay.get(day) ?? [];
           const isToday = isCurrentMonth && today.getDate() === day;
           const isDragOver = dragOverDay === day;
-          const MAX_VISIBLE = 3;
           return (
             <div
               key={day}
               onDragOver={(e) => { e.preventDefault(); setDragOverDay(day); }}
               onDragLeave={() => setDragOverDay((d) => (d === day ? null : d))}
               onDrop={(e) => handleDrop(e, day)}
-              className={`group relative min-h-[104px] rounded-2xl border p-2 transition ${
+              className={`group relative flex max-h-[180px] min-h-[104px] flex-col rounded-2xl border p-2 transition ${
                 isDragOver
                   ? 'border-[color:var(--accent)] bg-[color:var(--accent)]/[0.12]'
                   : isToday
@@ -123,8 +131,8 @@ export function MonthGrid({ year, month, items, onItemClick, onDropOnDay, onAddT
                   </button>
                 )}
               </div>
-              <div className="space-y-1">
-                {dayItems.slice(0, MAX_VISIBLE).map((item) => {
+              <div className={`min-h-0 flex-1 space-y-1 overflow-y-auto pr-0.5 ${dragging ? '[&_button]:pointer-events-none' : ''}`}>
+                {dayItems.map((item) => {
                   const glyph = STATUS_GLYPH[item.status];
                   const dimmed = item.status === 'cancelled' || item.status === 'failed';
                   const isPlanned = item.source === 'planned';
@@ -137,7 +145,9 @@ export function MonthGrid({ year, month, items, onItemClick, onDropOnDay, onAddT
                         const payload: CalendarDragPayload = { kind: 'planned', plannedId: item.plannedId };
                         e.dataTransfer.setData('application/json', JSON.stringify(payload));
                         e.dataTransfer.effectAllowed = 'move';
+                        setDragging(true);
                       }}
+                      onDragEnd={() => { setDragging(false); setDragOverDay(null); }}
                       onClick={() => onItemClick?.(item)}
                       className={`flex w-full items-center gap-1 rounded-md border px-1.5 py-0.5 text-left text-[10px] text-white transition hover:brightness-150 ${
                         dimmed ? 'opacity-60' : ''
@@ -156,13 +166,14 @@ export function MonthGrid({ year, month, items, onItemClick, onDropOnDay, onAddT
                     </button>
                   );
                 })}
-                {dayItems.length > MAX_VISIBLE && (
-                  <div className="px-1 text-[9px] text-zinc-500">+{dayItems.length - MAX_VISIBLE} más</div>
-                )}
               </div>
             </div>
           );
         })}
+
+        {Array.from({ length: trailing }).map((_, i) => (
+          <div key={`trailing-${i}`} className="min-h-[104px] rounded-2xl border border-white/[0.03] bg-white/[0.01]" />
+        ))}
       </div>
     </div>
   );

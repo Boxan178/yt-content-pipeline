@@ -41,7 +41,7 @@ export function ProgressBar({ progress, compact = false }: Props) {
             <span
               key={k}
               className={`text-[9px] ${
-                progress.details[k] ? 'text-green-300/80' : 'text-muted/60'
+                progress.details[k] ? 'text-green-300/80' : 'text-zinc-500'
               }`}
               title={HIT_LABELS[k]}
             >

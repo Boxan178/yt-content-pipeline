@@ -22,7 +22,7 @@ Animación: Zoom out y salida.`,
   {
     title: "2. Variantes de cabecera",
     body: `SECUENCIA 1
-Promt: Texto de imagen.
+Prompt: Texto de imagen.
 Animacion: Texto de movimiento.
 
 Scene 2
@@ -71,7 +71,7 @@ export function FormatsHelper({ open, onClose }: Props) {
         className="bg-zinc-900 border border-zinc-800 rounded-xl max-w-3xl w-full max-h-[85vh] overflow-y-auto shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800 sticky top-0 bg-zinc-900">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800 sticky top-0 z-10 bg-zinc-900">
           <h2 className="text-lg font-semibold">Formatos esperados</h2>
           <button
             className="text-zinc-400 hover:text-zinc-100 transition-colors text-sm"
@@ -92,9 +92,7 @@ export function FormatsHelper({ open, onClose }: Props) {
               <h3 className="text-sm font-semibold text-zinc-200 mb-2">
                 {s.title}
               </h3>
-              <pre className="bg-zinc-950 border border-zinc-800 rounded-md p-3 text-xs text-zinc-300 overflow-x-auto whitespace-pre">
-{s.body}
-              </pre>
+              <pre className="bg-zinc-950 border border-zinc-800 rounded-md p-3 text-xs text-zinc-300 overflow-x-auto whitespace-pre">{s.body}</pre>
             </div>
           ))}
           <p className="text-xs text-zinc-500">

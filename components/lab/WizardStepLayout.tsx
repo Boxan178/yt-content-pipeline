@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { WizardProgress } from './WizardProgress';
 import type { WizardStep } from '@/lib/lab/types';
@@ -40,6 +40,9 @@ export function WizardStepLayout({
   nextLabel = 'Siguiente',
   onNext,
 }: WizardStepLayoutProps) {
+  // Guard transitorio: tras pulsar "Siguiente" lo deshabilitamos para evitar
+  // doble-avance (doble click → router.push duplicado / desincronización).
+  const [navigating, setNavigating] = useState(false);
   return (
     <div className="flex h-full flex-col">
       {/* Header sticky con glass surface */}
@@ -94,7 +97,7 @@ export function WizardStepLayout({
           </div>
           <div>
             {nextHref ? (
-              nextDisabled ? (
+              nextDisabled || navigating ? (
                 <button
                   disabled
                   className="inline-flex cursor-not-allowed items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-5 py-2 font-medium text-zinc-600"
@@ -113,10 +116,37 @@ export function WizardStepLayout({
                     <path d="M5 12h14M12 5l7 7-7 7" />
                   </svg>
                 </button>
+              ) : onNext ? (
+                // Navegación programática (onNext hace router.push). Antes era un
+                // <Link href="#"> que además saltaba al hash (#) → scroll-to-top
+                // + entrada basura en historial. Un <button> evita ese salto.
+                <button
+                  type="button"
+                  onClick={() => { setNavigating(true); onNext(); }}
+                  className="inline-flex items-center gap-2 rounded-full border border-fuchsia-500/40 bg-fuchsia-500/20 px-5 py-2 font-medium text-fuchsia-200 backdrop-blur-md transition hover:bg-fuchsia-500/30"
+                  style={{
+                    boxShadow:
+                      'inset 0 1px 0 0 rgba(255,255,255,0.18), 0 0 24px -6px rgba(217,70,239,0.45)',
+                  }}
+                >
+                  {nextLabel}
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </button>
               ) : (
                 <Link
                   href={nextHref}
-                  onClick={onNext}
+                  onClick={() => setNavigating(true)}
                   className="inline-flex items-center gap-2 rounded-full border border-fuchsia-500/40 bg-fuchsia-500/20 px-5 py-2 font-medium text-fuchsia-200 backdrop-blur-md transition hover:bg-fuchsia-500/30"
                   style={{
                     boxShadow:

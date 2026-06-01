@@ -16,6 +16,7 @@ const STORAGE_KEY = 'ytcp:working-mode';
  */
 export function WorkingModeToggle() {
   const [mode, setMode] = useState<Mode>('home');
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     // localStorage primero (instantáneo), luego el server como fuente de verdad.
@@ -34,17 +35,31 @@ export function WorkingModeToggle() {
       .catch(() => {});
   }, []);
 
-  const toggle = () => {
+  const toggle = async () => {
+    if (busy) return;
+    const prev = mode;
     const next: Mode = mode === 'home' ? 'away' : 'home';
+    setBusy(true);
     setMode(next); // optimista
     try { localStorage.setItem(STORAGE_KEY, next); } catch {}
-    fetch('/api/working-mode', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: next }),
-    }).catch(() => {});
     // Notif global por si algún componente quiere reaccionar
     window.dispatchEvent(new CustomEvent('ytcp:working-mode-changed', { detail: { mode: next } }));
+    try {
+      const r = await fetch('/api/working-mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: next }),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    } catch {
+      // El server no aceptó el cambio: revertir UI + caché para no mentir sobre
+      // el modo real (Pablo podría creerse "Fuera" con el backend en "home").
+      setMode(prev);
+      try { localStorage.setItem(STORAGE_KEY, prev); } catch {}
+      window.dispatchEvent(new CustomEvent('ytcp:working-mode-changed', { detail: { mode: prev } }));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const isHome = mode === 'home';
@@ -52,7 +67,8 @@ export function WorkingModeToggle() {
   return (
     <button
       onClick={toggle}
-      className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition ${
+      disabled={busy}
+      className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
         isHome ? 'pill-pc' : 'pill-away'
       }`}
       title={

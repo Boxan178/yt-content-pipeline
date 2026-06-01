@@ -31,8 +31,8 @@ export function ShortsGrid({ shorts, mediaUrlFor }: Props) {
 
   return (
     <section>
-      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
-        Shorts derivados ({shorts.length})
+      <h2 className="mb-3 text-[11px] font-medium uppercase tracking-label text-zinc-500">
+        Shorts derivados <span className="nums text-zinc-400">({shorts.length})</span>
       </h2>
       <div
         className="grid gap-3"
@@ -45,7 +45,7 @@ export function ShortsGrid({ shorts, mediaUrlFor }: Props) {
           return (
             <article
               key={s.relPath}
-              className="overflow-hidden rounded-lg border border-purple-500/20 bg-bg/60"
+              className="glass overflow-hidden rounded-2xl"
             >
               <div className="relative aspect-[9/16] w-full bg-black">
                 <video
@@ -54,7 +54,7 @@ export function ShortsGrid({ shorts, mediaUrlFor }: Props) {
                   className="h-full w-full"
                   src={mediaUrlFor(s.relPath)}
                 />
-                <span className="pointer-events-none absolute top-1.5 left-1.5 rounded bg-black/80 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-purple-300">
+                <span className="pointer-events-none absolute top-1.5 left-1.5 rounded bg-black/80 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-label text-purple-300">
                   short #{num}
                 </span>
               </div>
@@ -65,7 +65,7 @@ export function ShortsGrid({ shorts, mediaUrlFor }: Props) {
                 >
                   {title}
                 </p>
-                <p className="mt-1 text-[10px] text-muted">{formatBytes(s.size)}</p>
+                <p className="nums mt-1 text-[10px] text-zinc-500">{formatBytes(s.size)}</p>
               </div>
             </article>
           );

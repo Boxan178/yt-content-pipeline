@@ -8,6 +8,8 @@ interface Props {
   onSkip?: (sceneNumber: string) => void;
   onRetry?: (sceneNumber: string) => void;
   onStop?: (sceneNumber: string) => void;
+  /** Run global en curso: deshabilita controles por-escena (retry/regenerate). */
+  runActive?: boolean;
 }
 
 const STAGES: StageKind[] = ["first_frame", "last_frame", "video", "drive_upload"];
@@ -71,7 +73,7 @@ function IconButton({
   );
 }
 
-export function SceneCard({ scene, onSkip, onRetry, onStop }: Props) {
+export function SceneCard({ scene, onSkip, onRetry, onStop, runActive }: Props) {
   const isRunning = scene.status === "running";
   const isFailed = scene.status === "failed";
 
@@ -101,7 +103,7 @@ export function SceneCard({ scene, onSkip, onRetry, onStop }: Props) {
                 isFailed ? "text-red-100" : "text-zinc-100"
               }`}
             >
-              Scene {scene.scene_number}
+              Escena {scene.scene_number}
             </div>
             {scene.scene_id && (
               <div className="text-[11px] text-zinc-500 font-mono">{scene.scene_id}</div>
@@ -120,6 +122,7 @@ export function SceneCard({ scene, onSkip, onRetry, onStop }: Props) {
           {(isFailed || scene.status === "completed") && onRetry && (
             <IconButton
               title={isFailed ? "Reintentar esta escena" : "Regenerar esta escena"}
+              disabled={isRunning || runActive}
               onClick={() => onRetry(scene.scene_number)}
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">

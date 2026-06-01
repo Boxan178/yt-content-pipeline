@@ -5,6 +5,7 @@ import { PackagingSections } from './PackagingSections';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { VideoCardData } from './VideoCard';
+import { STATE_LABEL } from '@/lib/channels';
 import { ChecklistPanel } from './ChecklistPanel';
 import { PabloDecisionsPanel } from './PabloDecisionsPanel';
 import { VerifyLocucionButton } from './VerifyLocucionButton';
@@ -81,13 +82,18 @@ export function VideoDetailModal({ video, onClose }: Props) {
       .finally(() => setLoading(false));
   }, [video.channel, video.title, reloadKey]);
 
-  // Esc para cerrar
+  // Esc para cerrar + scroll-lock del body mientras el modal está montado
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
   }, [onClose]);
 
   const flash = (msg: string) => {
@@ -125,7 +131,7 @@ export function VideoDetailModal({ video, onClose }: Props) {
 
   return (
     <div
-      className="absolute inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
@@ -136,7 +142,7 @@ export function VideoDetailModal({ video, onClose }: Props) {
         <header className="flex items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-medium uppercase tracking-label text-zinc-500">
-              {video.state}{detail?.stateFolder ? ` · ${detail.stateFolder}` : ''}
+              {STATE_LABEL[video.state] ?? video.state}{detail?.stateFolder ? ` · ${detail.stateFolder}` : ''}
             </p>
             <h1 className="mt-1.5 font-display text-2xl font-semibold tracking-display text-white">
               {video.title}
@@ -152,7 +158,7 @@ export function VideoDetailModal({ video, onClose }: Props) {
               </button>
             )}
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-start gap-2">
             {(() => {
               const pct = video.progress?.percent ?? 0;
               const ready = pct >= 80;
@@ -160,25 +166,33 @@ export function VideoDetailModal({ video, onClose }: Props) {
                 ? `Necesitas al menos 80% de progreso para subir (ahora ${pct}%).`
                 : undefined;
               return (
-                <a
-                  href={
-                    ready
-                      ? `/upload?channel=${encodeURIComponent(video.channel)}&video=${encodeURIComponent(video.title)}`
-                      : '#'
-                  }
-                  onClick={(e) => {
-                    if (!ready) e.preventDefault();
-                  }}
-                  title={reason || 'Configurar subida a YouTube'}
-                  className={
-                    ready
-                      ? 'btn-gold'
-                      : 'btn-glass cursor-not-allowed opacity-60'
-                  }
-                >
-                  <IconUpload />
-                  Subir
-                </a>
+                <div className="flex flex-col items-end gap-1">
+                  <a
+                    href={
+                      ready
+                        ? `/upload?channel=${encodeURIComponent(video.channel)}&video=${encodeURIComponent(video.title)}`
+                        : '#'
+                    }
+                    onClick={(e) => {
+                      if (!ready) e.preventDefault();
+                    }}
+                    title={reason || 'Configurar subida a YouTube'}
+                    aria-disabled={!ready}
+                    className={
+                      ready
+                        ? 'btn-gold'
+                        : 'btn-glass cursor-not-allowed opacity-60'
+                    }
+                  >
+                    <IconUpload />
+                    Subir
+                  </a>
+                  {reason && (
+                    <p className="max-w-[180px] text-right text-[10px] leading-tight text-zinc-500">
+                      {reason}
+                    </p>
+                  )}
+                </div>
               );
             })()}
             <button onClick={openFolder} className="btn-glass" title="Abrir carpeta en Explorer">
@@ -587,7 +601,7 @@ export function VideoDetailModal({ video, onClose }: Props) {
         </div>
 
         {toast && (
-          <div className="glass-premium animate-toast-in pointer-events-none fixed bottom-6 left-1/2 z-[60] -translate-x-1/2 rounded-2xl px-4 py-2 text-sm text-white">
+          <div className="glass-premium animate-toast-in pointer-events-none fixed bottom-6 right-6 z-[60] max-w-md rounded-2xl px-4 py-2 text-sm text-white">
             {toast}
           </div>
         )}

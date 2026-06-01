@@ -24,14 +24,14 @@ export function PabloDecisionsPanel({ decisions, videoFolder, thumbnailOptions, 
           Decisiones de Pablo
         </h3>
         <span className="nums rounded-full border border-yellow-500/40 bg-yellow-500/10 px-2 py-0.5 text-[10px] font-medium text-yellow-300">
-          {decisions.length} pendientes
+          {decisions.length} {decisions.length === 1 ? 'decisión' : 'decisiones'}
         </span>
       </header>
 
       <ul className="space-y-1.5">
-        {decisions.map((d) => (
+        {decisions.map((d, i) => (
           <li
-            key={`${d.section}:${d.anchor}`}
+            key={`${i}:${d.section}:${d.anchor}`}
             className="group flex items-start gap-2.5 rounded-2xl border border-yellow-500/20 bg-yellow-500/5 px-3 py-2 text-xs text-zinc-200 transition hover:bg-yellow-500/10"
           >
             <span className="mt-0.5 shrink-0 text-yellow-400">
@@ -39,11 +39,11 @@ export function PabloDecisionsPanel({ decisions, videoFolder, thumbnailOptions, 
                 <circle cx="12" cy="12" r="9" />
               </svg>
             </span>
-            <div className="flex-1 leading-snug">
-              <p className="font-medium text-zinc-100">{d.label}</p>
-              <p className="text-[10px] text-zinc-500">{d.section}</p>
+            <div className="min-w-0 flex-1 leading-snug">
+              <p className="break-words font-medium text-zinc-100">{d.label}</p>
+              <p className="break-words text-[10px] text-zinc-500">{d.section}</p>
               {d.recommendation && (
-                <p className="mt-0.5 text-[10px] text-zinc-400">★ {d.recommendation}</p>
+                <p className="mt-0.5 break-words text-[10px] text-zinc-400">★ {d.recommendation}</p>
               )}
             </div>
             <button

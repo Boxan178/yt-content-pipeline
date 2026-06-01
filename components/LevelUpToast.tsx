@@ -88,11 +88,11 @@ export function LevelUpToast() {
   if (items.length === 0) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-16 z-[60] flex flex-col items-center gap-2 px-4">
+    <div className="pointer-events-none fixed inset-x-0 top-16 z-[60] flex flex-col items-center gap-2 pl-20 pr-[max(5rem,30vw)]">
       {items.map((it) => (
         <div
           key={it.key}
-          className="pointer-events-auto animate-toast-in flex items-center gap-4 rounded-2xl border border-zinc-700/60 bg-gradient-to-br from-zinc-900/95 to-zinc-950/95 px-5 py-3 shadow-2xl backdrop-blur"
+          className="pointer-events-auto animate-toast-in flex max-w-md items-center gap-4 rounded-2xl border border-zinc-700/60 bg-gradient-to-br from-zinc-900/95 to-zinc-950/95 px-5 py-3 shadow-2xl backdrop-blur"
         >
           {it.kind === 'level' ? (
             <>

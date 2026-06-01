@@ -1,3 +1,8 @@
+> **ACTUALIZACIÓN 2026-06-02:** casi todos estos bugs (+ ~45 net-new de una 2ª pasada)
+> se **APLICARON** en la pasada visual nocturna. Estado detallado de qué se aplicó y qué
+> quedó DEFER en **[VISUAL-PASS-WORKLIST.md](VISUAL-PASS-WORKLIST.md)** → sección "✅ RESULTADO".
+> `tsc --noEmit` verde. Sin commitear (working tree, `beta/v0.7.0`).
+
 # BUGS VISUALES — Registro 2026-06-01
 
 > Auditoría visual exhaustiva de **todas** las features de la app (kanban, detalle de

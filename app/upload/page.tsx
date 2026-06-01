@@ -236,7 +236,7 @@ function UploadPage() {
 
   if (!channel || !videoTitle) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-10 text-sm text-muted">
+      <main className="mx-auto max-w-3xl px-6 py-10 text-sm text-zinc-400">
         Faltan parámetros channel / video.
       </main>
     );
@@ -250,12 +250,17 @@ function UploadPage() {
   }
 
   if (successId) {
+    const wasScheduled = scheduleMode === 'scheduled';
     return (
       <main className="mx-auto max-w-2xl px-6 py-16 text-center">
         <div className="text-5xl">✓</div>
-        <h1 className="mt-3 text-xl font-bold text-white">Programado</h1>
-        <p className="mt-2 text-sm text-muted">
-          Te llevamos a la cola de programados en un momento…
+        <h1 className="mt-3 text-xl font-bold text-white">
+          {wasScheduled ? 'Programado' : 'Subiendo'}
+        </h1>
+        <p className="mt-2 text-sm text-zinc-400">
+          {wasScheduled
+            ? 'Te llevamos a la cola de programados en un momento…'
+            : 'El vídeo se está subiendo. Te llevamos a la cola en un momento…'}
         </p>
       </main>
     );
@@ -265,15 +270,15 @@ function UploadPage() {
     <main className="mx-auto max-w-4xl px-6 py-6">
       <header className="mb-6 flex items-start justify-between gap-3">
         <div>
-          <button onClick={goBack} className="mb-2 text-xs text-muted hover:text-white">
+          <button onClick={goBack} className="mb-2 text-xs text-zinc-400 hover:text-white">
             ← Volver al canal
           </button>
           <h1 className="truncate text-2xl font-bold text-white">📤 Subir a YouTube</h1>
-          <p className="mt-1 truncate text-sm text-muted" title={videoTitle}>{videoTitle}</p>
+          <p className="mt-1 truncate text-sm text-zinc-400" title={videoTitle}>{videoTitle}</p>
         </div>
         <Link
           href="/scheduled"
-          className="rounded-md border border-border bg-bg px-3 py-1.5 text-xs text-muted hover:text-white"
+          className="rounded-md border border-border bg-bg px-3 py-1.5 text-xs text-zinc-400 hover:text-white"
         >
           Cola programada →
         </Link>
@@ -283,7 +288,7 @@ function UploadPage() {
         {/* Columna izquierda: metadata */}
         <section className="space-y-5 lg:col-span-2">
           <div>
-            <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">
+            <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-400">
               Título
             </label>
             <input
@@ -293,11 +298,11 @@ function UploadPage() {
               maxLength={100}
               className="w-full rounded border border-border bg-bg px-3 py-2 text-sm text-white focus:border-accent/60 focus:outline-none"
             />
-            <p className="mt-0.5 text-right text-[10px] text-muted">{title.length}/100</p>
+            <p className="mt-0.5 text-right text-[10px] text-zinc-500">{title.length}/100</p>
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">
+            <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-400">
               Descripción
             </label>
             <textarea
@@ -308,11 +313,11 @@ function UploadPage() {
               className="w-full rounded border border-border bg-bg px-3 py-2 text-sm leading-relaxed text-white focus:border-accent/60 focus:outline-none"
               placeholder="Descripción del vídeo…"
             />
-            <p className="mt-0.5 text-right text-[10px] text-muted">{description.length}/5000</p>
+            <p className="mt-0.5 text-right text-[10px] text-zinc-500">{description.length}/5000</p>
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">
+            <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-zinc-400">
               Tags / hashtags <span className="text-zinc-500">(separados por coma)</span>
             </label>
             <input
@@ -325,15 +330,16 @@ function UploadPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-muted">
+            <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-zinc-400">
               Privacy
             </label>
-            <div className="flex gap-2">
+            <div className={`flex gap-2 ${scheduleMode === 'scheduled' ? 'opacity-50' : ''}`}>
               {(['public', 'unlisted', 'private'] as Privacy[]).map((p) => (
                 <button
                   key={p}
                   onClick={() => setPrivacy(p)}
-                  className={`flex-1 rounded border px-3 py-2 text-sm transition ${
+                  disabled={scheduleMode === 'scheduled'}
+                  className={`flex-1 rounded border px-3 py-2 text-sm transition disabled:cursor-not-allowed ${
                     privacy === p
                       ? 'border-accent/60 bg-accent/10 text-accent'
                       : 'border-border bg-bg text-zinc-300 hover:border-accent/40'
@@ -353,7 +359,7 @@ function UploadPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-muted">
+            <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-zinc-400">
               ¿Cuándo publicar?
             </label>
             <div className="mb-2 flex gap-2">
@@ -388,7 +394,7 @@ function UploadPage() {
                       className="rounded border border-border bg-bg px-2 py-1.5 text-left text-xs text-zinc-300 hover:border-accent/40"
                     >
                       <div className="font-medium text-white">{p.label}</div>
-                      <div className="text-[10px] text-muted">{p.hint}</div>
+                      <div className="text-[10px] text-zinc-500">{p.hint}</div>
                     </button>
                   ))}
                 </div>
@@ -398,7 +404,7 @@ function UploadPage() {
                   onChange={(e) => setScheduledLocal(e.target.value)}
                   className="w-full rounded border border-border bg-bg px-3 py-2 text-sm text-white focus:border-accent/60 focus:outline-none"
                 />
-                <p className="mt-1 text-[10px] text-muted">
+                <p className="mt-1 text-[10px] text-zinc-500">
                   Programación <b>nativa de YouTube</b>: se sube ahora (con el PC encendido) y YouTube
                   lo publica solo en esa fecha — <b>no hace falta el PC encendido a esa hora</b>. Se
                   publica como 🌍 Público. Sin límite de 30 días.
@@ -411,7 +417,7 @@ function UploadPage() {
         {/* Columna derecha: miniatura */}
         <aside className="space-y-3 lg:col-span-1">
           <div>
-            <label className="mb-2 flex items-center justify-between text-xs font-medium uppercase tracking-wider text-muted">
+            <label className="mb-2 flex items-center justify-between text-xs font-medium uppercase tracking-wider text-zinc-400">
               <span>Miniatura ({miniatures.length})</span>
               <button
                 onClick={generateMore}
@@ -422,7 +428,7 @@ function UploadPage() {
               </button>
             </label>
             {miniatures.length === 0 ? (
-              <p className="rounded border border-dashed border-border px-3 py-4 text-center text-xs text-muted">
+              <p className="rounded border border-dashed border-border px-3 py-4 text-center text-xs text-zinc-500">
                 No hay miniaturas. Vuelve al canal y genera con NORA+IRIS.
               </p>
             ) : (
@@ -472,7 +478,7 @@ function UploadPage() {
         <button
           onClick={goBack}
           disabled={busy}
-          className="rounded border border-border bg-bg px-4 py-2 text-sm text-muted hover:text-white disabled:opacity-50"
+          className="rounded border border-border bg-bg px-4 py-2 text-sm text-zinc-400 hover:text-white disabled:opacity-50"
         >
           Cancelar
         </button>

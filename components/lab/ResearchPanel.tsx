@@ -370,9 +370,26 @@ export function ResearchPanel({ initialItems }: Props) {
           Investigaciones guardadas ({items.length})
         </h4>
         {items.length === 0 ? (
-          <p className="text-sm text-zinc-500">
-            Aún no hay investigaciones profundas guardadas.
-          </p>
+          <div className="glass flex flex-col items-center gap-2 rounded-[24px] px-6 py-10 text-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-300">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" />
+              </svg>
+            </div>
+            <p className="text-sm text-zinc-500">
+              Aún no hay investigaciones profundas guardadas.
+            </p>
+          </div>
         ) : (
           <ul className="space-y-2">
             {items.map((r) => (
@@ -539,7 +556,7 @@ function ResearchJobView({
             running
           </span>
         ) : job.status === 'done' ? (
-          <span className="pill-active">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-green-500/40 bg-green-500/14 px-2.5 py-0.5 text-[11px] font-medium text-green-300">
             <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
             done
           </span>

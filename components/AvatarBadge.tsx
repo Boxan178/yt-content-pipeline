@@ -33,6 +33,12 @@ export function AvatarBadge() {
   const lv = stats ? deriveLevel(stats.xp) : null;
   const title = lv ? titleForLevel(lv.level) : '';
 
+  // Al cambiar de nivel, el `src` apunta a otro sprite. Reseteamos `imgOk` para
+  // no mostrar el avatar del nivel anterior hasta que el nuevo confirme onLoad.
+  useEffect(() => {
+    setImgOk(false);
+  }, [lv?.level]);
+
   return (
     <Link
       href="/perfil"

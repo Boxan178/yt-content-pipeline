@@ -136,23 +136,37 @@ export function VideoCard({ video, onArchived, onOpen, celebrate }: Props) {
             loading="lazy"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-xs text-muted">
-            sin miniatura
+          <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-zinc-500">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <circle cx="9" cy="9" r="2" />
+              <path d="M21 15l-5-5L5 21" />
+            </svg>
+            <span className="text-[10px]">sin miniatura</span>
           </div>
         )}
-        <span className="absolute top-1.5 left-1.5 rounded bg-black/80 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white">
-          {video.isCompilation ? `📚 recop · ${video.compilationSources ?? '?'} hist` : 'long'}
+        <span className="absolute top-1.5 left-1.5 rounded bg-black/80 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-label text-white">
+          {video.isCompilation
+            ? video.compilationSources != null
+              ? `📚 recop · ${video.compilationSources} hist`
+              : '📚 recop'
+            : 'long'}
         </span>
         {isWorking && (
-          <div className="absolute top-1.5 right-1.5 flex items-center gap-1 rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white shadow-lg">
+          <div className="absolute top-1.5 right-1.5 flex items-center gap-1 rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-label text-white shadow-lg">
             <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
             {activeJobs[0].label} · {elapsedLabel}
             {activeJobs.length > 1 && (
-              <span className="ml-1 rounded bg-white/20 px-1 text-[9px]">+{activeJobs.length - 1}</span>
+              <span
+                className="ml-1 rounded bg-white/20 px-1 text-[10px]"
+                title={activeJobs.slice(1).map((j) => j.label).join(' · ')}
+              >
+                +{activeJobs.length - 1}
+              </span>
             )}
           </div>
         )}
-        {!isWorking && video.scheduledUpload && (
+        {video.scheduledUpload && (
           video.scheduledUpload.status === 'done' ? (
             <a
               href={
@@ -163,14 +177,14 @@ export function VideoCard({ video, onArchived, onOpen, celebrate }: Props) {
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="absolute top-1.5 right-1.5 flex items-center gap-1 rounded bg-emerald-500/90 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white shadow-lg transition hover:bg-emerald-400"
+              className="absolute bottom-1.5 right-1.5 flex items-center gap-1 rounded bg-emerald-500/90 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-label text-white shadow-lg transition hover:bg-emerald-400"
               title="Subido como OCULTO a YouTube — prográmalo desde Studio"
             >
               🔗 oculto
             </a>
           ) : (
             <div
-              className={`absolute top-1.5 right-1.5 flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white shadow-lg ${
+              className={`absolute bottom-1.5 right-1.5 flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-label text-white shadow-lg ${
                 video.scheduledUpload.status === 'uploading' ? 'bg-orange-500' : 'bg-sky-500/90'
               }`}
               title={`Programado para ${new Date(video.scheduledUpload.scheduledFor).toLocaleString('es-ES')} · privacy ${video.scheduledUpload.privacyOnPublish}`}

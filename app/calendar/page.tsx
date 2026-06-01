@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MonthGrid } from '@/components/calendar/MonthGrid';
 import { CHANNELS, getChannel, channelColor } from '@/lib/channels';
 import {
   CALENDAR_STATUS_STYLE,
+  WEEKDAY_LABELS,
   type CalendarItem,
   type CalendarDragPayload,
 } from '@/lib/calendar-types';
@@ -25,7 +26,6 @@ import {
 
 const REFRESH_MS = 30_000;
 const ENABLED_CHANNELS = CHANNELS.filter((c) => c.enabled);
-const WEEKDAY_LABELS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -523,12 +523,15 @@ function BacklogPanel({
                         key={v.folderPath}
                         draggable
                         onDragStart={(e) => dragStart(e, { kind: 'video', channel: v.channel, title: v.title, videoFolder: v.folderPath })}
-                        className="cursor-grab rounded-lg border px-2.5 py-1.5 text-[11px] text-zinc-200 transition hover:brightness-125 active:cursor-grabbing"
+                        className="group/card flex cursor-grab items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] text-zinc-200 transition hover:brightness-125 active:cursor-grabbing"
                         style={{ backgroundColor: v.channelColor + '14', borderColor: v.channelColor + '40', borderLeft: `2px solid ${v.channelColor}` }}
                         title={`${v.channelName} · ${v.title}`}
                       >
-                        <span className="line-clamp-2">{v.title}</span>
-                        <span className="mt-0.5 block text-[9px] text-zinc-500">{v.channelName}</span>
+                        <span className="mt-0.5 shrink-0 text-zinc-600 transition group-hover/card:text-zinc-400" aria-hidden>⠿</span>
+                        <span className="min-w-0 flex-1">
+                          <span className="line-clamp-2">{v.title}</span>
+                          <span className="mt-0.5 block text-[9px] text-zinc-500">{v.channelName}</span>
+                        </span>
                       </div>
                     ))
                   ) : (
@@ -539,11 +542,14 @@ function BacklogPanel({
                           key={idea.id}
                           draggable
                           onDragStart={(e) => dragStart(e, { kind: 'idea', ideaId: idea.id, title: idea.title, channel: slug })}
-                          className="cursor-grab rounded-lg border border-white/8 bg-white/[0.03] px-2.5 py-1.5 text-[11px] text-zinc-200 transition hover:border-white/20 active:cursor-grabbing"
+                          className="group/card flex cursor-grab items-start gap-1.5 rounded-lg border border-white/8 bg-white/[0.03] px-2.5 py-1.5 text-[11px] text-zinc-200 transition hover:border-white/20 hover:brightness-125 active:cursor-grabbing"
                           title={idea.title}
                         >
-                          <span className="line-clamp-2">{idea.title}</span>
-                          {slug && <span className="mt-0.5 block text-[9px] text-zinc-500">{getChannel(slug)?.name}</span>}
+                          <span className="mt-0.5 shrink-0 text-zinc-600 transition group-hover/card:text-zinc-400" aria-hidden>⠿</span>
+                          <span className="min-w-0 flex-1">
+                            <span className="line-clamp-2">{idea.title}</span>
+                            {slug && <span className="mt-0.5 block text-[9px] text-zinc-500">{getChannel(slug)?.name}</span>}
+                          </span>
                         </div>
                       );
                     })
@@ -663,7 +669,7 @@ function CadenceRow({ ch, onSave }: { ch: CadenceChannel; onSave: (patch: Cadenc
           {ch.name}
         </span>
         <label className="flex items-center gap-1.5 text-[10px] text-zinc-400">
-          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="accent-[#c9a96a]" />
           activa
         </label>
       </div>
@@ -676,7 +682,7 @@ function CadenceRow({ ch, onSave }: { ch: CadenceChannel; onSave: (patch: Cadenc
             max={14}
             value={target}
             onChange={(e) => setTarget(Math.max(0, Math.min(14, Number(e.target.value) || 0)))}
-            className="w-14 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-white focus:border-accent/60 focus:outline-none"
+            className="w-14 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-white accent-[#c9a96a] focus:border-accent/60 focus:outline-none"
           />
         </label>
         <div className="flex gap-0.5">
@@ -698,7 +704,7 @@ function CadenceRow({ ch, onSave }: { ch: CadenceChannel; onSave: (patch: Cadenc
         <button
           onClick={() => onSave({ channel: ch.slug, enabled, targetPerWeek: target, preferredWeekdays: weekdays })}
           disabled={!dirty}
-          className="ml-auto rounded-md border border-accent/40 bg-accent/10 px-2.5 py-1 text-[11px] text-accent transition hover:bg-accent/20 disabled:opacity-40"
+          className="ml-auto rounded-md border border-accent/40 bg-accent/10 px-2.5 py-1 text-[11px] text-accent transition hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-40"
         >
           Guardar
         </button>
@@ -724,8 +730,14 @@ function DetailPanel({
   const st = CALENDAR_STATUS_STYLE[item.status];
   const channel = getChannel(item.channel);
   const canStart = item.source === 'planned' && item.status === 'planned' && !!channel?.autoPipeline && !!item.plannedId;
+  // El panel se renderiza inline al final del flujo; al abrirlo (o cambiar de
+  // item) lo traemos al viewport para que no quede debajo del fold sin feedback.
+  const panelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [item.id]);
   return (
-    <div className="glass mt-4 rounded-[28px] p-5">
+    <div ref={panelRef} className="glass mt-4 rounded-[28px] p-5">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="mb-1 flex flex-wrap items-center gap-2">
@@ -744,9 +756,9 @@ function DetailPanel({
           {item.videoFolder && (
             <p className="mt-2 truncate font-mono text-[11px] text-zinc-500" title={item.videoFolder}>{item.videoFolder}</p>
           )}
-          {item.status === 'done' && item.youtubeVideoId && (
+          {item.youtubeVideoId && (
             <a href={`https://youtu.be/${item.youtubeVideoId}`} target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs text-accent hover:underline">
-              Ver en YouTube ↗
+              {item.status === 'done' ? 'Ver en YouTube ↗' : 'Ver borrador en YouTube ↗'}
             </a>
           )}
           {(canStart || (item.source === 'planned' && item.plannedId)) && (
@@ -794,6 +806,12 @@ function PlanModal({
   onClose: () => void;
   onSubmit: () => void;
 }) {
+  // Escape cierra el modal (coherente con la affordance del backdrop oscurecido).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div className="glass-premium w-full max-w-md rounded-[28px] p-6" onClick={(e) => e.stopPropagation()}>

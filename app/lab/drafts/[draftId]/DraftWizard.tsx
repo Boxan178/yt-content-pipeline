@@ -659,7 +659,7 @@ function Step5Bootstrap({
                 <summary className="cursor-pointer px-3 py-2 text-[11px] font-medium uppercase tracking-label text-zinc-500 hover:text-zinc-300">
                   Output del script
                 </summary>
-                <pre className="whitespace-pre-wrap px-3 pb-3 font-mono text-[11px] leading-relaxed text-zinc-300">
+                <pre className="whitespace-pre-wrap break-words px-3 pb-3 font-mono text-[11px] leading-relaxed text-zinc-300">
                   {executeResult.stdout}
                 </pre>
               </details>
@@ -927,7 +927,7 @@ function Step5Bootstrap({
                 <summary className="cursor-pointer px-4 py-2.5 text-[11px] font-medium uppercase tracking-label text-zinc-500 hover:text-zinc-300">
                   Resumen del state-engine (B7)
                 </summary>
-                <pre className="whitespace-pre-wrap px-4 pb-4 text-[11px] leading-relaxed text-zinc-300">
+                <pre className="whitespace-pre-wrap break-words px-4 pb-4 text-[11px] leading-relaxed text-zinc-300">
                   {parsed.finalSummary}
                 </pre>
               </details>

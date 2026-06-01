@@ -714,9 +714,9 @@ export default function AutomatorPage() {
               {kieCredits !== null ? Math.round(kieCredits).toLocaleString("es-ES") : "—"}
             </span>
           </span>
-          <span className="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs flex items-center gap-1.5 text-emerald-300">
+          <span className="px-3 py-1.5 rounded-full bg-zinc-900 border border-zinc-800 text-xs flex items-center gap-1.5 text-zinc-400">
             <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z" />
+              <path d="M7.71 3.5L1.15 15l3.43 6h6.86l3.43-6L7.71 3.5zm15.14 11.5L16.29 3.5h-6.86l6.57 11.5h6.85zm-8 .5l3.43 6H1.15l3.43-6h10.27z" />
             </svg>
             Drive
           </span>
@@ -738,7 +738,7 @@ export default function AutomatorPage() {
                 className="btn-secondary !px-3 !py-1.5 !text-xs"
                 onClick={() => setImageModalOpen(true)}
               >
-                ⚙ Configurar
+                ⚙ Configurar imagen
               </button>
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs">
                 <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
@@ -751,7 +751,7 @@ export default function AutomatorPage() {
                 className="btn-secondary !px-3 !py-1.5 !text-xs"
                 onClick={() => setVideoModalOpen(true)}
               >
-                ⚙ Configurar
+                ⚙ Configurar vídeo
               </button>
             </div>
 

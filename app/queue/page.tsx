@@ -30,9 +30,9 @@ const STATUS_PILL: Record<Status, string> = {
   pending: 'pill-soon',
   running: 'pill-away',
   done: 'pill-active',
-  failed: 'bg-red-500/20 border border-red-500/40 text-red-300 rounded-full px-2.5 py-0.5 text-[10px] font-medium inline-flex items-center gap-1',
+  failed: 'pill-err',
   cancelled: 'pill-soon',
-  blocked: 'bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded-full px-2.5 py-0.5 text-[10px] font-medium inline-flex items-center gap-1',
+  blocked: 'pill-blocked',
 };
 
 function durationLabel(start: string, end?: string) {
@@ -151,7 +151,7 @@ export default function QueuePage() {
               >
                 <span className={`${STATUS_PILL[it.status]} shrink-0`}>
                   {it.status === 'running' && (
-                    <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-sky-400 animate-pulse" />
                   )}
                   {it.status}
                 </span>
@@ -209,7 +209,7 @@ export default function QueuePage() {
                   )}
                   {it.status === 'pending' && (
                     <div className="flex gap-1">
-                      {idx > 0 && (
+                      {items[idx - 1]?.status === 'pending' && (
                         <button
                           onClick={() => move(it.id, 'up')}
                           disabled={busy === it.id}
@@ -219,7 +219,7 @@ export default function QueuePage() {
                           <UpArrow />
                         </button>
                       )}
-                      {idx < items.length - 1 && (
+                      {items[idx + 1]?.status === 'pending' && (
                         <button
                           onClick={() => move(it.id, 'down')}
                           disabled={busy === it.id}

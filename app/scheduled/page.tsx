@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
 
 type Status = 'pending' | 'uploading' | 'done' | 'failed' | 'cancelled';
 
@@ -12,6 +11,8 @@ interface ScheduledItem {
   title: string;
   privacyOnPublish: 'public' | 'unlisted' | 'private';
   scheduledFor: string;
+  /** Programación nativa de YouTube: cuándo se hace PÚBLICO (distinto de scheduledFor = cuándo se sube). */
+  publishAt?: string;
   status: Status;
   createdAt: string;
   startedAt?: string;
@@ -126,11 +127,16 @@ export default function ScheduledPage() {
                     {' · '}vídeo: <span className="text-zinc-200">{it.videoTitle}</span>
                   </p>
                   <p className="nums mt-0.5 text-[10px] text-zinc-500">
-                    Programado para: {new Date(it.scheduledFor).toLocaleString('es-ES')} ({tilLabel(it.scheduledFor)})
+                    {it.publishAt ? 'Se sube' : 'Programado para'}: {new Date(it.scheduledFor).toLocaleString('es-ES')} ({tilLabel(it.scheduledFor)})
                     {it.failReason && (
                       <span className="ml-2 text-red-300">· {it.failReason}</span>
                     )}
                   </p>
+                  {it.publishAt && (
+                    <p className="nums mt-0.5 text-[10px] text-accent/80">
+                      Sale público: {new Date(it.publishAt).toLocaleString('es-ES')} ({tilLabel(it.publishAt)})
+                    </p>
+                  )}
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1.5">
                   {it.youtubeVideoId && (
@@ -142,14 +148,6 @@ export default function ScheduledPage() {
                     >
                       Ver en YT Studio →
                     </a>
-                  )}
-                  {it.jobId && (
-                    <Link
-                      href={`/jobs/${it.jobId}`}
-                      className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[11px] text-zinc-300 transition hover:bg-white/10 hover:text-white"
-                    >
-                      Ver chat →
-                    </Link>
                   )}
                   {(it.status === 'pending' || it.status === 'uploading') && (
                     <button

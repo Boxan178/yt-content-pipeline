@@ -118,7 +118,7 @@ export function NotionPollerSection() {
     state.lastStatus === 'error'
       ? 'bg-red-500'
       : state.lastStatus === 'ok'
-        ? 'bg-green-500'
+        ? 'bg-emerald-500'
         : state.lastStatus === 'noop'
           ? 'bg-zinc-500'
           : 'bg-zinc-700';

@@ -41,7 +41,7 @@ interface Props {
 
 const VARIANT_CLASSES: Record<NonNullable<Props['variant']>, string> = {
   primary: 'border border-accent/40 bg-accent/10 text-accent hover:bg-accent/20',
-  subtle: 'border border-border bg-bg text-zinc-200 hover:border-accent/60 hover:text-white',
+  subtle: 'border border-white/10 bg-white/5 text-zinc-200 hover:bg-white/10 hover:border-accent/60 hover:text-white',
 };
 
 function formatDuration(ms: number) {

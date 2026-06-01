@@ -39,6 +39,8 @@ export default function SleepStoriesPage() {
   const [search, setSearch] = useState('');
   const [langFilter, setLangFilter] = useState<'all' | 'en' | 'es'>('all');
   const [stateFilter, setStateFilter] = useState<string>('all');
+  // Miniaturas que fallaron al cargar → mostramos el placeholder de luna por card.
+  const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({});
 
   const load = useCallback(async () => {
     try {
@@ -134,7 +136,6 @@ export default function SleepStoriesPage() {
           value={stateFilter}
           onChange={(e) => setStateFilter(e.target.value)}
           className="glass rounded-full px-3 py-1.5 text-xs text-white focus:outline-none cursor-pointer"
-          style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
         >
           <option value="all">Todos los estados</option>
           {Object.entries(STATE_LABEL).map(([k, l]) => (
@@ -170,16 +171,16 @@ export default function SleepStoriesPage() {
               title={s.folderPath}
             >
               <div className="relative h-28 w-full bg-black/30">
-                {s.thumbnailUrl ? (
+                {s.thumbnailUrl && !imgErrors[s.folderPath] ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={s.thumbnailUrl}
                     alt={s.title}
                     className="h-full w-full object-contain"
                     loading="lazy"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).style.display = 'none';
-                    }}
+                    onError={() =>
+                      setImgErrors((prev) => ({ ...prev, [s.folderPath]: true }))
+                    }
                   />
                 ) : (
                   <div className="grid h-full w-full place-items-center text-zinc-500">
@@ -189,8 +190,8 @@ export default function SleepStoriesPage() {
                 <span className="absolute top-2 left-2 rounded-full bg-black/70 backdrop-blur px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white border border-white/10">
                   {s.language}
                 </span>
-                <span className={`absolute top-2 right-2 ${STATE_PILL[s.state]}`}>
-                  {STATE_LABEL[s.state]}
+                <span className={`absolute top-2 right-2 ${STATE_PILL[s.state] ?? 'pill-soon'}`}>
+                  {STATE_LABEL[s.state] ?? s.state}
                 </span>
               </div>
               <div className="p-3">

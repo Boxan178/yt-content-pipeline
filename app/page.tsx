@@ -188,15 +188,10 @@ export default function HomePage() {
                     <span className="nums">{pending}</span> en cola, a la espera
                   </p>
                 ) : (
-                  /* Progress placeholder (futuro: leer counts reales) */
-                  <div className="flex gap-1">
-                    <div className="seg-done h-1.5 flex-1 rounded-full" />
-                    <div className="seg-done h-1.5 flex-1 rounded-full" />
-                    <div className="seg-empty h-1.5 flex-1 rounded-full" />
-                    <div className="seg-empty h-1.5 flex-1 rounded-full" />
-                    <div className="seg-empty h-1.5 flex-1 rounded-full" />
-                    <div className="seg-empty h-1.5 flex-1 rounded-full" />
-                  </div>
+                  /* Sin jobs vivos ni cola. No tenemos counts reales todavía
+                     (futuro: leer hitos por canal), así que mostramos un
+                     estado neutro en vez de una barra de progreso falsa. */
+                  <p className="text-[11px] text-zinc-500">Sin actividad</p>
                 )}
               </Link>
               );
