@@ -7,6 +7,37 @@ import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, openSync, closeSync, readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import os from 'node:os';
+
+/**
+ * Config MCP mínima para los jobs `claude -p` spawneados. Cargar los ~20 MCP
+ * servers del usuario hace que los HTTP (algrow) se queden "pending" en el job
+ * HEADLESS → `generate_tts` falla → sin locución, el pipeline se atasca en el
+ * guion. Extraemos SOLO los que el pipeline necesita y conectan headless
+ * (algrow: TTS de CALIOPE + imágenes/miniaturas de IRIS). Verificado: con
+ * --strict-mcp-config + solo algrow conecta en ~14s y health_check responde.
+ * (Los connectors OAuth tipo vidiq/supabase no conectan headless de todas formas.)
+ */
+const JOBS_MCP_SERVERS = ['algrow'];
+function buildJobsMcpConfig(): string | null {
+  try {
+    const home = os.homedir();
+    const userCfg = JSON.parse(readFileSync(path.join(home, '.claude.json'), 'utf-8')) as {
+      mcpServers?: Record<string, unknown>;
+    };
+    const all = userCfg.mcpServers ?? {};
+    const mcpServers: Record<string, unknown> = {};
+    for (const name of JOBS_MCP_SERVERS) if (all[name]) mcpServers[name] = all[name];
+    if (Object.keys(mcpServers).length === 0) return null;
+    const dir = path.join(home, '.yt-content-pipeline');
+    mkdirSync(dir, { recursive: true });
+    const out = path.join(dir, 'jobs-mcp.json');
+    writeFileSync(out, JSON.stringify({ mcpServers }, null, 2), 'utf-8');
+    return out;
+  } catch {
+    return null;
+  }
+}
 
 // ── Resolución de claude CLI ──────────────────────────────────────────────
 // claude.cmd en Windows es un wrapper batch sobre `node cli.js`. Si lo
@@ -158,7 +189,16 @@ export function startJob(opts: StartJobOptions): ClaudeJob {
   if (claudeBin.cliArg) args.push(claudeBin.cliArg);
   // stream-json en print mode requiere --verbose. Cada línea del log será un
   // evento NDJSON parseable por lib/stream-events.ts.
-  args.push('-p', '--output-format', 'stream-json', '--verbose', '--model', model);
+  args.push('-p');
+  // MCP mínimo: solo lo que el pipeline necesita, para que algrow (HTTP) conecte
+  // en el job headless (si no, queda "pending" y generate_tts/locución falla).
+  // CLAVE: va ANTES de --output-format (un flag), porque --mcp-config consume TODOS
+  // los args siguientes hasta el próximo flag. Si va justo antes del prompt, se
+  // traga el prompt como segundo "config file" → claude peta con "MCP config file
+  // not found: <prompt>". Con un flag detrás, --mcp-config coge solo su path.
+  const jobsMcp = buildJobsMcpConfig();
+  if (jobsMcp) args.push('--strict-mcp-config', '--mcp-config', jobsMcp);
+  args.push('--output-format', 'stream-json', '--verbose', '--model', model);
   if (opts.effort) {
     args.push('--effort', opts.effort);
   }

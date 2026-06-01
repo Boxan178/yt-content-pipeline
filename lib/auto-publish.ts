@@ -136,9 +136,16 @@ async function considerVideo(
   const render = await newestRender(videoFolder);
   if (!render || Date.now() - render.mtimeMs < RENDER_STABLE_MS) return null;
 
-  // Metadata desde packaging.md
-  const md = await readFile(path.join(packagingDir, 'packaging.md'), 'utf-8').catch(() => '');
-  const meta = extractMetadata(md);
+  // Metadata: título + miniatura viven en packaging.md; descripción + tags suelen
+  // vivir en seo-package.md / descripcion-seo.md (raíz del vídeo). Combinamos ambos
+  // (packaging primero → su título ELEGIDO gana) para que extractMetadata saque todo.
+  const packagingMd = await readFile(path.join(packagingDir, 'packaging.md'), 'utf-8').catch(() => '');
+  let seoMd = '';
+  for (const fname of ['seo-package.md', 'descripcion-seo.md', 'seo.md']) {
+    const s = await readFile(path.join(videoFolder, fname), 'utf-8').catch(() => '');
+    if (s) { seoMd = s; break; }
+  }
+  const meta = extractMetadata(seoMd ? `${packagingMd}\n\n${seoMd}` : packagingMd);
   if (!meta.title || meta.title.trim().length < 3) {
     // Degradación segura: avisar UNA vez y no volver a intentarlo.
     if (!isDryRun()) {

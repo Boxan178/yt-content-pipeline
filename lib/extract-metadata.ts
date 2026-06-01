@@ -23,6 +23,10 @@ export function cleanValue(s: string): string {
 
 /** Extrae metadata YouTube de un packaging.md. Heurísticas en orden de prioridad. */
 export function extractMetadata(md: string): ExtractedMetadata {
+  // Normalizar CRLF→LF: los .md en H:/ (Windows) usan \r\n y los regex de abajo
+  // asumen \n (sobre todo el code-block ```\n...```). Sin esto, la descripción se
+  // quedaba con las ``` incrustadas y los tags del code-block no se extraían.
+  md = md.replace(/\r\n?/g, '\n');
   // ── TÍTULO ─────────────────────────────────────────────────────────
   // Orden:
   //  1. "🏆 ELEGIDO: <título>" (formato MARCOS, el más fiable cuando existe)
@@ -33,8 +37,19 @@ export function extractMetadata(md: string): ExtractedMetadata {
   let title = '';
   const titleStrategies: Array<() => string | null> = [
     () => {
-      const m = md.match(/🏆\s*ELEGIDO\s*[:：]\s*([^\n]+?)(?:\s+VidIQ\s+score|\s*$)/im);
-      return m ? cleanValue(m[1]) : null;
+      // "✅/🏆 ELEGIDO: [<ruta>:] <título> _(fecha)_ [VidIQ score…]"
+      // MARCOS marca la elegida con ✅ o 🏆; a veces antepone el código de ruta
+      // ("3-C:", "1-A:", "Plan C:", "Tentativo…:") y añade fecha italic al final.
+      // El bug era exigir 🏆 — packaging reales usan ✅ → título vacío → no subía.
+      const m = md.match(/ELEGIDO\s*[:：]\s*([^\n]+)/i);
+      if (!m) return null;
+      const t = m[1]
+        .replace(/\s+VidIQ\s+score.*$/i, '')
+        .replace(/\s*_\([^)]*\)_\s*$/, '')
+        .replace(/\s*\(\d{1,2}\/\d{1,2}\/\d{2,4}[^)]*\)\s*$/, '')
+        .replace(/^\s*(?:\d+-[A-Za-z]|[A-Za-z]-\d+|Plan\s+[A-Za-z]|Tentativo[^:：]*)\s*[:：]\s*/i, '');
+      const c = cleanValue(t);
+      return c.length > 1 ? c : null;
     },
     () => {
       // Línea de tabla "🏆 Marcus Aurelius ..." (MARCOS pone trofeo a la elegida)
@@ -89,6 +104,15 @@ export function extractMetadata(md: string): ExtractedMetadata {
         .trim();
     }
   }
+  // Hashtags (#X) — sección "## Hashtags" del seo-package. YouTube los muestra
+  // encima del título; por convención van al final de la descripción.
+  if (description) {
+    const hashSec = md.match(/^##\s+Hashtags\b[^\n]*\n+(?:```[\w-]*\n?)?([^\n`]+)/im);
+    if (hashSec) {
+      const hs = (hashSec[1].match(/#[A-Za-z][\w]+/g) ?? []).join(' ');
+      if (hs && !description.includes(hs)) description = `${description}\n\n${hs}`;
+    }
+  }
 
   // ── TAGS ───────────────────────────────────────────────────────────
   const tags = new Set<string>();
@@ -100,6 +124,18 @@ export function extractMetadata(md: string): ExtractedMetadata {
       .map((t) => cleanValue(t).replace(/^#/, ''))
       .filter((t) => t && t.length > 1 && t.length < 50)
       .forEach((t) => tags.add(t));
+  }
+  // 1.5) Sección "## Tags" + bloque de código coma-separado (formato seo-package.md
+  //      de youtube-seo-optimizer). packaging.md no lleva tags; el seo-package sí.
+  if (tags.size === 0) {
+    const sec = md.match(/^##\s+Tags\b[^\n]*\n+```[\w-]*\n?([\s\S]+?)```/im);
+    if (sec) {
+      sec[1]
+        .split(/[,\n;]/)
+        .map((t) => cleanValue(t).replace(/^#/, ''))
+        .filter((t) => t && t.length > 1 && t.length < 50)
+        .forEach((t) => tags.add(t));
+    }
   }
   // 2) "Hashtags pinned: #foo #bar" — añadir al final del set (preserva orden)
   const hashtagsLine = md.match(/^\*{0,2}Hashtags(?:\s+pinned)?\*{0,2}\s*[:：]\s*([^\n]+)/im);

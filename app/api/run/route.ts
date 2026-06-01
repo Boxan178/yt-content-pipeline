@@ -17,6 +17,7 @@ import { randomBytes } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { LAB_ROOT } from "@/lib/config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,7 +27,9 @@ const BACKEND_TOKEN = process.env.BACKEND_TOKEN;
 const PYTHON_BIN = process.env.YT_AUTOMATOR_PYTHON || "python";
 const ENGINE_PATH =
   process.env.YT_AUTOMATOR_ENGINE_PATH ||
-  String.raw`Y:\04_DEV\J.A.R.V.I.S\lab\yt-automator-engine\runner.py`;
+  // Derivado de LAB_ROOT (NFT-invisible) para que NFT no trace el NAS en el build.
+  // Slash forward funciona en spawn de Windows igual que backslash.
+  `${LAB_ROOT}/yt-automator-engine/runner.py`;
 
 function sseChunk(data: unknown): string {
   return `data: ${typeof data === "string" ? data : JSON.stringify(data)}\n\n`;
