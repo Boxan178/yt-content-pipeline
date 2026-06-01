@@ -1,8 +1,9 @@
-import { app, BrowserWindow, dialog, ipcMain, Notification, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Notification, session, shell } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { createServer } from 'node:net';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import path from 'node:path';
 import os from 'node:os';
 
@@ -37,6 +38,49 @@ const TELEGRAM_POLLER_INTERVAL_MS = 3_000;
 /** Intervalo del aviso de huecos de calendario (lento: la cadencia no cambia
  *  rápido; el endpoint dedupea a ~1 aviso/día). 4 veces al día. */
 const GAP_NOTIFY_POLLER_INTERVAL_MS = 6 * 60 * 60 * 1000;
+
+// ── Auth por token compartido sobre /api/* ─────────────────────────────
+// El token protege el server expuesto (0.0.0.0 / Tailscale). Lo genera/persiste
+// aquí, lo inyecta como YTCP_API_TOKEN al server standalone, lo mete como cookie
+// en la sesión del renderer (para que sus fetch pasen) y como header en los
+// pollers. El navegador externo bootstrapea con ?_t=<token>. Ver middleware.ts.
+function getOrCreateApiToken(): string {
+  try {
+    const dir = path.join(os.homedir(), '.yt-content-pipeline');
+    const file = path.join(dir, 'api-token.txt');
+    if (existsSync(file)) {
+      const t = readFileSync(file, 'utf-8').trim();
+      if (t) return t;
+    }
+    mkdirSync(dir, { recursive: true });
+    const tok = randomBytes(24).toString('hex');
+    writeFileSync(file, tok, 'utf-8');
+    return tok;
+  } catch (e) {
+    console.error('[auth] no pude crear/leer el api-token:', e instanceof Error ? e.message : String(e));
+    return '';
+  }
+}
+const apiToken = getOrCreateApiToken();
+/** Headers de auth para los fetch internos de los pollers (vacío si no hay token). */
+function authHeaders(): Record<string, string> {
+  return apiToken ? { 'x-ytcp-token': apiToken } : {};
+}
+/** Setea la cookie de auth en la sesión del renderer para `url` (su origen). */
+async function setAuthCookie(url: string) {
+  if (!apiToken) return;
+  try {
+    await session.defaultSession.cookies.set({
+      url,
+      name: 'ytcp_auth',
+      value: apiToken,
+      httpOnly: true,
+      sameSite: 'lax',
+    });
+  } catch (e) {
+    console.error('[auth] no pude setear la cookie de auth:', e instanceof Error ? e.message : String(e));
+  }
+}
 
 // ── Next standalone server (sólo en producción) ─────────────────────────
 
@@ -95,6 +139,8 @@ async function startNextServer(): Promise<string> {
       // Override externo respetado (mover el SSD/NAS a otra letra).
       YTCP_DRIVE_H: process.env.YTCP_DRIVE_H || 'H',
       YTCP_DRIVE_Y: process.env.YTCP_DRIVE_Y || 'Y',
+      // Token de auth para el middleware /api/* (protege el server expuesto).
+      YTCP_API_TOKEN: apiToken,
       // Electron por defecto setea ELECTRON_RUN_AS_NODE para que el binario
       // se comporte como node puro al ejecutar el server.js standalone.
       ELECTRON_RUN_AS_NODE: '1',
@@ -179,7 +225,7 @@ function startNotionPoller() {
 
   const tickOnce = async () => {
     try {
-      const r = await fetch(`${baseUrl}/api/notion/sync`, { method: 'POST' });
+      const r = await fetch(`${baseUrl}/api/notion/sync`, { method: 'POST', headers: authHeaders() });
       if (!r.ok) {
         console.warn(`[notion-poller] sync respondió ${r.status}`);
         return;
@@ -238,7 +284,7 @@ function startAutoPublishPoller() {
 
   const tickOnce = async () => {
     try {
-      const r = await fetch(`${baseUrl}/api/auto-publish/tick`, { method: 'POST' });
+      const r = await fetch(`${baseUrl}/api/auto-publish/tick`, { method: 'POST', headers: authHeaders() });
       if (!r.ok) {
         console.warn(`[auto-publish] tick respondió ${r.status}`);
         return;
@@ -311,7 +357,7 @@ function startQueuePoller() {
 
   const tickOnce = async () => {
     try {
-      const r = await fetch(`${baseUrl}/api/queue`, { method: 'GET' });
+      const r = await fetch(`${baseUrl}/api/queue`, { method: 'GET', headers: authHeaders() });
       if (!r.ok) {
         console.warn(`[queue-poller] tick respondió ${r.status}`);
       }
@@ -363,7 +409,7 @@ function startTelegramPoller() {
 
   const tickOnce = async () => {
     try {
-      const r = await fetch(`${baseUrl}/api/telegram/poll`, { method: 'POST' });
+      const r = await fetch(`${baseUrl}/api/telegram/poll`, { method: 'POST', headers: authHeaders() });
       if (r.status === 409) {
         // Otro consumidor usa getUpdates sobre este bot. Avisamos una vez por
         // arranque y seguimos (no spameamos el log).
@@ -422,7 +468,7 @@ function startGapNotifyPoller() {
 
   const tickOnce = async () => {
     try {
-      const r = await fetch(`${baseUrl}/api/calendar/gaps/notify`, { method: 'POST' });
+      const r = await fetch(`${baseUrl}/api/calendar/gaps/notify`, { method: 'POST', headers: authHeaders() });
       if (!r.ok) {
         console.warn(`[gap-notify] tick respondió ${r.status}`);
       }
@@ -634,6 +680,11 @@ app.whenReady().then(async () => {
       return;
     }
   }
+
+  // Auth: setear la cookie de token en la sesión ANTES de cargar la ventana, para
+  // que los fetch del renderer a /api/* lleven el token. En dev (sin YTCP_API_TOKEN
+  // en el server) es no-op inofensivo.
+  await setAuthCookie(isDev ? DEV_URL : nextServerUrl ?? DEV_URL);
 
   createWindow();
   setupAutoUpdater();
