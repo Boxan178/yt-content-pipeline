@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MonthGrid } from '@/components/calendar/MonthGrid';
-import { CHANNELS, getChannel } from '@/lib/channels';
+import { CHANNELS, getChannel, channelColor } from '@/lib/channels';
 import {
   CALENDAR_STATUS_STYLE,
   type CalendarItem,
@@ -132,13 +132,22 @@ export default function CalendarPage() {
     return () => clearInterval(id);
   }, [loadItems, loadBacklog, loadGaps, loadCadence]);
 
+  // Canales seleccionables: unión de los que aparecen en el calendario, en el
+  // banco de ideas y en los vídeos listos. Antes salía solo de `items`, así que
+  // un canal con ideas pero sin subidas (p. ej. Drowsy Tales) no tenía chip y no
+  // se podía filtrar el backlog por él.
   const channelsPresent = useMemo(() => {
     const map = new Map<string, { slug: string; name: string; color: string }>();
-    for (const it of items) {
-      if (!map.has(it.channel)) map.set(it.channel, { slug: it.channel, name: it.channelName, color: it.channelColor });
-    }
+    const add = (slug: string | null | undefined, name?: string, color?: string) => {
+      if (!slug || map.has(slug)) return;
+      const ch = getChannel(slug);
+      map.set(slug, { slug, name: name ?? ch?.name ?? slug, color: color ?? channelColor(slug) });
+    };
+    for (const it of items) add(it.channel, it.channelName, it.channelColor);
+    for (const idea of ideas) add(idea.channelId);
+    for (const v of readyVideos) add(v.channel, v.channelName, v.channelColor);
     return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
-  }, [items]);
+  }, [items, ideas, readyVideos]);
 
   const filtered = useMemo(
     () => (channelFilter ? items.filter((i) => i.channel === channelFilter) : items),
@@ -349,54 +358,13 @@ export default function CalendarPage() {
         </div>
 
         {/* Backlog arrastrable */}
-        <aside className="glass w-full shrink-0 rounded-[28px] p-4 lg:w-[280px]">
-          <h3 className="mb-1 text-[11px] font-medium uppercase tracking-label text-zinc-500">Backlog</h3>
-          <p className="mb-3 text-[11px] text-zinc-500">Arrastra al calendario →</p>
-
-          <div className="mb-2 text-[11px] font-medium text-zinc-400">Ideas ({ideas.length})</div>
-          <div className="mb-4 max-h-[220px] space-y-1.5 overflow-auto pr-1">
-            {ideas.length === 0 ? (
-              <p className="text-[11px] text-zinc-600">No hay ideas en el banco.</p>
-            ) : (
-              ideas.map((idea) => {
-                const slug = idea.channelId && getChannel(idea.channelId) ? idea.channelId : null;
-                return (
-                  <div
-                    key={idea.id}
-                    draggable
-                    onDragStart={(e) => dragStart(e, { kind: 'idea', ideaId: idea.id, title: idea.title, channel: slug })}
-                    className="cursor-grab rounded-lg border border-white/8 bg-white/[0.03] px-2.5 py-1.5 text-[11px] text-zinc-200 transition hover:border-white/20 active:cursor-grabbing"
-                    title={idea.title}
-                  >
-                    <span className="line-clamp-2">{idea.title}</span>
-                    {slug && <span className="mt-0.5 block text-[9px] text-zinc-500">{getChannel(slug)?.name}</span>}
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          <div className="mb-2 text-[11px] font-medium text-zinc-400">Vídeos listos ({readyVideos.length})</div>
-          <div className="max-h-[220px] space-y-1.5 overflow-auto pr-1">
-            {readyVideos.length === 0 ? (
-              <p className="text-[11px] text-zinc-600">Sin vídeos listos para programar.</p>
-            ) : (
-              readyVideos.map((v) => (
-                <div
-                  key={v.folderPath}
-                  draggable
-                  onDragStart={(e) => dragStart(e, { kind: 'video', channel: v.channel, title: v.title, videoFolder: v.folderPath })}
-                  className="cursor-grab rounded-lg border px-2.5 py-1.5 text-[11px] text-zinc-200 transition hover:brightness-125 active:cursor-grabbing"
-                  style={{ backgroundColor: v.channelColor + '14', borderColor: v.channelColor + '40', borderLeft: `2px solid ${v.channelColor}` }}
-                  title={`${v.channelName} · ${v.title}`}
-                >
-                  <span className="line-clamp-2">{v.title}</span>
-                  <span className="mt-0.5 block text-[9px] text-zinc-500">{v.channelName}</span>
-                </div>
-              ))
-            )}
-          </div>
-        </aside>
+        <BacklogPanel
+          ideas={ideas}
+          readyVideos={readyVideos}
+          channelFilter={channelFilter}
+          channelName={channelFilter ? getChannel(channelFilter)?.name ?? channelFilter : null}
+          dragStart={dragStart}
+        />
       </div>
 
       {selected && (
@@ -432,6 +400,171 @@ function FilterChip({ label, color, active, onClick }: { label: string; color?: 
     >
       {color && <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />}
       {label}
+    </button>
+  );
+}
+
+/* ─────────────── Backlog (ideas + vídeos listos) ─────────────── */
+// Estados del backlog en orden de aparición. 'raw' | 'developing' | 'in-production'
+// son IdeaStatus (lib/lab/types.ts); 'ready' es pseudo-estado para los vídeos
+// renderizados en `_LISTOS PARA SUBIR`.
+const BACKLOG_STATUS_LABEL: Record<string, string> = {
+  raw: 'Ideas',
+  developing: 'En desarrollo',
+  'in-production': 'En producción',
+  ready: 'Vídeos listos',
+};
+const BACKLOG_STATUS_ORDER = ['raw', 'developing', 'in-production', 'ready'];
+
+interface BacklogGroup {
+  key: string;
+  label: string;
+  ideas: BacklogIdea[];
+  videos: BacklogVideo[];
+  count: number;
+}
+
+function BacklogPanel({
+  ideas,
+  readyVideos,
+  channelFilter,
+  channelName,
+  dragStart,
+}: {
+  ideas: BacklogIdea[];
+  readyVideos: BacklogVideo[];
+  channelFilter: string | null;
+  channelName: string | null;
+  dragStart: (e: React.DragEvent, payload: CalendarDragPayload) => void;
+}) {
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
+  // Agrupa por estado, ya filtrado por el canal seleccionado arriba.
+  const groups = useMemo<BacklogGroup[]>(() => {
+    const fIdeas = channelFilter ? ideas.filter((i) => i.channelId === channelFilter) : ideas;
+    const fVideos = channelFilter ? readyVideos.filter((v) => v.channel === channelFilter) : readyVideos;
+    const out: BacklogGroup[] = [];
+    for (const key of BACKLOG_STATUS_ORDER) {
+      if (key === 'ready') {
+        out.push({ key, label: BACKLOG_STATUS_LABEL.ready, ideas: [], videos: fVideos, count: fVideos.length });
+      } else {
+        const gi = fIdeas.filter((i) => i.status === key);
+        out.push({ key, label: BACKLOG_STATUS_LABEL[key] ?? key, ideas: gi, videos: [], count: gi.length });
+      }
+    }
+    // Estados de idea no contemplados arriba → su propia sección (defensivo).
+    const known = new Set(BACKLOG_STATUS_ORDER);
+    const extra = new Map<string, BacklogIdea[]>();
+    for (const i of fIdeas) {
+      if (known.has(i.status)) continue;
+      const arr = extra.get(i.status) ?? [];
+      arr.push(i);
+      extra.set(i.status, arr);
+    }
+    for (const [key, gi] of extra) {
+      out.push({ key, label: BACKLOG_STATUS_LABEL[key] ?? key, ideas: gi, videos: [], count: gi.length });
+    }
+    return out;
+  }, [ideas, readyVideos, channelFilter]);
+
+  const totalCount = useMemo(() => groups.reduce((s, g) => s + g.count, 0), [groups]);
+  const visibleGroups = statusFilter ? groups.filter((g) => g.key === statusFilter) : groups;
+
+  return (
+    <aside className="glass w-full shrink-0 rounded-[28px] p-4 lg:w-[280px]">
+      <h3 className="mb-1 text-[11px] font-medium uppercase tracking-label text-zinc-500">Backlog</h3>
+      <p className="mb-3 text-[11px] text-zinc-500">
+        {channelName ? `${channelName} · ` : ''}Arrastra al calendario →
+      </p>
+
+      {/* Filtro por estado */}
+      <div className="mb-3 flex flex-wrap gap-1">
+        <StatusChip label="Todos" count={totalCount} active={statusFilter === null} onClick={() => setStatusFilter(null)} />
+        {groups.map((g) => (
+          <StatusChip
+            key={g.key}
+            label={g.label}
+            count={g.count}
+            active={statusFilter === g.key}
+            onClick={() => setStatusFilter(statusFilter === g.key ? null : g.key)}
+          />
+        ))}
+      </div>
+
+      {/* Secciones desplegables por estado */}
+      <div className="space-y-2">
+        {visibleGroups.map((g) => {
+          const open = !collapsed[g.key];
+          return (
+            <div key={g.key} className="rounded-2xl border border-white/8 bg-white/[0.02]">
+              <button
+                onClick={() => setCollapsed((p) => ({ ...p, [g.key]: open }))}
+                className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left"
+                title={open ? 'Contraer' : 'Desplegar'}
+              >
+                <span className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-300">
+                  <span className={`inline-block text-[9px] text-zinc-500 transition-transform ${open ? 'rotate-90' : ''}`}>▶</span>
+                  {g.label}
+                </span>
+                <span className="rounded-full bg-white/5 px-1.5 text-[10px] font-medium text-zinc-400">{g.count}</span>
+              </button>
+
+              {open && (
+                <div className="max-h-[240px] space-y-1.5 overflow-auto px-2.5 pb-2.5 pr-1">
+                  {g.count === 0 ? (
+                    <p className="px-0.5 text-[11px] text-zinc-600">Sin elementos.</p>
+                  ) : g.key === 'ready' ? (
+                    g.videos.map((v) => (
+                      <div
+                        key={v.folderPath}
+                        draggable
+                        onDragStart={(e) => dragStart(e, { kind: 'video', channel: v.channel, title: v.title, videoFolder: v.folderPath })}
+                        className="cursor-grab rounded-lg border px-2.5 py-1.5 text-[11px] text-zinc-200 transition hover:brightness-125 active:cursor-grabbing"
+                        style={{ backgroundColor: v.channelColor + '14', borderColor: v.channelColor + '40', borderLeft: `2px solid ${v.channelColor}` }}
+                        title={`${v.channelName} · ${v.title}`}
+                      >
+                        <span className="line-clamp-2">{v.title}</span>
+                        <span className="mt-0.5 block text-[9px] text-zinc-500">{v.channelName}</span>
+                      </div>
+                    ))
+                  ) : (
+                    g.ideas.map((idea) => {
+                      const slug = idea.channelId && getChannel(idea.channelId) ? idea.channelId : null;
+                      return (
+                        <div
+                          key={idea.id}
+                          draggable
+                          onDragStart={(e) => dragStart(e, { kind: 'idea', ideaId: idea.id, title: idea.title, channel: slug })}
+                          className="cursor-grab rounded-lg border border-white/8 bg-white/[0.03] px-2.5 py-1.5 text-[11px] text-zinc-200 transition hover:border-white/20 active:cursor-grabbing"
+                          title={idea.title}
+                        >
+                          <span className="line-clamp-2">{idea.title}</span>
+                          {slug && <span className="mt-0.5 block text-[9px] text-zinc-500">{getChannel(slug)?.name}</span>}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </aside>
+  );
+}
+
+function StatusChip({ label, count, active, onClick }: { label: string; count: number; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium transition ${
+        active ? 'border-white/20 bg-white/10 text-white' : 'border-white/8 bg-white/[0.03] text-zinc-400 hover:text-zinc-200'
+      }`}
+    >
+      {label}
+      <span className={active ? 'text-zinc-300' : 'text-zinc-500'}>{count}</span>
     </button>
   );
 }
