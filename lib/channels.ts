@@ -2,7 +2,7 @@
 // están aquí preparados para activarse cuando definamos su rootPath y mapping
 // de estados.
 
-import { channelScriptsRoot } from './config';
+import { channelScriptsRoot, H_YOUTUBE } from './config';
 
 export type VideoState =
   | 'pending_locution'
@@ -69,7 +69,7 @@ export const CHANNELS: Channel[] = [
     slug: 'moderni-stoici',
     name: 'Moderni Stoici',
     enabled: true,
-    rootPath: 'H:/YOUTUBE/CANALES ESTOICISMO/MODERNI STOICI',
+    rootPath: H_YOUTUBE + '/CANALES ESTOICISMO/MODERNI STOICI',
     stateFolders: {
       pending_locution: '_PENDIENTE LOCUCION',
       production: '_EN PRODUCCIÓN',
@@ -83,7 +83,7 @@ export const CHANNELS: Channel[] = [
       '_REFERENCIA-THUMBNAILS-YOUTUBE',
     ],
     scriptsRoot: channelScriptsRoot('moderni-stoici'),
-    sharedBrutosLibrary: 'H:/YOUTUBE/CANALES ESTOICISMO/MODERNI STOICI/Biblioteca de Brutos',
+    sharedBrutosLibrary: H_YOUTUBE + '/CANALES ESTOICISMO/MODERNI STOICI/Biblioteca de Brutos',
     autoPipeline: true,
     autoPublishUnlisted: true,
   },
@@ -92,7 +92,7 @@ export const CHANNELS: Channel[] = [
     slug: 'moderno-estoico',
     name: 'Moderno Estoico',
     enabled: true,
-    rootPath: 'H:/YOUTUBE/CANALES ESTOICISMO/MODERNO ESTOICO',
+    rootPath: H_YOUTUBE + '/CANALES ESTOICISMO/MODERNO ESTOICO',
     stateFolders: {
       pending_locution: '_PENDIENTE LOCUCION',
       production: '_EN PRODUCCIÓN',
@@ -106,7 +106,7 @@ export const CHANNELS: Channel[] = [
     scriptsRoot: channelScriptsRoot('moderno-estoico'),
     // Réplica española de Moderni Stoici: comparte su misma biblioteca de brutos
     // (no tiene una propia en disco).
-    sharedBrutosLibrary: 'H:/YOUTUBE/CANALES ESTOICISMO/MODERNI STOICI/Biblioteca de Brutos',
+    sharedBrutosLibrary: H_YOUTUBE + '/CANALES ESTOICISMO/MODERNI STOICI/Biblioteca de Brutos',
   },
   {
     // Canal de historias narrativas cortas. Reciclaje del canal YouTube
@@ -115,7 +115,7 @@ export const CHANNELS: Channel[] = [
     slug: 'vaultman',
     name: 'The Vaultman',
     enabled: true,
-    rootPath: 'H:/YOUTUBE/THE VAULTMAN',
+    rootPath: H_YOUTUBE + '/THE VAULTMAN',
     stateFolders: {
       pending_locution: '_PENDIENTE LOCUCION',
       production: '_EN PRODUCCIÓN',
@@ -128,14 +128,14 @@ export const CHANNELS: Channel[] = [
       'Biblioteca de Brutos',
     ],
     scriptsRoot: channelScriptsRoot('vaultman'),
-    sharedBrutosLibrary: 'H:/YOUTUBE/THE VAULTMAN/Biblioteca de Brutos',
+    sharedBrutosLibrary: H_YOUTUBE + '/THE VAULTMAN/Biblioteca de Brutos',
   },
   {
     // Canal de historias narrativas cortas (en español). Activado 2026-05-27.
     slug: 'uncharted-history',
     name: 'Uncharted History',
     enabled: true,
-    rootPath: 'H:/YOUTUBE/UNCHARTED HISTORY',
+    rootPath: H_YOUTUBE + '/UNCHARTED HISTORY',
     stateFolders: {
       pending_locution: '_PENDIENTE LOCUCION',
       production: '_EN PRODUCCIÓN',
@@ -167,7 +167,7 @@ export const CHANNELS: Channel[] = [
     slug: 'the-sleeping-stoic',
     name: 'The Sleeping Stoic',
     enabled: true,
-    rootPath: 'H:/YOUTUBE/CANALES SLEEP STORIES/THE SLEEPING STOIC',
+    rootPath: H_YOUTUBE + '/CANALES SLEEP STORIES/THE SLEEPING STOIC',
     stateFolders: {
       pending_locution: '_PENDIENTE LOCUCION',
       production: '_EN PRODUCCIÓN',
@@ -182,14 +182,14 @@ export const CHANNELS: Channel[] = [
       'branding',
     ],
     scriptsRoot: channelScriptsRoot('the-sleeping-stoic'),
-    sharedBrutosLibrary: 'H:/YOUTUBE/CANALES ESTOICISMO/MODERNI STOICI/Biblioteca de Brutos',
+    sharedBrutosLibrary: H_YOUTUBE + '/CANALES ESTOICISMO/MODERNI STOICI/Biblioteca de Brutos',
     autoPipeline: true,
   },
   {
     slug: 'drowsy-tales',
     name: 'Drowsy Tales',
     enabled: true,
-    rootPath: 'H:/YOUTUBE/CANALES SLEEP STORIES/DROWSY TALES',
+    rootPath: H_YOUTUBE + '/CANALES SLEEP STORIES/DROWSY TALES',
     stateFolders: {
       pending_locution: '_PENDIENTE LOCUCION',
       production: '_EN PRODUCCIÓN',
@@ -204,13 +204,13 @@ export const CHANNELS: Channel[] = [
       'branding',
     ],
     scriptsRoot: channelScriptsRoot('drowsy-tales'),
-    sharedBrutosLibrary: 'H:/YOUTUBE/CANALES SLEEP STORIES/_RECURSOS/Biblioteca Brutos compartida',
+    sharedBrutosLibrary: H_YOUTUBE + '/CANALES SLEEP STORIES/_RECURSOS/Biblioteca Brutos compartida',
   },
   {
     slug: 'the-sleepy-historian',
     name: 'The Sleepy Historian',
     enabled: true,
-    rootPath: 'H:/YOUTUBE/CANALES SLEEP STORIES/THE SLEEPY HISTORIAN',
+    rootPath: H_YOUTUBE + '/CANALES SLEEP STORIES/THE SLEEPY HISTORIAN',
     stateFolders: {
       pending_locution: '_PENDIENTE LOCUCION',
       production: '_EN PRODUCCIÓN',
@@ -225,10 +225,10 @@ export const CHANNELS: Channel[] = [
       'branding',
     ],
     scriptsRoot: channelScriptsRoot('the-sleepy-historian'),
-    sharedBrutosLibrary: 'H:/YOUTUBE/CANALES SLEEP STORIES/_RECURSOS/Biblioteca Brutos compartida',
+    sharedBrutosLibrary: H_YOUTUBE + '/CANALES SLEEP STORIES/_RECURSOS/Biblioteca Brutos compartida',
   },
-  { slug: 'dailydog',         name: 'Daily Dog',        enabled: false, rootPath: 'H:/YOUTUBE/DAILY DOG', stateFolders: { pending_locution: '', production: '', ready: '', uploaded: '', archived: '' }, ignoreFolders: [] },
-  { slug: 'tail-tales',       name: 'Tail Tales',       enabled: false, rootPath: 'H:/YOUTUBE/TAIL TALES_EN', stateFolders: { pending_locution: '', production: '', ready: '', uploaded: '', archived: '' }, ignoreFolders: [] },
+  { slug: 'dailydog',         name: 'Daily Dog',        enabled: false, rootPath: H_YOUTUBE + '/DAILY DOG', stateFolders: { pending_locution: '', production: '', ready: '', uploaded: '', archived: '' }, ignoreFolders: [] },
+  { slug: 'tail-tales',       name: 'Tail Tales',       enabled: false, rootPath: H_YOUTUBE + '/TAIL TALES_EN', stateFolders: { pending_locution: '', production: '', ready: '', uploaded: '', archived: '' }, ignoreFolders: [] },
   { slug: 'canal-espanol',    name: 'Canal Español',    enabled: false, rootPath: '', stateFolders: { pending_locution: '', production: '', ready: '', uploaded: '', archived: '' }, ignoreFolders: [] },
   { slug: 'canal-paranormal', name: 'Canal Paranormal', enabled: false, rootPath: '', stateFolders: { pending_locution: '', production: '', ready: '', uploaded: '', archived: '' }, ignoreFolders: [] },
 ];
@@ -246,3 +246,24 @@ export const STATE_LABEL: Record<VideoState, string> = {
 };
 
 export const STATE_ORDER: VideoState[] = ['pending_locution', 'production', 'ready', 'uploaded', 'archived'];
+
+/**
+ * Color de marca por canal (hex) para la UI editorial: calendario, badges,
+ * leyendas. Browser-safe (este módulo ya lo importan componentes client). Solo
+ * hace falta para los canales que aparecen datados en el calendario; el resto
+ * cae al gris neutro de `channelColor()`.
+ */
+export const CHANNEL_COLORS: Record<string, string> = {
+  'moderni-stoici': '#6366f1',      // indigo
+  'moderno-estoico': '#a78bfa',     // violet (réplica ES)
+  'vaultman': '#f59e0b',            // amber
+  'uncharted-history': '#14b8a6',   // teal
+  'the-sleeping-stoic': '#38bdf8',  // sky
+  'drowsy-tales': '#ec4899',        // pink
+  'the-sleepy-historian': '#f43f5e',// rose
+};
+
+/** Color de marca del canal (hex). Fallback gris neutro si no está mapeado. */
+export function channelColor(slug: string): string {
+  return CHANNEL_COLORS[slug] ?? '#71717a';
+}

@@ -20,6 +20,13 @@ const ICONS = {
       <path d="M8 21h8M12 18v3" />
     </svg>
   ),
+  calendar: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4.5" width="18" height="16" rx="2.5" />
+      <path d="M3 9h18M8 2.5v4M16 2.5v4" />
+      <path d="M7.5 13h.01M12 13h.01M16.5 13h.01M7.5 16.5h.01M12 16.5h.01" />
+    </svg>
+  ),
   automator: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="3" width="18" height="18" rx="2.5" />
@@ -95,6 +102,7 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { href: '/', icon: ICONS.channels, label: 'Canales', isActive: (p) => p === '/' || p.startsWith('/channels') },
+  { href: '/calendar', icon: ICONS.calendar, label: 'Calendario', isActive: (p) => p.startsWith('/calendar') },
   { href: '/automator', icon: ICONS.automator, label: 'Automator', isActive: (p) => p.startsWith('/automator') },
   { href: '/sleep-stories', icon: ICONS.sleepStories, label: 'Sleep Stories', isActive: (p) => p.startsWith('/sleep-stories') },
   { href: '/queue', icon: ICONS.queue, label: 'Cola', isActive: (p) => p.startsWith('/queue') },

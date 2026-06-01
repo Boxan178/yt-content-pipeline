@@ -83,6 +83,8 @@ function UploadPage() {
   const params = useSearchParams();
   const channel = params?.get('channel') ?? '';
   const videoTitle = params?.get('video') ?? '';
+  // Fecha preseleccionada al llegar desde el calendario (drag de un vídeo listo).
+  const dateParam = params?.get('date') ?? '';
 
   const [detail, setDetail] = useState<DetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -146,6 +148,15 @@ function UploadPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Si venimos del calendario con ?date=, arrancamos en modo Programar con esa
+  // fecha ya puesta (programación nativa de YouTube vía publishAt).
+  useEffect(() => {
+    if (dateParam && !Number.isNaN(Date.parse(dateParam))) {
+      setScheduleMode('scheduled');
+      setScheduledLocal(isoToLocalInput(dateParam));
+    }
+  }, [dateParam]);
 
   const miniatures = useMemo(() => {
     return (detail?.images ?? []).filter(
