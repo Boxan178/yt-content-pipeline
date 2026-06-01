@@ -34,7 +34,7 @@ import {
   type TelegramUpdate,
 } from './notify';
 import { applyDecision } from './decisions';
-import { startJob, type StartJobOptions } from './claude-jobs';
+import { startJob, listActiveJobsForFolder, type StartJobOptions } from './claude-jobs';
 import { buildSaraResume, type VideoContext } from './prompts';
 import { JARVIS_ROOT } from './config';
 import { trackAndNotifyCompletions } from './completion-notify';
@@ -242,6 +242,14 @@ function buildResumeJob(req: ApprovalRequest, choice: ApprovalChoice, notes?: st
 
 function launchResume(req: ApprovalRequest, choice: ApprovalChoice, notes?: string): void {
   try {
+    // GUARD anti-doble-SARA (gaps cola↔resume / cola↔render): si YA hay un job
+    // activo para este vídeo (p.ej. la cola con loopUntilComplete orquestando SARA),
+    // NO spawneamos un 2º SARA suelto — provocaría renders DUPLICADOS (causa raíz del
+    // incidente 2026-06-01: hubo que matar el pipeline → se saltó la QA). La decisión
+    // ya quedó aplicada en packaging.md (+ .selected-thumb si es miniatura), así que el
+    // job/cola activo la recoge en su siguiente turno. Solo reanudamos suelto cuando
+    // NO hay nadie trabajando (modelo "el agente plantea la pregunta y muere").
+    if (listActiveJobsForFolder(req.videoFolder).length > 0) return;
     const job = startJob(buildResumeJob(req, choice, notes));
     req.resumeJobId = job.jobId;
   } catch (e) {
@@ -336,7 +344,20 @@ async function detectAndSend(s: ApprovalState): Promise<number> {
   // Decisión de Pablo (2026-06-01): las aprobaciones van SIEMPRE por Telegram,
   // esté "En el PC" o "Fuera". El toggle NO apaga esto — solo controla los avisos
   // de completados (futuro). Por eso aquí NO hay gate por working-mode.
-  const existing = new Set(s.items.filter((r) => r.status !== 'expired' && r.status !== 'failed').map((r) => dedupeKey(r.videoFolder, r.statusAnchor)));
+  // Dedupe: NO re-mandar una decisión ya pendiente/aprobada. PERO una decisión
+  // RECHAZADA SÍ debe poder re-enviarse: tras un rechazo SARA re-propone con el
+  // MISMO ancla, y si la mantuviéramos en `existing` el re-envío quedaría bloqueado
+  // (Pablo nunca vería la v2). Excluimos answered+rejected del set.
+  const existing = new Set(
+    s.items
+      .filter(
+        (r) =>
+          r.status !== 'expired' &&
+          r.status !== 'failed' &&
+          !(r.status === 'answered' && r.answer?.choice === 'rejected'),
+      )
+      .map((r) => dedupeKey(r.videoFolder, r.statusAnchor)),
+  );
   let sent = 0;
 
   for (const channel of CHANNELS) {

@@ -226,6 +226,26 @@ function findRenderPrincipal(videoFolder: string): string | null {
   return null;
 }
 
+/**
+ * YouTube rechaza el upload (`invalidTags`, HTTP 400) si el total EFECTIVO de tags
+ * supera ~500 chars; los tags con espacios cuentan +2 (YouTube los envuelve en
+ * comillas). Recorta por orden (los primeros son los más relevantes en el seo) con
+ * margen de seguridad. Sin esto, un vídeo con muchos tags multi-palabra (caso real:
+ * 25 tags ≈ 509 efectivos) tumba la subida automática entera.
+ */
+function trimTagsForYouTube(tags: string[]): string[] {
+  const eff = (t: string) => t.length + (t.includes(' ') ? 2 : 0);
+  const out: string[] = [];
+  let total = 0;
+  for (const t of tags) {
+    const add = eff(t) + (out.length ? 1 : 0); // +1 por la coma separadora
+    if (total + add > 450) break;
+    out.push(t);
+    total += add;
+  }
+  return out;
+}
+
 /** Spawnea upload.py detached. Devuelve pid + logPath. Lanza si falta el render. */
 function launchUpload(item: ScheduledUpload): { pid: number; logPath: string } {
   const jobsDir = path.join(item.videoFolder, '.upload-jobs');
@@ -249,7 +269,8 @@ function launchUpload(item: ScheduledUpload): { pid: number; logPath: string } {
     '--privacy', effectivePrivacy,
   ];
   if (item.publishAt) args.push('--publish-at', item.publishAt);
-  if (item.tags?.length) args.push('--tags', item.tags.join(','));
+  const ytTags = trimTagsForYouTube(item.tags ?? []);
+  if (ytTags.length) args.push('--tags', ytTags.join(','));
   const thumbPath = item.thumbnailFilename
     ? path.join(item.videoFolder, '_PACKAGING', 'MINIATURAS', item.thumbnailFilename)
     : '';
@@ -332,11 +353,15 @@ async function onUploadDone(item: ScheduledUpload): Promise<void> {
         videoTitle: item.title || item.videoTitle,
         youtubeVideoId: item.youtubeVideoId,
         privacy: item.privacyOnPublish,
+        publishAt: item.publishAt,
       });
     } catch {}
     item.notified = true;
   }
-  if (item.privacyOnPublish !== 'public') {
+  // Mover a "ready" los que NO salen públicos de inmediato: ocultos, privados y
+  // los PROGRAMADOS (public + publishAt, que están privados hasta su hora). Solo
+  // el público-inmediato (sin publishAt) se queda donde está.
+  if (item.privacyOnPublish !== 'public' || item.publishAt) {
     try {
       const newFolder = await moveToReady(item);
       if (newFolder) item.videoFolder = newFolder;

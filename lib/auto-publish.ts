@@ -21,8 +21,11 @@ import { computeProgress, THUMB_MIN_ASPECT } from './progress';
 import { readImageSize } from './image-size';
 import { listActiveJobsForFolder } from './claude-jobs';
 import { extractMetadata } from './extract-metadata';
-import { addUpload, hasUploadForFolder } from './upload-schedule';
+import { addUpload, hasUploadForFolder, type Privacy } from './upload-schedule';
 import { sendTelegram, escapeHtml } from './notify';
+import { readContentCalendar, updatePlanned } from './content-calendar';
+import { getCadence } from './channel-cadence';
+import type { PlannedItem } from './calendar-types';
 
 /** Marcador (en _PACKAGING/) de que el vídeo ya se encoló para auto-subida. */
 const MARKER = '.auto-published.json';
@@ -46,14 +49,31 @@ function isEnabled(): boolean {
 function isDryRun(): boolean {
   return process.env.YTCP_AUTOPUBLISH_DRYRUN === '1';
 }
+/** Kill-switch de la programación NATIVA por calendario. Si '0', el detector
+ *  NUNCA programa público por calendario → todo cae a OCULTO (comportamiento
+ *  seguro previo). Permite desactivar la auto-publicación pública de golpe. */
+function calendarScheduleEnabled(): boolean {
+  return process.env.YTCP_CALENDAR_SCHEDULE_ENABLED !== '0';
+}
+/** Margen mínimo: si la fecha planificada está a menos de esto en el futuro, se
+ *  trata como "pasada/demasiado próxima" — upload.py rechaza publishAt <= now y
+ *  la subida tarda varios minutos, así que no daría tiempo. */
+const OVERDUE_MARGIN_MS = 10 * 60 * 1000;
+/** Marcador (en _PACKAGING/) de "su fecha ya pasó, pendiente de reprogramar".
+ *  Dedupe del aviso para no repetirlo en cada tick mientras la fecha no cambie. */
+const RESCHEDULE_MARKER = '.reschedule-pending.json';
 
 export interface AutoPublishResult {
   channel: string;
   videoTitle: string;
   videoFolder: string;
-  action: 'enqueued' | 'skipped-no-title' | 'dry-run';
+  action: 'enqueued' | 'skipped-no-title' | 'dry-run' | 'scheduled' | 'overdue-reschedule';
   uploadId?: string;
   title?: string;
+  /** Si se programó nativo en YouTube: ISO (UTC) en que sale público. */
+  publishAt?: string;
+  /** Privacidad con la que se encoló ('unlisted' por defecto, 'public' si programado). */
+  privacy?: Privacy;
 }
 
 /** Carpetas (no terminales) donde puede aparecer un vídeo terminado. */
@@ -126,6 +146,91 @@ async function pickThumbnail(packagingDir: string): Promise<string | null> {
   return best?.name ?? null;
 }
 
+// ── Programación calendar-aware (publishAt NATIVO de YouTube) ───────────────
+
+/** Clave de título normalizada (sin caracteres ilegales de carpeta, minúsculas)
+ *  para casar planificado ↔ carpeta de vídeo sin falsos negativos por mayúsculas. */
+function normalizeTitleKey(title: string): string {
+  return title.replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+/** ISO (UTC Z) que upload.py acepta, desde la fecha planificada. Solo-fecha →
+ *  hora de cadencia del canal (default 12) en LOCAL. datetime sin tz → LOCAL (tz
+ *  del PC de Pablo). datetime con tz → se respeta. null si no parsea. */
+function plannedDateToUtc(dateStr: string, channelSlug: string): string | null {
+  let s = (dateStr || '').trim();
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const cad = getCadence(channelSlug);
+    const hour = cad?.hour ?? 12;
+    s = `${s}T${String(hour).padStart(2, '0')}:00:00`; // local, sin tz
+  }
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString(); // UTC Z
+}
+
+/** Item planificado del calendario para esta carpeta. PRIMARIO: por videoFolder
+ *  (lo enlaza start-pipeline; sobrevive a cambios de título de MARCOS/Pablo).
+ *  FALLBACK: canal + título normalizado (carpeta o título final), SOLO sobre
+ *  planificados aún SIN carpeta enlazada (p.ej. producidos fuera del calendario). */
+function findPlanForVideo(normFolder: string, channelSlug: string, finalTitle: string): PlannedItem | null {
+  const norm = normFolder.normalize('NFC');
+  const folderBase = norm.split('/').pop() ?? '';
+  const items = readContentCalendar().items;
+  const byFolder = items.find(
+    (p) => p.videoFolder && p.videoFolder.replace(/\\/g, '/').normalize('NFC') === norm,
+  );
+  if (byFolder) return byFolder;
+  const wantA = normalizeTitleKey(folderBase);
+  const wantB = normalizeTitleKey(finalTitle);
+  return (
+    items.find(
+      (p) =>
+        p.channel === channelSlug &&
+        !p.videoFolder &&
+        (normalizeTitleKey(p.title) === wantA || normalizeTitleKey(p.title) === wantB),
+    ) ?? null
+  );
+}
+
+/** Red de seguridad: la fecha planificada ya pasó (o está demasiado próxima). NO
+ *  se publica a deshora; se avisa a Pablo (una vez por fecha, dedupe con marker)
+ *  para que dé una hora nueva o lo mueva en /calendar. */
+async function handleOverduePlan(channel: Channel, packagingDir: string, name: string, plan: PlannedItem): Promise<void> {
+  const markerPath = path.join(packagingDir, RESCHEDULE_MARKER);
+  try {
+    const prev = JSON.parse(await readFile(markerPath, 'utf-8')) as { plannedDate?: string };
+    if (prev?.plannedDate === plan.date) return; // ya avisado para esta misma fecha
+  } catch {}
+  try {
+    writeFileSync(
+      markerPath,
+      JSON.stringify({ plannedDate: plan.date, at: new Date().toISOString() }, null, 2),
+      'utf-8',
+    );
+  } catch {}
+  let whenLocal = plan.date;
+  try {
+    const d = new Date(plan.date);
+    if (!Number.isNaN(d.getTime())) {
+      whenLocal = d.toLocaleString('es-ES', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    }
+  } catch {}
+  await sendTelegram(
+    `⏰ <b>${escapeHtml(name)}</b> (${escapeHtml(channel.name)}) está listo, pero su fecha ` +
+      `planificada (<b>${escapeHtml(whenLocal)}</b>) ya pasó o está demasiado próxima para subirlo a tiempo.\n` +
+      `Lo dejo SIN publicar para no sacarlo a deshora.\n` +
+      `📌 Dame una fecha/hora futura (o muévelo en /calendar) y lo programo solo en YouTube.`,
+  );
+}
+
 async function considerVideo(
   channel: Channel,
   videoFolder: string,
@@ -182,6 +287,36 @@ async function considerVideo(
   const thumb = await pickThumbnail(packagingDir);
   if (!thumb) return null; // por seguridad (miniaturaFinal era true)
 
+  // ── ¿Está en el calendario? → programación NATIVA de YouTube ─────────────
+  // Si hay un planificado con fecha FUTURA, se sube como PÚBLICO PROGRAMADO
+  // (publishAt): YouTube lo hace público solo a esa hora, sin PC encendido. Si la
+  // fecha ya pasó → red de seguridad (no publicar a deshora + avisar). Si NO está
+  // en el calendario → OCULTO (unlisted), comportamiento por defecto seguro.
+  let privacy: Privacy = 'unlisted';
+  let publishAt: string | undefined;
+  let matchedPlan: PlannedItem | null = null;
+  if (calendarScheduleEnabled()) {
+    const plan = findPlanForVideo(normFolder, channel.slug, meta.title);
+    if (plan && plan.date) {
+      const utc = plannedDateToUtc(plan.date, channel.slug);
+      if (utc && Date.parse(utc) > Date.now() + OVERDUE_MARGIN_MS) {
+        privacy = 'public';
+        publishAt = utc;
+        matchedPlan = plan;
+      } else if (utc) {
+        // Fecha pasada o demasiado próxima: no publicar a deshora.
+        if (!isDryRun()) await handleOverduePlan(channel, packagingDir, name, plan);
+        return {
+          channel: channel.slug,
+          videoTitle: name,
+          videoFolder: normFolder,
+          action: 'overdue-reschedule',
+          title: meta.title,
+        };
+      }
+    }
+  }
+
   if (isDryRun()) {
     return {
       channel: channel.slug,
@@ -189,6 +324,8 @@ async function considerVideo(
       videoFolder: normFolder,
       action: 'dry-run',
       title: meta.title,
+      publishAt,
+      privacy,
     };
   }
 
@@ -200,16 +337,30 @@ async function considerVideo(
     description: meta.description,
     tags: meta.tags,
     thumbnailFilename: thumb,
-    privacyOnPublish: 'unlisted',
+    privacyOnPublish: privacy,
     scheduledFor: new Date().toISOString(),
+    publishAt,
     auto: true,
   });
+
+  // Enlazar + marcar el planificado 'scheduled' (refleja en /calendar + dedupe).
+  if (matchedPlan) {
+    try {
+      updatePlanned(matchedPlan.id, { status: 'scheduled', videoFolder: normFolder });
+    } catch {}
+  }
 
   try {
     writeFileSync(
       path.join(packagingDir, MARKER),
       JSON.stringify(
-        { enqueuedAt: new Date().toISOString(), uploadId: item.id, title: meta.title, privacy: 'unlisted' },
+        {
+          enqueuedAt: new Date().toISOString(),
+          uploadId: item.id,
+          title: meta.title,
+          privacy,
+          ...(publishAt ? { publishAt, scheduled: true } : {}),
+        },
         null,
         2,
       ),
@@ -221,9 +372,11 @@ async function considerVideo(
     channel: channel.slug,
     videoTitle: name,
     videoFolder: normFolder,
-    action: 'enqueued',
+    action: publishAt ? 'scheduled' : 'enqueued',
     uploadId: item.id,
     title: meta.title,
+    publishAt,
+    privacy,
   };
 }
 

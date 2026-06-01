@@ -22,9 +22,10 @@ export async function GET(req: NextRequest) {
   const channelFilter = req.nextUrl.searchParams.get('channel');
   const matchesChannel = (slug: string) => !channelFilter || slug === channelFilter;
 
+  const scheduleItems = readSchedule().items;
   // 1) Subidas reales/programadas.
-  const uploadItems: CalendarItem[] = readSchedule()
-    .items.filter((u) => matchesChannel(u.channel))
+  const uploadItems: CalendarItem[] = scheduleItems
+    .filter((u) => matchesChannel(u.channel))
     .map((u) => ({
       id: u.id,
       channel: u.channel,
@@ -39,9 +40,17 @@ export async function GET(req: NextRequest) {
       youtubeVideoId: u.youtubeVideoId,
     }));
 
-  // 2) Plan editorial (huecos/ideas planificadas).
+  // Basename de carpeta de cada subida (estable aunque la carpeta cambie de
+  // estado) → para ocultar el planificado que YA es subida y no duplicar el chip.
+  const baseOf = (f?: string) =>
+    (f || '').replace(/\\/g, '/').split('/').filter(Boolean).pop()?.normalize('NFC') ?? '';
+  const uploadFolderBases = new Set(scheduleItems.map((u) => baseOf(u.videoFolder)).filter(Boolean));
+
+  // 2) Plan editorial (huecos/ideas planificadas). Oculta los que ya tienen subida
+  //    (misma carpeta): la subida es el registro vivo → evita el chip duplicado.
   const plannedItems: CalendarItem[] = readContentCalendar()
     .items.filter((p) => matchesChannel(p.channel))
+    .filter((p) => !p.videoFolder || !uploadFolderBases.has(baseOf(p.videoFolder)))
     .map((p) => ({
       id: p.id,
       channel: p.channel,

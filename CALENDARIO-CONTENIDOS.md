@@ -204,3 +204,45 @@ Punto de partida: `Y:\04_DEV\J.A.R.V.I.S\lab\youtube-dashboard\components\Calend
 (Luna Media OS, marcado "alto valor" en `ESTABILIZACION-2026-05-24.md`). Se portó
 la rejilla mes lunes-based y el coloreado por estado; adaptado de Next 16/React
 19/Tailwind 4 a Next 14/React 18/Tailwind 3 y al design system glass de ytcp.
+
+---
+
+## 9. Fase 4 — Programación NATIVA de YouTube (publishAt) calendar-aware
+
+> Implementado 2026-06-01. El ÚLTIMO paso (publicar) ahora depende del calendario.
+
+**Comportamiento del detector (`lib/auto-publish.ts`):** cuando un vídeo queda
+completo + idle, antes de encolar mira si está en el plan editorial:
+
+- **En calendario, fecha FUTURA** → sube a YouTube como **público PROGRAMADO**
+  (`privacyStatus=private` + `publishAt`): YouTube lo hace público SOLO a esa hora,
+  sin PC encendido. Aviso informativo por Telegram ("📅 Programado para …").
+- **En calendario, fecha PASADA o <10 min** (`upload.py` rechaza `publishAt<=now` y
+  la subida tarda) → **red de seguridad**: NO publica a deshora; queda sin subir y
+  avisa a Pablo para reprogramar (dedupe `.reschedule-pending.json`). Al darle fecha
+  futura (o moverlo en /calendar), el siguiente tick lo programa.
+- **NO en calendario** → **OCULTO (unlisted)**, como antes (seguro por defecto).
+
+**Matching planificado ↔ vídeo:** primario por `videoFolder` (lo enlaza
+`start-pipeline`; sobrevive a cambios de título de MARCOS); fallback por canal +
+título normalizado (carpeta o título final) para planificados sin carpeta enlazada.
+
+**Hora:** el modal usa `datetime-local` → fecha+hora exacta (local → UTC ISO). Si un
+planificado fuera solo-fecha, se aplica la hora de cadencia del canal (default 12) en
+local. Zona horaria validada (Europe/Madrid): un vídeo a las 17:00 sale a las 17:00.
+
+**Autorización (decisión de Pablo, 2026-06-01):** poner un vídeo en el calendario = luz
+verde para que salga público a esa hora, sin confirmación por vídeo. Los que NO están
+en el calendario siguen saliendo ocultos. Kill-switch: `YTCP_CALENDAR_SCHEDULE_ENABLED=0`
+→ todo a oculto (revierte al comportamiento previo).
+
+**Plumbing reusada (ya existía + probada por /upload):** `upload.py --publish-at`
+(valida fecha futura, fuerza private), `ScheduledUpload.publishAt`, `addUpload({publishAt})`.
+Solo faltaba conectar el calendario en `auto-publish.ts` + el aviso "Programado".
+
+**Archivos:** `lib/auto-publish.ts` (núcleo), `lib/notify.ts` (aviso programado),
+`lib/upload-schedule.ts` (publishAt al aviso + mover ready también los programados),
+`app/api/calendar/route.ts` (dedup planned↔upload por basename). Typecheck verde; test
+de lógica `_test-schedule.js` 17/17 (tz + matching + overdue). **Pendiente:** validar
+con el primer vídeo real programado; reply-capture del reschedule por Telegram (hoy el
+aviso pide mover en /calendar o decir la fecha → se actualiza el planificado).

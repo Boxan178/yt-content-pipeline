@@ -322,6 +322,28 @@ export interface UploadNotifyInfo {
   /** ID del vídeo en YouTube (si se conoce). */
   youtubeVideoId?: string;
   privacy: 'unlisted' | 'private' | 'public';
+  /** ISO 8601 (UTC) si la subida usa programación NATIVA de YouTube (publishAt):
+   *  el vídeo se sube PRIVADO y YouTube lo hace público solo a esa hora. Cambia el
+   *  mensaje a "📅 Programado para …". */
+  publishAt?: string;
+}
+
+/** Formatea un ISO (UTC) a fecha/hora local legible (tz del PC = Europe/Madrid). */
+function formatLocalDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  try {
+    return d.toLocaleString('es-ES', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return d.toISOString();
+  }
 }
 
 /**
@@ -341,7 +363,17 @@ export async function notifyUploadDone(
 
   let text: string;
   let pushTitle: string;
-  if (info.privacy === 'public') {
+  if (info.publishAt) {
+    // Programación NATIVA de YouTube: el vídeo está PRIVADO y sale público solo a
+    // esta hora, sin que el PC tenga que estar encendido. Aviso informativo (Q1).
+    const whenLocal = formatLocalDateTime(info.publishAt);
+    text =
+      `📅 <b>Programado</b> en ${safeChannel}\n${safeTitle}\n` +
+      `🕐 Se publica solo: <b>${escapeHtml(whenLocal)}</b>` +
+      (info.youtubeVideoId ? `\nhttps://youtu.be/${info.youtubeVideoId}` : '') +
+      (studio ? `\n<a href="${studio}">Ver en YouTube Studio</a>` : '');
+    pushTitle = '📅 Programado';
+  } else if (info.privacy === 'public') {
     text =
       `📤 <b>Publicado</b> en ${safeChannel}\n${safeTitle}` +
       (info.youtubeVideoId ? `\nhttps://youtu.be/${info.youtubeVideoId}` : '');

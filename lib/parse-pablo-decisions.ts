@@ -28,7 +28,14 @@ export interface PabloDecision {
   kind: DecisionKind;
 }
 
-const PENDING_RE = /pendiente\s+(elecci[oó]n|decisi[oó]n|selecci[oó]n)\s+de\s+pablo/i;
+// Cubre los formatos reales que escribe SARA, no solo el ancla canónica:
+//  - "**Estado:** ⏳ PENDIENTE ELECCIÓN DE PABLO"
+//  - "Pendiente validación visual de Pablo" (miniatura)
+//  - "pendiente de aprobación/revisión de Pablo"
+const PENDING_RE = /pendiente\s+(?:de\s+)?(?:elecci[oó]n|decisi[oó]n|selecci[oó]n|validaci[oó]n|aprobaci[oó]n|revisi[oó]n)\s+(?:visual\s+)?(?:de\s+)?pablo/i;
+// Checkbox SIN marcar atribuido a Pablo y pendiente, en cualquier orden:
+//  "- [ ] Título elegido (Pablo) — ⏳ PENDIENTE"
+const PENDING_CHECKBOX_RE = /^\s*-\s*\[\s*\]\s+(?=.*\(\s*pablo\s*\))(?=.*pendiente)/i;
 const HEADING_RE = /^(#{1,6})\s+(.+?)\s*$/;
 
 function cleanOption(raw: string): string {
@@ -80,7 +87,7 @@ export function parsePabloDecisions(markdown: string | null | undefined): PabloD
   const out: PabloDecision[] = [];
 
   for (const sec of splitSections(markdown)) {
-    const anchorLine = sec.body.find((l) => PENDING_RE.test(l));
+    const anchorLine = sec.body.find((l) => PENDING_RE.test(l) || PENDING_CHECKBOX_RE.test(l));
     if (!anchorLine) continue;
 
     // Candidatos: items de lista numerada primero, si no, entrecomillados.

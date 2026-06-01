@@ -45,3 +45,11 @@ next-env.d.ts
 
 # Artefactos de sesiones Playwright MCP (testing)
 .playwright-mcp/
+
+# scripts helper de sesión (relays Telegram, lanzadores de job, tests sueltos…) — no commitear
+/_*.js
+/_*.cjs
+/_*.mjs
+/_*.py
+/_*.txt
+/_*.log
