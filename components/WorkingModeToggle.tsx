@@ -6,29 +6,43 @@ type Mode = 'home' | 'away';
 const STORAGE_KEY = 'ytcp:working-mode';
 
 /**
- * Toggle "En PC / Fuera". Persiste en localStorage.
+ * Toggle "En PC / Fuera". Persiste en el SERVER (/api/working-mode) para que el
+ * backend lo lea, + localStorage como caché optimista para pintar al instante.
  *
- * Cuando esté integrado el bridge Telegram (pendiente — punto 9 del roadmap),
- * las aprobaciones de jobs respetarán este modo: 'home' = aprobaciones en
- * modal local, 'away' = aprobaciones via Telegram al móvil.
- *
- * Hoy es puramente visual + flag persistido. El backend NO usa este valor
- * todavía. Cuando lo use, leer `localStorage.getItem('ytcp:working-mode')`.
+ * Semántica MIXTA (Pablo, 2026-06-01): las aprobaciones van SIEMPRE por Telegram
+ * en ambos modos. 'away' ("Fuera") añade avisos de completados (renders, subidas…).
+ * Al cambiar de modo, el backend manda un aviso a Telegram. El flag de completados
+ * se usará en una tarea siguiente; hoy el toggle ya persiste + avisa.
  */
 export function WorkingModeToggle() {
   const [mode, setMode] = useState<Mode>('home');
 
   useEffect(() => {
+    // localStorage primero (instantáneo), luego el server como fuente de verdad.
     try {
       const m = localStorage.getItem(STORAGE_KEY);
       if (m === 'home' || m === 'away') setMode(m);
     } catch {}
+    fetch('/api/working-mode')
+      .then((r) => r.json())
+      .then((d: { mode?: Mode }) => {
+        if (d?.mode === 'home' || d?.mode === 'away') {
+          setMode(d.mode);
+          try { localStorage.setItem(STORAGE_KEY, d.mode); } catch {}
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const toggle = () => {
     const next: Mode = mode === 'home' ? 'away' : 'home';
-    setMode(next);
+    setMode(next); // optimista
     try { localStorage.setItem(STORAGE_KEY, next); } catch {}
+    fetch('/api/working-mode', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: next }),
+    }).catch(() => {});
     // Notif global por si algún componente quiere reaccionar
     window.dispatchEvent(new CustomEvent('ytcp:working-mode-changed', { detail: { mode: next } }));
   };
@@ -43,8 +57,8 @@ export function WorkingModeToggle() {
       }`}
       title={
         isHome
-          ? 'En el PC (aprobaciones en pantalla). Click para cambiar a "Fuera".'
-          : 'Fuera del PC (aprobaciones por Telegram, pendiente). Click para volver a "En el PC".'
+          ? 'En el PC. Las decisiones te llegan por Telegram igual. Click para "Fuera" (+ avisos de lo que acaba).'
+          : 'Fuera del PC. Decisiones + avisos de todo lo que acaba, por Telegram. Click para volver a "En el PC".'
       }
     >
       <span

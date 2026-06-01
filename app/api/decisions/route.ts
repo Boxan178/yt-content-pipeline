@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
-import path from 'node:path';
 import { normalizeAllowedPath } from '@/lib/config';
+import { applyDecision, DecisionError } from '@/lib/decisions';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -46,65 +44,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'decision vacía' }, { status: 400 });
   }
 
-  const packagingPath = path.join(folder, '_PACKAGING', 'packaging.md');
-  if (!existsSync(packagingPath)) {
-    return NextResponse.json({ ok: false, error: 'packaging.md no existe' }, { status: 404 });
-  }
-
-  // normalize('NFC') en ambos lados: el packaging.md del disco y el itemText del
-  // cliente pueden venir en formas Unicode distintas (acentos/em-dash). Sin esto
-  // el regex no matchea y la decisión se añade duplicada al final en vez de marcar
-  // el checkbox/ancla existente.
-  let md = (await readFile(packagingPath, 'utf-8')).normalize('NFC');
-  const itemText = body.itemText.normalize('NFC');
-  const itemEscaped = itemText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  // Buscamos la línea `- [ ] <texto exacto>` permitiendo espacios variables
-  const re = new RegExp(`^(\\s*)-\\s*\\[\\s*\\]\\s+${itemEscaped}\\s*$`, 'm');
-  const ts = new Date();
-  const tsHuman = ts.toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
-
-  let updated = false;
-
-  // Caso A — decisión "PENDIENTE ELECCIÓN DE PABLO" como texto libre: sustituimos
-  // la línea de Estado por el resultado para que deje de aparecer como pendiente.
-  if (body.statusAnchor?.trim()) {
-    const anchor = body.statusAnchor.trim().normalize('NFC');
-    const anchorEscaped = anchor.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const anchorRe = new RegExp(`^(\\s*)${anchorEscaped}\\s*$`, 'm');
-    if (anchorRe.test(md)) {
-      md = md.replace(anchorRe, (_m, indent: string) => {
-        updated = true;
-        return `${indent}**Estado:** ✅ ELEGIDO: ${body.decision} _(${tsHuman})_`;
-      });
-    }
-  }
-
-  // Caso B — checkbox markdown `- [ ] <texto>` → `- [x] …`.
-  if (!updated && re.test(md)) {
-    md = md.replace(re, (_match, indent: string) => {
-      updated = true;
-      return `${indent}- [x] ${itemText}\n${indent}  → DECISIÓN: ${body.decision} _(${tsHuman})_`;
+  try {
+    const result = await applyDecision({
+      folder,
+      itemText: body.itemText,
+      decision: body.decision,
+      rationale: body.rationale,
+      statusAnchor: body.statusAnchor,
     });
+    return NextResponse.json({
+      ok: true,
+      packagingUpdated: result.packagingUpdated,
+      historyPath: result.historyPath,
+    });
+  } catch (e) {
+    if (e instanceof DecisionError && e.code === 'NO_PACKAGING') {
+      return NextResponse.json({ ok: false, error: 'packaging.md no existe' }, { status: 404 });
+    }
+    return NextResponse.json(
+      { ok: false, error: e instanceof Error ? e.message : String(e) },
+      { status: 500 },
+    );
   }
-
-  if (!updated) {
-    // No encontrado: añadir entrada en sección "Decisiones" al final
-    md = md.trimEnd() + `\n\n## Decisiones\n\n- ${itemText}\n  → DECISIÓN: ${body.decision} _(${tsHuman})_\n`;
-  }
-
-  await writeFile(packagingPath, md, 'utf-8');
-
-  // Histórico en disco
-  const decisionsDir = path.join(folder, '_PACKAGING', 'decisions');
-  if (!existsSync(decisionsDir)) await mkdir(decisionsDir, { recursive: true });
-  const filename = `${ts.toISOString().replace(/[:.]/g, '-').slice(0, 19)}.md`;
-  const histPath = path.join(decisionsDir, filename);
-  const hist = `# Decisión · ${tsHuman}\n\n**Item**: ${body.itemText}\n\n**Decisión**: ${body.decision}\n${body.rationale ? `\n**Razón**: ${body.rationale}\n` : ''}`;
-  await writeFile(histPath, hist, 'utf-8');
-
-  return NextResponse.json({
-    ok: true,
-    packagingUpdated: updated,
-    historyPath: histPath.replace(/\\/g, '/'),
-  });
 }
