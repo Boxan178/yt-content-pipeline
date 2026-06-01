@@ -20,7 +20,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { CHANNELS, getChannel } from './channels';
-import { parsePabloDecisions } from './parse-pablo-decisions';
+import { parsePabloDecisions, extractTitleOptions } from './parse-pablo-decisions';
 import { voicePrefix } from './agent-voices';
 import {
   escapeHtml,
@@ -259,19 +259,50 @@ function launchResume(req: ApprovalRequest, choice: ApprovalChoice, notes?: stri
 
 // ── Envío de una solicitud a Telegram ───────────────────────────────────────
 
+/** Reparte botones en filas de `size`. */
+function chunk<T>(arr: T[], size: number): T[][] {
+  const rows: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) rows.push(arr.slice(i, i + size));
+  return rows;
+}
+
 async function sendRequest(req: ApprovalRequest): Promise<void> {
   const channelName = req.channel ? getChannel(req.channel)?.name ?? req.channel : '';
-  const title = req.payload?.title;
   const header = `${voicePrefix(req.skill, req.label)} pregunta${channelName ? ` · ${escapeHtml(channelName)}` : ''}`;
-  const body = title ? `\n\n«${escapeHtml(title)}»` : '';
-  const text = `${header}${body}\n\n${escapeHtml(req.question)}`;
-  const buttons = [
-    [
-      { text: '✅ Aprobar', callback_data: `${req.token}:a` },
-      { text: '❌ Rechazar', callback_data: `${req.token}:r` },
-    ],
-    [{ text: '📝 Rechazar con notas', callback_data: `${req.token}:n` }],
-  ];
+  const options = req.payload?.options ?? [];
+  const recommended = req.payload?.title;
+  // ELEGIR de una lista: solo cuando hay ≥2 títulos y NO es una foto (miniatura).
+  const isPick = !req.imagePath && options.length >= 2;
+
+  let text: string;
+  let buttons: { text: string; callback_data: string }[][];
+
+  if (isPick) {
+    const recIdx = recommended ? options.findIndex((o) => o === recommended) : -1;
+    const list = options
+      .map((o, i) => `${i === recIdx ? '⭐ ' : ''}<b>${i + 1}.</b> ${escapeHtml(o)}`)
+      .join('\n');
+    text = `${header}\n\n${escapeHtml(req.question)} (⭐ = recomendado)\n\n${list}`;
+    const numBtns = options.map((_, i) => ({
+      text: `${i === recIdx ? '⭐' : ''}${i + 1}`,
+      callback_data: `${req.token}:o:${i}`,
+    }));
+    buttons = chunk(numBtns, 4);
+    buttons.push([
+      { text: '❌ Ninguno / pedir otra', callback_data: `${req.token}:r` },
+      { text: '📝 Notas', callback_data: `${req.token}:n` },
+    ]);
+  } else {
+    const body = recommended ? `\n\n«${escapeHtml(recommended)}»` : '';
+    text = `${header}${body}\n\n${escapeHtml(req.question)}`;
+    buttons = [
+      [
+        { text: '✅ Aprobar', callback_data: `${req.token}:a` },
+        { text: '❌ Rechazar', callback_data: `${req.token}:r` },
+      ],
+      [{ text: '📝 Rechazar con notas', callback_data: `${req.token}:n` }],
+    ];
+  }
   // Si hay miniatura, la mandamos como FOTO (preview) con los mismos botones.
   const res =
     req.imagePath && existsSync(req.imagePath)
@@ -391,14 +422,37 @@ async function detectAndSend(s: ApprovalState): Promise<number> {
         let imagePath: string | undefined;
         let question: string;
         let title: string | undefined;
+        let options = d.options;
         if (thumb) {
           const img = pickThumbnailCandidate(folder);
           if (!img) continue; // sin imagen no hay preview que mandar
           imagePath = img;
           question = '¿Apruebas esta miniatura?';
         } else {
-          title = d.recommendation || d.options[0] || d.label;
-          question = '¿Apruebas este título?';
+          // Si las opciones viven en un fichero externo (ej. marcos-titulos.md) y
+          // aquí no tenemos suficientes, lo leemos para sacar la lista completa.
+          let recommended = d.recommendation;
+          if (d.optionsFile && options.length < 2) {
+            try {
+              const ext = extractTitleOptions(
+                readFileSync(path.join(folder, '_PACKAGING', d.optionsFile), 'utf-8'),
+              );
+              if (ext.options.length) {
+                options = ext.options;
+                recommended = ext.recommended || recommended;
+              }
+            } catch {
+              // fichero ausente/ilegible → seguimos con lo que haya
+            }
+          }
+          // El recomendado debe estar en la lista para poder marcarlo con ⭐.
+          if (recommended && !options.includes(recommended)) options = [recommended, ...options];
+          title = recommended || options[0];
+          // GUARD: sin un título real NO mandamos tarjeta (antes salía el churro de
+          // la línea de Estado o el literal "Elegir título"). Se reintentará cuando
+          // el packaging.md tenga las opciones en un formato legible.
+          if (!title) continue;
+          question = options.length >= 2 ? '¿Qué título eliges?' : '¿Apruebas este título?';
         }
 
         const req: ApprovalRequest = {
@@ -412,7 +466,7 @@ async function detectAndSend(s: ApprovalState): Promise<number> {
           label: d.section,
           kind: 'approve_reject',
           question,
-          payload: { title, options: d.options },
+          payload: { title, options },
           imagePath,
           statusAnchor: d.anchor,
           status: 'open',
@@ -495,7 +549,7 @@ async function handleUpdate(s: ApprovalState, update: TelegramUpdate, chatId: st
       await telegramAnswerCallback(cq.id, 'No autorizado');
       return;
     }
-    const [tok, choice] = (cq.data ?? '').split(':');
+    const [tok, choice, arg] = (cq.data ?? '').split(':');
     const req = s.items.find((r) => r.token === tok);
     if (!req) {
       await telegramAnswerCallback(cq.id, 'Solicitud no encontrada o caducada');
@@ -503,6 +557,19 @@ async function handleUpdate(s: ApprovalState, update: TelegramUpdate, chatId: st
     }
     if (req.status === 'answered' || req.status === 'expired') {
       await telegramAnswerCallback(cq.id, 'Esta decisión ya estaba resuelta');
+      return;
+    }
+    if (choice === 'o') {
+      // Elección de un título concreto de la lista → se aprueba ESE.
+      const opts = req.payload?.options ?? [];
+      const idx = Number.parseInt(arg ?? '', 10);
+      if (!Number.isInteger(idx) || idx < 0 || idx >= opts.length) {
+        await telegramAnswerCallback(cq.id, 'Opción no válida');
+        return;
+      }
+      req.payload = { ...req.payload, title: opts[idx] };
+      await telegramAnswerCallback(cq.id, `✅ Elegido #${idx + 1}`);
+      await resolve(req, 'approved');
       return;
     }
     if (choice === 'n') {
@@ -536,8 +603,15 @@ async function handleUpdate(s: ApprovalState, update: TelegramUpdate, chatId: st
     const replyTo = m.reply_to_message?.message_id;
     let req =
       (replyTo != null && s.items.find((r) => r.awaitingNotes && r.awaitingNotesMessageId === replyTo)) || undefined;
-    if (!req) req = s.items.find((r) => r.awaitingNotes && r.status === 'sent');
-    if (!req) return; // no es una respuesta de notas que nos interese — se ignora
+    if (!req) {
+      // Fallback SOLO si hay EXACTAMENTE UNA solicitud esperando notas. Si hay
+      // varias y el mensaje no es un quote-reply (Telegram no adjunta reply_to si
+      // el usuario escribe suelto), no podemos saber a cuál pertenece → atribuirla
+      // a una arbitraria resolvería la decisión equivocada (notas en el SARA que no es).
+      const awaiting = s.items.filter((r) => r.awaitingNotes && r.status === 'sent');
+      if (awaiting.length === 1) req = awaiting[0];
+    }
+    if (!req) return; // no es una respuesta de notas que podamos atribuir — se ignora
     await resolve(req, 'rejected', m.text.trim());
   }
 }
