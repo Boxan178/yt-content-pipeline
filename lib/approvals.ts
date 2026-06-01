@@ -458,11 +458,19 @@ async function resolve(req: ApprovalRequest, choice: ApprovalChoice, notes?: str
 // ── Manejo de updates entrantes ─────────────────────────────────────────────
 
 async function handleUpdate(s: ApprovalState, update: TelegramUpdate, chatId: string | number | null): Promise<void> {
-  // 1) Tap de botón inline.
   const cq = update.callback_query;
+  // FAIL-CLOSED: si no hay chat autorizado configurado (secreto del bot ausente o
+  // inválido → getApprovalsChatId() == null), NO procesamos NINGÚN update. Sin esto
+  // el guard de abajo se saltaba con chatId null y CUALQUIERA que diera con el bot
+  // podía resolver decisiones e inyectar texto libre en el prompt de SARA.
+  if (chatId == null) {
+    if (cq) { try { await telegramAnswerCallback(cq.id, 'No configurado'); } catch {} }
+    return;
+  }
+  // 1) Tap de botón inline.
   if (cq) {
     // Seguridad: solo el chat configurado. Ignoramos a cualquier otro.
-    if (chatId != null && String(cq.from?.id) !== String(chatId)) {
+    if (String(cq.from?.id) !== String(chatId)) {
       await telegramAnswerCallback(cq.id, 'No autorizado');
       return;
     }
@@ -503,7 +511,7 @@ async function handleUpdate(s: ApprovalState, update: TelegramUpdate, chatId: st
   // 2) Mensaje de texto (captura de notas vía force_reply).
   const m = update.message;
   if (m?.text) {
-    if (chatId != null && String(m.from?.id) !== String(chatId)) return;
+    if (String(m.from?.id) !== String(chatId)) return;
     const replyTo = m.reply_to_message?.message_id;
     let req =
       (replyTo != null && s.items.find((r) => r.awaitingNotes && r.awaitingNotesMessageId === replyTo)) || undefined;
