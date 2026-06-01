@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { rename, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { getChannel } from '@/lib/channels';
+import { isSafePathSegment } from '@/lib/config';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -31,6 +32,9 @@ export async function POST(
   }
 
   const videoTitle = decodeURIComponent(params.video);
+  if (!isSafePathSegment(videoTitle)) {
+    return NextResponse.json({ error: 'Invalid video name' }, { status: 400 });
+  }
   const from = path.join(channel.rootPath, channel.stateFolders.uploaded, videoTitle);
   const to = path.join(channel.rootPath, channel.stateFolders.archived, videoTitle);
 

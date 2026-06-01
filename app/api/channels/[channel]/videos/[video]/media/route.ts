@@ -3,6 +3,7 @@ import { createReadStream, type ReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import { getChannel } from '@/lib/channels';
+import { isSafePathSegment } from '@/lib/config';
 
 /**
  * Envuelve un ReadStream de Node en un ReadableStream Web tolerante a cancel.
@@ -94,6 +95,12 @@ export async function GET(
   }
 
   const videoTitle = decodeURIComponent(params.video);
+  if (!isSafePathSegment(videoTitle)) {
+    return new Response(JSON.stringify({ error: 'Invalid video name' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
 
   // Buscar la carpeta del vídeo en cualquiera de los 4 estados
   const stateDirs = Object.values(channel.stateFolders);

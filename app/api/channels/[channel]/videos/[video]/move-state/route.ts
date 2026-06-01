@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { rename, stat, cp, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { getChannel, type VideoState } from '@/lib/channels';
+import { isSafePathSegment } from '@/lib/config';
 import { readSettings } from '@/lib/settings';
 
 export const runtime = 'nodejs';
@@ -55,6 +56,9 @@ export async function POST(
 
   // Buscar la carpeta del vídeo en cualquier estado actual
   const videoTitle = decodeURIComponent(params.video);
+  if (!isSafePathSegment(videoTitle)) {
+    return NextResponse.json({ ok: false, error: 'Invalid video name' }, { status: 400 });
+  }
   let src: string | null = null;
   let fromState: VideoState | null = null;
   for (const [s, f] of Object.entries(channel.stateFolders) as [VideoState, string][]) {

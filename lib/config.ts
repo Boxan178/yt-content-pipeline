@@ -122,6 +122,21 @@ export function normalizeAllowedPath(p: string | undefined | null): string | nul
   return isAllowedPath(norm) ? norm : null;
 }
 
+/**
+ * `true` si `seg` es un nombre de carpeta/archivo SEGURO: un único segmento, sin
+ * separadores de path, sin `..`, sin byte nulo y sin letra de unidad. Úsalo para
+ * validar params de ruta controlados por el usuario (p.ej. el título de un vídeo)
+ * ANTES de hacer `path.join(rootDeConfianza, seg)` — bloquea path traversal del
+ * tipo `..%2F..%2F..%2FWindows`. Browser-safe (solo strings/regex).
+ */
+export function isSafePathSegment(seg: string | undefined | null): boolean {
+  if (!seg || typeof seg !== 'string') return false;
+  if (seg.includes('/') || seg.includes('\\') || seg.includes('\0')) return false;
+  if (seg === '.' || seg === '..') return false;
+  if (/^[a-zA-Z]:/.test(seg)) return false; // letra de unidad Windows (C:, H:)
+  return true;
+}
+
 /** Path estándar de los guiones de un canal dentro de youtube-os. */
 export function channelScriptsRoot(slug: string): string {
   return `${YOUTUBE_OS_ROOT}/youtube/${slug}/guiones`;

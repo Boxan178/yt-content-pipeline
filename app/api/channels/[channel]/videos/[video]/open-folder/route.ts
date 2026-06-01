@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import { getChannel } from '@/lib/channels';
+import { isSafePathSegment } from '@/lib/config';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -39,6 +40,9 @@ export async function POST(
   }
 
   const videoTitle = decodeURIComponent(params.video);
+  if (!isSafePathSegment(videoTitle)) {
+    return NextResponse.json({ error: 'Invalid video name' }, { status: 400 });
+  }
   const stateDirs = Object.values(channel.stateFolders);
   let videoDir: string | null = null;
   for (const sf of stateDirs) {

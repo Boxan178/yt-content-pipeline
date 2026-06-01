@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { getChannel } from '@/lib/channels';
+import { isSafePathSegment } from '@/lib/config';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -80,6 +81,9 @@ export async function GET(
   }
 
   const videoTitle = decodeURIComponent(params.video);
+  if (!isSafePathSegment(videoTitle)) {
+    return NextResponse.json({ error: 'Invalid video name' }, { status: 400 });
+  }
   const stateDirs = Object.values(channel.stateFolders);
   const folder = await findVideoFolder(channel.rootPath, stateDirs, videoTitle);
   if (!folder) {

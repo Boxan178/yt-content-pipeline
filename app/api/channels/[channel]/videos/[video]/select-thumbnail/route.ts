@@ -3,6 +3,7 @@ import { stat, writeFile, unlink, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { getChannel } from '@/lib/channels';
+import { isSafePathSegment } from '@/lib/config';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -55,6 +56,9 @@ export async function POST(
   }
 
   const videoTitle = decodeURIComponent(params.video);
+  if (!isSafePathSegment(videoTitle)) {
+    return NextResponse.json({ ok: false, error: 'Invalid video name' }, { status: 400 });
+  }
   const stateDirs = Object.values(channel.stateFolders);
   const videoDir = await findVideoFolder(channel.rootPath, stateDirs, videoTitle);
   if (!videoDir) {
@@ -102,6 +106,7 @@ export async function GET(
     return NextResponse.json({ ok: false, error: 'Channel not found' }, { status: 404 });
   }
   const videoTitle = decodeURIComponent(params.video);
+  if (!isSafePathSegment(videoTitle)) return NextResponse.json({ ok: true, selected: null });
   const stateDirs = Object.values(channel.stateFolders);
   const videoDir = await findVideoFolder(channel.rootPath, stateDirs, videoTitle);
   if (!videoDir) return NextResponse.json({ ok: true, selected: null });
