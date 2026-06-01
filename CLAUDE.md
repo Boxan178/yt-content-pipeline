@@ -15,6 +15,7 @@ Este proyecto **vive en `C:\dev\yt-content-pipeline\`** (SSD local), NO en `Y:\0
 - **Stack**: Electron 33 + Next.js 14 (App Router) + Tailwind + xterm/node-pty para terminal embebida.
 - **Vista principal**: `/channels/[slug]` con kanban (filesystem-driven, lee `H:\YOUTUBE\<canal>\`).
 - **Vista detalle**: modal al click en card, con reproductores, packaging.md renderizado, galería miniaturas, checklist, **botones de skills** (SARA/ELENA/AMELIA/MARCUS/LUIS/NORA+IRIS/MARIO/test-72h).
+- **Vista calendario** (`/calendar`): vista editorial de pájaro (mes) de todo lo programado/planificado, plan editorial con drag-drop, cadencia objetivo por canal + huecos + arranque de pipeline. Stores en `~/.yt-content-pipeline/{content-calendar,channel-cadence}.json`. **Ver `CALENDARIO-CONTENIDOS.md`.**
 - **Terminal embebida**: panel derecho persistente (siempre visible, redimensionable). `claude` o shell, vive en `layout.tsx` para que sobreviva a navegación.
 - **Jobs persistentes**: cada botón de skill spawna proceso con persistencia en `<videoFolder>/.claude-jobs/`. La UI polleia (o usa SSE) el estado. Sobrevive a cerrar modal y cerrar Electron.
 - **Canales** en `lib/channels.ts`. Tres habilitados (`moderni-stoici`, `moderno-estoico`, `vaultman`). Para activar otro, completar `rootPath`, `scriptsRoot` y nombres exactos de las carpetas de estado.
@@ -90,6 +91,7 @@ Cada `<vídeo>/` tiene `01_BRUTOS/`, `RENDER/`, `_PACKAGING/`. Los 6 hitos de pr
 ## Referencias
 
 - `ACCESO-WEB.md` — URLs (local/LAN/Tailscale), funcionalidad web vs .exe, cómo arrancar la versión PROD compilada en :3002, mantenimiento y seguridad
+- `CALENDARIO-CONTENIDOS.md` — módulo `/calendar` (Fases 1-3): vista mes, plan editorial drag-drop, cadencia/huecos/arranque, endpoints, stores y estado de verificación
 - `LAB-PLAN-2026-05-25.md` — plan del módulo `/lab` (decisiones, fases, archivos)
 - `ESTABILIZACION-2026-05-24.md` — auditoría actual (LEER PRIMERO)
 - `STATUS-2026-05-22.md` — cierre de sesión anterior, contexto histórico
