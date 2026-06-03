@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { planForDecision, type DecisionKind, type DecisionPlan } from '@/lib/decision-types';
 
 interface Props {
@@ -50,6 +51,12 @@ export function DecisionModal({
   const [rationale, setRationale] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Portal-mount guard: el modal se renderiza vía createPortal a document.body
+  // para ESCAPAR del containing-block de modales padre con backdrop-filter
+  // (VideoDetailModal). Sin esto, su `position: fixed` se ancla al panel padre
+  // (glass-premium) en vez de a la pantalla → modal metido dentro + solape total.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   // ESC para cerrar + scroll-lock del body mientras está montado
   useEffect(() => {
@@ -97,7 +104,9 @@ export function DecisionModal({
     setBusy(false);
   };
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm"
       onMouseDown={(e) => {
@@ -288,6 +297,7 @@ export function DecisionModal({
           </button>
         </footer>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
