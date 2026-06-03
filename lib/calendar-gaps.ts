@@ -8,8 +8,8 @@
 
 import 'server-only';
 import { readSchedule } from './upload-schedule';
-import { readContentCalendar } from './content-calendar';
-import { readCadence } from './channel-cadence';
+import { readContentCalendar, addPlanned, updatePlanned } from './content-calendar';
+import { readCadence, getCadence } from './channel-cadence';
 import { getChannel, channelColor } from './channels';
 import type { CalendarGapWeek, CalendarGapDay } from './calendar-types';
 
@@ -54,6 +54,75 @@ function occupiedDatesByChannel(): Map<string, Date[]> {
     push(p.channel, p.date);
   }
   return map;
+}
+
+/** 'YYYY-MM-DD' local de una fecha. */
+function ymdLocal(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** basename normalizado de una carpeta (dedupe plan↔vídeo). */
+function folderBase(f?: string): string {
+  return (f || '').replace(/\\/g, '/').split('/').filter(Boolean).pop()?.normalize('NFC') ?? '';
+}
+
+/**
+ * Próximo hueco libre 1/día para un canal: el primer día FUTURO (desde mañana)
+ * sin nada ocupado (subida real o planificado). Devuelve ISO local
+ * 'YYYY-MM-DDTHH:MM:00'. Base de "programar desde la idea": cada idea recibe el
+ * hueco más cercano libre, llenando del más próximo al más lejano.
+ */
+export function nextFreeSlotForChannel(channel: string): string {
+  const occupied = new Set((occupiedDatesByChannel().get(channel) ?? []).map(ymdLocal));
+  const cad = getCadence(channel);
+  const hh = cad?.hour != null ? String(Math.max(0, Math.min(23, cad.hour))).padStart(2, '0') : '19';
+  const mm = cad?.hour != null ? '00' : '30'; // sin cadencia → 19:30 por defecto (tarde, público USA)
+  const today = new Date();
+  let d = addDays(new Date(today.getFullYear(), today.getMonth(), today.getDate()), 1); // mañana
+  for (let i = 0; i < 400; i++) {
+    if (!occupied.has(ymdLocal(d))) return `${ymdLocal(d)}T${hh}:${mm}:00`;
+    d = addDays(d, 1);
+  }
+  return `${ymdLocal(d)}T${hh}:${mm}:00`;
+}
+
+export interface EnsureSlotInput {
+  channel: string;
+  title: string;
+  ideaId?: string;
+  videoFolder?: string;
+}
+
+/**
+ * Garantiza que un vídeo/idea tiene hueco de publicación en el calendario.
+ * Idempotente: si ya hay un planificado para esa idea o carpeta, lo enlaza y
+ * marca 'scheduled' (no duplica). Si no, crea uno en el próximo hueco libre.
+ * Núcleo de "programar desde la idea": se llama al arrancar el pipeline.
+ */
+export function ensurePlannedSlot(input: EnsureSlotInput): { date: string; planId: string; created: boolean } {
+  const items = readContentCalendar().items;
+  const existing = items.find(
+    (p) =>
+      (input.ideaId && p.ideaId === input.ideaId) ||
+      (input.videoFolder && folderBase(p.videoFolder) === folderBase(input.videoFolder)),
+  );
+  if (existing) {
+    updatePlanned(existing.id, {
+      status: 'scheduled',
+      videoFolder: input.videoFolder ?? existing.videoFolder,
+    });
+    return { date: existing.date, planId: existing.id, created: false };
+  }
+  const date = nextFreeSlotForChannel(input.channel);
+  const p = addPlanned({
+    channel: input.channel,
+    date,
+    title: input.title,
+    ideaId: input.ideaId,
+    videoFolder: input.videoFolder,
+    status: 'scheduled',
+  });
+  return { date, planId: p.id, created: true };
 }
 
 /**

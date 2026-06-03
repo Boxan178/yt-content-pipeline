@@ -1,8 +1,8 @@
 {
   "name": "yt-content-pipeline",
-  "version": "0.7.3",
+  "version": "0.7.4",
   "private": true,
-  "description": "YouTube Content Pipeline App — ventana de supervisión para aprobar/rechazar artefactos del pipeline de contenido (miniaturas, guiones, audios, renders) que Claude genera en background.",
+  "description": "YouTube Content Pipeline App â€” ventana de supervisiÃ³n para aprobar/rechazar artefactos del pipeline de contenido (miniaturas, guiones, audios, renders) que Claude genera en background.",
   "author": "Pablo Navas",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -51,7 +51,7 @@
   "build": {
     "appId": "io.ytcp.app",
     "productName": "YT Content Pipeline",
-    "copyright": "Copyright © 2026 Pablo Navas",
+    "copyright": "Copyright Â© 2026 Pablo Navas",
     "directories": {
       "output": "release",
       "buildResources": "build"

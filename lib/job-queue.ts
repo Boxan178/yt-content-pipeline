@@ -14,7 +14,7 @@ import { randomUUID } from 'node:crypto';
 import { startJob, readJob, jobsDirFor, isPidAlive, cancelJob } from './claude-jobs';
 import { computeProgress, type Progress } from './progress';
 import { CHANNELS } from './channels';
-import { buildSaraResume, QUEUE_COMPLETION_INSTRUCTION, type VideoContext } from './prompts';
+import { buildSaraResume, QUEUE_COMPLETION_INSTRUCTION, QUEUE_PREEDIT_COMPLETION_INSTRUCTION, type VideoContext } from './prompts';
 import { extractAssistantText } from './lab/parse-engine-output';
 
 const DIR = path.join(os.homedir(), '.yt-content-pipeline');
@@ -51,6 +51,13 @@ export interface QueueItem {
    * NO loopean.
    */
   loopUntilComplete?: boolean;
+  /**
+   * Fase 1 de la prueba de lava (2026-06-02): si true, el loop completa cuando el
+   * vídeo está LISTO PARA EDITAR (todos los hitos MENOS renderPrincipal) o SARA emite
+   * <<<VIDEO_READY_FOR_EDIT>>>. SARA recibe el prompt en modo "stopBeforeRender" (no
+   * renderiza, no sube). El render lo dispara Pablo después, vídeo a vídeo, tras luz verde.
+   */
+  stopBeforeRender?: boolean;
   /** Turnos de SARA ejecutados sobre este vídeo. */
   attempts?: number;
   /** Backstop anti-runaway de turnos TOTALES (default 20). El detector real de
@@ -108,6 +115,8 @@ export interface EnqueueOptions {
   effort?: 'low' | 'medium' | 'high' | 'max';
   /** Ver QueueItem.loopUntilComplete. */
   loopUntilComplete?: boolean;
+  /** Ver QueueItem.stopBeforeRender. */
+  stopBeforeRender?: boolean;
   maxAttempts?: number;
 }
 
@@ -127,6 +136,7 @@ export function enqueue(opts: EnqueueOptions): QueueItem {
     status: 'pending',
     addedAt: new Date().toISOString(),
     loopUntilComplete: opts.loopUntilComplete,
+    stopBeforeRender: opts.stopBeforeRender,
     maxAttempts: opts.maxAttempts,
   };
   q.items.push(item);
@@ -203,14 +213,15 @@ async function progressOfVideo(videoFolder: string): Promise<Progress> {
 }
 
 /** Lee los marcadores de estado que SARA deja al cerrar su turno. */
-function detectMarkers(logPath: string): { done: boolean; blocked: string | null } {
+function detectMarkers(logPath: string): { done: boolean; readyForEdit: boolean; blocked: string | null } {
   try {
     const text = extractAssistantText(readFileSync(logPath, 'utf-8'));
     const done = /<<<\s*VIDEO_DONE\s*>>>/i.test(text);
+    const readyForEdit = /<<<\s*VIDEO_READY_FOR_EDIT\s*>>>/i.test(text);
     const bm = text.match(/<<<\s*VIDEO_BLOCKED\s*:?\s*([^>]*)>>>/i);
-    return { done, blocked: bm ? (bm[1] || '').trim().slice(0, 240) || 'SARA declaró un bloqueo' : null };
+    return { done, readyForEdit, blocked: bm ? (bm[1] || '').trim().slice(0, 240) || 'SARA declaró un bloqueo' : null };
   } catch {
-    return { done: false, blocked: null };
+    return { done: false, readyForEdit: false, blocked: null };
   }
 }
 
@@ -225,11 +236,12 @@ function relaunchSara(item: QueueItem, progress: Progress): void {
     folderPath: item.videoFolder,
     progress: { hits: progress.hits, total: progress.total, percent: progress.percent, details: progress.details },
   };
-  const resume = buildSaraResume(vctx);
+  const stop = item.stopBeforeRender === true;
+  const resume = buildSaraResume(vctx, { stopBeforeRender: stop });
   const job = startJob({
     skill: 'sara',
     label: item.label,
-    prompt: resume.prompt + QUEUE_COMPLETION_INSTRUCTION,
+    prompt: resume.prompt + (stop ? QUEUE_PREEDIT_COMPLETION_INSTRUCTION : QUEUE_COMPLETION_INSTRUCTION),
     cwd: resume.cwd,
     timeoutMs: resume.timeoutMs,
     videoFolder: item.videoFolder,
@@ -242,6 +254,41 @@ function relaunchSara(item: QueueItem, progress: Progress): void {
   item.jobId = job.jobId;
   item.pid = job.pid;
   // startedAt se mantiene (primer turno) para reflejar el tiempo total del vídeo.
+}
+
+/**
+ * Re-encola un vídeo en modo Fase 1 (pre-edit) para que LA COLA sea el único
+ * driver que lo conduce tras una decisión de Pablo (título/miniatura aprobados por
+ * Telegram). Idempotente: si ya hay un item pending/running para esa carpeta NO
+ * duplica (devuelve null). La usa approvals.ts en lugar de spawnear un SARA suelto,
+ * que podría renderizar o duplicar el render (incidente 2026-06-01).
+ */
+export function enqueuePreEditResume(videoFolder: string): QueueItem | null {
+  const norm = videoFolder.replace(/\\/g, '/').normalize('NFC');
+  const q = readQueue();
+  const active = q.items.find(
+    (it) =>
+      (it.status === 'pending' || it.status === 'running') &&
+      it.videoFolder.replace(/\\/g, '/').normalize('NFC') === norm,
+  );
+  if (active) return null;
+  const channel = findChannelForFolder(videoFolder);
+  const title = videoFolder.replace(/\\/g, '/').split('/').pop() || 'vídeo';
+  const vctx: VideoContext = { channel: channel?.slug ?? '', title, state: 'production', folderPath: videoFolder };
+  const resume = buildSaraResume(vctx, { stopBeforeRender: true });
+  return enqueue({
+    skill: 'sara',
+    label: `SARA pre-edit — ${title.slice(0, 40)}`,
+    videoFolder,
+    videoTitle: title,
+    prompt: resume.prompt + QUEUE_PREEDIT_COMPLETION_INSTRUCTION,
+    cwd: resume.cwd,
+    timeoutMs: resume.timeoutMs,
+    model: resume.model,
+    loopUntilComplete: true,
+    stopBeforeRender: true,
+    maxAttempts: 12,
+  });
 }
 
 // Mutex simple: evita ticks reentrantes (home + /queue pollean a la vez) que con
@@ -312,8 +359,35 @@ async function tickInner(): Promise<QueueState> {
         // El atasco real lo detecta stalledRuns>=2 mucho antes.
         const maxAttempts = running.maxAttempts ?? 20;
         const markers = detectMarkers(job.logPath);
-        if (percent >= 100 || markers.done) {
+        // Fase 1 (stopBeforeRender): "hecho" = LISTO PARA EDITAR DE VERDAD = todos los
+        // hitos menos renderPrincipal (incluida miniatura 16:9 válida). NO basta con que
+        // SARA emita VIDEO_READY_FOR_EDIT: el 2026-06-02 SARA marcó "listo" con una
+        // miniatura CUADRADA (B-REST-RISE-v1.png 2048x2048) que progress.ts no cuenta.
+        // Si SARA dice ready pero faltan hitos reales → BLOQUEAR y avisar, NO dar por bueno.
+        const d = progress.details;
+        const preEditReady = !!(
+          d.hasPackagingMd && d.scriptWritten && d.locucionReady && d.brutosVisuales && d.miniaturaFinal
+        );
+        const realDone =
+          running.stopBeforeRender === true ? preEditReady : percent >= 100 || markers.done;
+        const falseReady = running.stopBeforeRender === true && !preEditReady && markers.readyForEdit;
+        if (realDone) {
           running.status = 'done';
+          running.lastPercent = percent;
+          running.finishedAt = new Date().toISOString();
+          dirty = true;
+        } else if (falseReady) {
+          const missing = [
+            !d.miniaturaFinal ? 'miniatura 16:9 válida' : null,
+            !d.locucionReady ? 'locución' : null,
+            !d.scriptWritten ? 'guion' : null,
+            !d.hasPackagingMd ? 'packaging.md' : null,
+            !d.brutosVisuales ? 'brutos' : null,
+          ]
+            .filter(Boolean)
+            .join(', ');
+          running.status = 'blocked';
+          running.blockReason = `SARA declaró READY_FOR_EDIT pero faltan hitos reales: ${missing}. No se da por listo (revisar miniatura 16:9).`;
           running.lastPercent = percent;
           running.finishedAt = new Date().toISOString();
           dirty = true;

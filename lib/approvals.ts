@@ -35,6 +35,8 @@ import {
 } from './notify';
 import { applyDecision } from './decisions';
 import { startJob, listActiveJobsForFolder, type StartJobOptions } from './claude-jobs';
+import { enqueuePreEditResume } from './job-queue';
+import { regenerateMiniatura } from './miniatura-regen';
 import { buildSaraResume, type VideoContext } from './prompts';
 import { JARVIS_ROOT } from './config';
 import { trackAndNotifyCompletions } from './completion-notify';
@@ -66,6 +68,9 @@ export interface ApprovalRequest {
   label: string;
   // — la pregunta —
   kind: 'approve_reject';
+  /** Gate de PROGRAMACIÓN: los botones son huecos de fecha/hora y el 📝 captura una
+   *  fecha/hora libre como RESPUESTA de Pablo (no como rechazo). */
+  scheduleGate?: boolean;
   question: string;
   payload?: { title?: string; options?: string[] };
   /** Si está, se manda como FOTO (preview de miniatura) en vez de texto. */
@@ -148,9 +153,13 @@ function normFolder(p: string): string {
   return p.replace(/\\/g, '/').normalize('NFC');
 }
 
-/** Clave de dedupe: una decisión = carpeta + ancla exacta. */
-function dedupeKey(videoFolder: string, anchor?: string): string {
-  return `${normFolder(videoFolder)}::${(anchor ?? '').normalize('NFC')}`;
+/** Clave de dedupe: una decisión = carpeta + TIPO (sección) + ancla exacta.
+ *  El tipo es imprescindible: SARA usa el MISMO ancla literal "**Estado:** ⏳ PENDIENTE
+ *  ELECCIÓN DE PABLO" para el título Y la miniatura del mismo vídeo. Sin el tipo, el
+ *  gate de miniatura colisionaba con el de título (misma carpeta+ancla) y se deduplicaba
+ *  → NUNCA se enviaba la miniatura a Pablo (bug 2026-06-02). */
+function dedupeKey(videoFolder: string, anchor?: string, tag?: string): string {
+  return `${normFolder(videoFolder)}::${(tag ?? '').trim().toLowerCase().normalize('NFC')}::${(anchor ?? '').normalize('NFC')}`;
 }
 
 /** Deriva la skill (voz) de una sección tipo "Títulos (MARCOS)". */
@@ -240,6 +249,17 @@ function buildResumeJob(req: ApprovalRequest, choice: ApprovalChoice, notes?: st
   };
 }
 
+/** ¿Está el vídeo en Fase 1 (pre-edit) de la prueba de lava? Marcador .pre-edit-only
+ *  en la raíz de la carpeta. Mientras exista, SARA NO debe renderizar: las reanudaciones
+ *  por aprobación se re-encolan en modo pre-edit en vez de spawnear un SARA suelto. */
+function isPreEditVideo(videoFolder: string): boolean {
+  try {
+    return existsSync(`${videoFolder.replace(/\\/g, '/')}/.pre-edit-only`);
+  } catch {
+    return false;
+  }
+}
+
 function launchResume(req: ApprovalRequest, choice: ApprovalChoice, notes?: string): void {
   try {
     // GUARD anti-doble-SARA (gaps cola↔resume / cola↔render): si YA hay un job
@@ -250,6 +270,28 @@ function launchResume(req: ApprovalRequest, choice: ApprovalChoice, notes?: stri
     // job/cola activo la recoge en su siguiente turno. Solo reanudamos suelto cuando
     // NO hay nadie trabajando (modelo "el agente plantea la pregunta y muere").
     if (listActiveJobsForFolder(req.videoFolder).length > 0) return;
+    // RECHAZO DE MINIATURA: NO re-encolar el pre-edit genérico — re-mandaría la MISMA
+    // imagen (NORA la ve en MINIATURAS/ y la reusa → bucle "te mando lo mismo"). En su
+    // lugar regeneramos un concepto DISTINTO: apartamos la descartada a backup + lanzamos
+    // NORA+IRIS con instrucción de "algo diferente" + el feedback textual de Pablo.
+    if (choice === 'rejected' && /miniatura/i.test(req.label ?? '')) {
+      const res = regenerateMiniatura(req.videoFolder, {
+        channel: req.channel,
+        reason: 'rejected',
+        notes,
+      });
+      req.resumeJobId = res.jobId ?? (res.ok ? 'regen:lanzado' : undefined);
+      if (!res.ok) req.resumeError = res.error;
+      return;
+    }
+    // Fase 1 (pre-edit): la cola es el ÚNICO driver. Re-encolamos en modo pre-edit en
+    // vez de spawnear un SARA suelto que podría renderizar/subir. enqueuePreEditResume
+    // es idempotente (no duplica si ya hay item pending/running para esa carpeta).
+    if (isPreEditVideo(req.videoFolder)) {
+      const item = enqueuePreEditResume(req.videoFolder);
+      req.resumeJobId = item ? `queue:${item.id}` : 'queue:ya-activo';
+      return;
+    }
     const job = startJob(buildResumeJob(req, choice, notes));
     req.resumeJobId = job.jobId;
   } catch (e) {
@@ -288,10 +330,15 @@ async function sendRequest(req: ApprovalRequest): Promise<void> {
       callback_data: `${req.token}:o:${i}`,
     }));
     buttons = chunk(numBtns, 4);
-    buttons.push([
-      { text: '❌ Ninguno / pedir otra', callback_data: `${req.token}:r` },
-      { text: '📝 Notas', callback_data: `${req.token}:n` },
-    ]);
+    if (req.scheduleGate) {
+      // Gate de programación: el 📝 es para escribir una fecha/hora libre (= la RESPUESTA).
+      buttons.push([{ text: '📝 Otra fecha/hora exacta', callback_data: `${req.token}:n` }]);
+    } else {
+      buttons.push([
+        { text: '❌ Ninguno / pedir otra', callback_data: `${req.token}:r` },
+        { text: '📝 Notas', callback_data: `${req.token}:n` },
+      ]);
+    }
   } else {
     const body = recommended ? `\n\n«${escapeHtml(recommended)}»` : '';
     text = `${header}${body}\n\n${escapeHtml(req.question)}`;
@@ -327,6 +374,8 @@ export interface CreateApprovalInput {
   question: string;
   title?: string;
   options?: string[];
+  /** Gate de programación de fecha (📝 = fecha/hora libre como respuesta de Pablo). */
+  scheduleGate?: boolean;
   /** Ruta absoluta de una imagen a mandar como preview (miniatura). */
   imagePath?: string;
   statusAnchor?: string;
@@ -350,6 +399,7 @@ export async function createAndSendRequest(input: CreateApprovalInput): Promise<
     skill: input.skill,
     label: input.label ?? input.skill,
     kind: 'approve_reject',
+    scheduleGate: input.scheduleGate,
     question: input.question,
     payload: { title: input.title, options: input.options },
     imagePath: input.imagePath,
@@ -375,19 +425,17 @@ async function detectAndSend(s: ApprovalState): Promise<number> {
   // Decisión de Pablo (2026-06-01): las aprobaciones van SIEMPRE por Telegram,
   // esté "En el PC" o "Fuera". El toggle NO apaga esto — solo controla los avisos
   // de completados (futuro). Por eso aquí NO hay gate por working-mode.
-  // Dedupe: NO re-mandar una decisión ya pendiente/aprobada. PERO una decisión
-  // RECHAZADA SÍ debe poder re-enviarse: tras un rechazo SARA re-propone con el
-  // MISMO ancla, y si la mantuviéramos en `existing` el re-envío quedaría bloqueado
-  // (Pablo nunca vería la v2). Excluimos answered+rejected del set.
+  // Dedupe: solo contra gates AÚN VIVOS (open/sent). NO incluimos los `answered`:
+  //  - rechazado → SARA re-propone con el mismo ancla y debe re-enviarse.
+  //  - aprobado → si el packaging vuelve a "PENDIENTE" (re-decisión: p.ej. Pablo
+  //    mejora MARCOS y quiere re-elegir títulos), debe poder re-enviarse. El estado
+  //    normal tras aprobar es "✅ ELEGIDO" en packaging.md → parsePabloDecisions ya no
+  //    lo devuelve, así que NO hay re-envío espurio. Incluir `answered` aquí bloqueaba
+  //    las re-decisiones legítimas (no llegaban opciones nuevas a Pablo).
   const existing = new Set(
     s.items
-      .filter(
-        (r) =>
-          r.status !== 'expired' &&
-          r.status !== 'failed' &&
-          !(r.status === 'answered' && r.answer?.choice === 'rejected'),
-      )
-      .map((r) => dedupeKey(r.videoFolder, r.statusAnchor)),
+      .filter((r) => r.status === 'open' || r.status === 'sent')
+      .map((r) => dedupeKey(r.videoFolder, r.statusAnchor, r.label)),
   );
   let sent = 0;
 
@@ -416,7 +464,7 @@ async function detectAndSend(s: ApprovalState): Promise<number> {
         const thumb = isThumbnailDecision(d.section, d.label);
         const titleDec = isTitleDecision(d.section, d.label);
         if (!thumb && !titleDec) continue;
-        const key = dedupeKey(folder, d.anchor);
+        const key = dedupeKey(folder, d.anchor, d.section);
         if (existing.has(key)) continue;
 
         let imagePath: string | undefined;
@@ -447,6 +495,12 @@ async function detectAndSend(s: ApprovalState): Promise<number> {
           }
           // El recomendado debe estar en la lista para poder marcarlo con ⭐.
           if (recommended && !options.includes(recommended)) options = [recommended, ...options];
+          // Pablo: EXACTAMENTE 3 opciones de título. Capamos a 3 garantizando que el
+          // recomendado entre (packagings viejos o un MARCOS díscolo pueden traer más).
+          if (options.length > 3) {
+            const rest = options.filter((o) => o !== recommended);
+            options = (recommended ? [recommended, ...rest] : rest).slice(0, 3);
+          }
           title = recommended || options[0];
           // GUARD: sin un título real NO mandamos tarjeta (antes salía el churro de
           // la línea de Estado o el literal "Elegir título"). Se reintentará cuando
@@ -495,7 +549,12 @@ async function resolve(req: ApprovalRequest, choice: ApprovalChoice, notes?: str
       await applyDecision({
         folder: req.videoFolder,
         itemText: `${req.label}`,
-        decision: `${req.payload?.title ?? 'Aprobado'} — aprobado por Pablo vía Telegram`,
+        // BUG-A FIX: el VALOR elegido NO debe llevar la coletilla de aprobación.
+        // Antes se concatenaba "— aprobado por Pablo vía Telegram" y acababa
+        // dentro del título en packaging.md (ELEGIDO) → subido como título a YouTube.
+        // La provenance va a `rationale`, que solo se escribe al histórico.
+        decision: `${req.payload?.title ?? 'Aprobado'}`,
+        rationale: 'Aprobado por Pablo vía Telegram',
         statusAnchor: req.statusAnchor,
       });
     } catch (e) {
@@ -575,11 +634,13 @@ async function handleUpdate(s: ApprovalState, update: TelegramUpdate, chatId: st
     if (choice === 'n') {
       req.awaitingNotes = true;
       const fr = await sendForceReply({
-        text: `📝 Escribe el motivo del rechazo para ${voicePrefix(req.skill, req.label)} (se lo paso tal cual):`,
-        placeholder: 'Tus notas para el equipo…',
+        text: req.scheduleGate
+          ? `📅 Escríbeme la fecha y hora EXACTA a la que quieres publicar «${escapeHtml(req.videoTitle ?? 'este vídeo')}» (ej: «viernes 13 a las 17:30» o «2026-06-14 18:00»):`
+          : `📝 Escribe el motivo del rechazo para ${voicePrefix(req.skill, req.label)} (se lo paso tal cual):`,
+        placeholder: req.scheduleGate ? 'fecha y hora exacta…' : 'Tus notas para el equipo…',
       });
       req.awaitingNotesMessageId = fr.messageId;
-      await telegramAnswerCallback(cq.id, 'Escríbeme las notas en un mensaje');
+      await telegramAnswerCallback(cq.id, req.scheduleGate ? 'Escríbeme la fecha y hora' : 'Escríbeme las notas en un mensaje');
       return;
     }
     if (choice === 'a') {
@@ -612,7 +673,8 @@ async function handleUpdate(s: ApprovalState, update: TelegramUpdate, chatId: st
       if (awaiting.length === 1) req = awaiting[0];
     }
     if (!req) return; // no es una respuesta de notas que podamos atribuir — se ignora
-    await resolve(req, 'rejected', m.text.trim());
+    // Gate de programación: lo que Pablo escribe ES la respuesta (fecha/hora) → 'approved'.
+    await resolve(req, req.scheduleGate ? 'approved' : 'rejected', m.text.trim());
   }
 }
 

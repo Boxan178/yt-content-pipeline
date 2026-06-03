@@ -18,6 +18,7 @@ import { updateIdea } from './lab/ideas';
 import { startJob } from './claude-jobs';
 import { enqueue } from './job-queue';
 import { buildSaraFromIdea, QUEUE_COMPLETION_INSTRUCTION, type VideoContext } from './prompts';
+import { ensurePlannedSlot } from './calendar-gaps';
 import { JARVIS_ROOT } from './config';
 
 /** Quita caracteres ilegales de Windows pero conserva espacios y acentos. */
@@ -37,6 +38,8 @@ export interface StartIdeaResult {
   jobId?: string;
   /** id del item de cola si mode==='queue'. */
   queueItemId?: string;
+  /** Fecha de publicación asignada en el calendario (programar-desde-idea). */
+  plannedDate?: string;
 }
 
 /**
@@ -91,6 +94,20 @@ export function startPipelineForIdea(
   );
 
   const folderPathFwd = videoDir.replace(/\\/g, '/');
+
+  // Programar DESDE LA IDEA: asignar hueco 1/día en el calendario editorial ANTES
+  // de producir, para que el vídeo ya tenga fecha de publicación (el CEO la
+  // informa, no la pregunta). Idempotente: no duplica si ya había plan.
+  let plannedDate: string | undefined;
+  try {
+    plannedDate = ensurePlannedSlot({
+      channel: channel.slug,
+      title: idea.title,
+      ideaId: idea.id,
+      videoFolder: folderPathFwd,
+    }).date;
+  } catch {}
+
   const vctx: VideoContext = {
     channel: channel.slug,
     title: safeTitle,
@@ -125,7 +142,7 @@ export function startPipelineForIdea(
       pipelineJobId: job.jobId,
       pipelineStartedAt: startedAt,
     });
-    return { videoFolder: folderPathFwd, jobId: job.jobId };
+    return { videoFolder: folderPathFwd, jobId: job.jobId, plannedDate };
   }
 
   // mode === 'queue': la cola procesa este vídeo DE PRINCIPIO A FIN (loop por
@@ -150,5 +167,5 @@ export function startPipelineForIdea(
     pipelineJobId: null,
     pipelineStartedAt: startedAt,
   });
-  return { videoFolder: folderPathFwd, queueItemId: item.id };
+  return { videoFolder: folderPathFwd, queueItemId: item.id, plannedDate };
 }

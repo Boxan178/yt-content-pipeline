@@ -6,10 +6,10 @@ import { MonthGrid } from '@/components/calendar/MonthGrid';
 import { CHANNELS, getChannel, channelColor } from '@/lib/channels';
 import {
   CALENDAR_STATUS_STYLE,
-  WEEKDAY_LABELS,
   type CalendarItem,
   type CalendarDragPayload,
 } from '@/lib/calendar-types';
+import { CadenceRow, type CadenceCfg, type CadenceChannel } from '@/components/CadenceRow';
 
 /**
  * Calendario de contenidos — vista editorial de pájaro.
@@ -72,8 +72,7 @@ interface GapWeek {
   channel: string; channelName: string; channelColor: string;
   weekStart: string; target: number; scheduled: number; missing: number; gapDays: GapDay[];
 }
-interface CadenceCfg { channel: string; enabled: boolean; targetPerWeek: number; preferredWeekdays?: number[]; hour?: number }
-interface CadenceChannel { slug: string; name: string; color: string; autoPipeline: boolean; cadence: CadenceCfg | null }
+// CadenceCfg / CadenceChannel viven en components/CadenceRow.tsx (reutilizados aquí y en "Explorar ideas").
 
 export default function CalendarPage() {
   const router = useRouter();
@@ -644,70 +643,6 @@ function CadencePanel({
             </div>
           )}
         </div>
-      </div>
-    </div>
-  );
-}
-
-function CadenceRow({ ch, onSave }: { ch: CadenceChannel; onSave: (patch: CadenceCfg) => void }) {
-  const [target, setTarget] = useState<number>(ch.cadence?.targetPerWeek ?? 0);
-  const [weekdays, setWeekdays] = useState<number[]>(ch.cadence?.preferredWeekdays ?? []);
-  const [enabled, setEnabled] = useState<boolean>(ch.cadence?.enabled ?? true);
-  const dirty =
-    target !== (ch.cadence?.targetPerWeek ?? 0) ||
-    enabled !== (ch.cadence?.enabled ?? true) ||
-    JSON.stringify(weekdays) !== JSON.stringify(ch.cadence?.preferredWeekdays ?? []);
-
-  const toggleDay = (d: number) =>
-    setWeekdays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort((a, b) => a - b)));
-
-  return (
-    <div className="rounded-2xl border border-white/8 bg-white/[0.02] px-3 py-2">
-      <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1.5 text-xs font-medium text-zinc-200">
-          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: ch.color }} />
-          {ch.name}
-        </span>
-        <label className="flex items-center gap-1.5 text-[10px] text-zinc-400">
-          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="accent-[#c9a96a]" />
-          activa
-        </label>
-      </div>
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <label className="flex items-center gap-1.5 text-[11px] text-zinc-400">
-          <span>/sem</span>
-          <input
-            type="number"
-            min={0}
-            max={14}
-            value={target}
-            onChange={(e) => setTarget(Math.max(0, Math.min(14, Number(e.target.value) || 0)))}
-            className="w-14 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-white accent-[#c9a96a] focus:border-accent/60 focus:outline-none"
-          />
-        </label>
-        <div className="flex gap-0.5">
-          {WEEKDAY_LABELS.map((lbl, d) => (
-            <button
-              key={d}
-              onClick={() => toggleDay(d)}
-              className={`h-6 w-6 rounded-md text-[10px] font-medium transition ${
-                weekdays.includes(d)
-                  ? 'bg-[color:var(--accent)]/20 text-accent'
-                  : 'bg-white/5 text-zinc-500 hover:text-zinc-300'
-              }`}
-              title={`Día preferido: ${lbl}`}
-            >
-              {lbl}
-            </button>
-          ))}
-        </div>
-        <button
-          onClick={() => onSave({ channel: ch.slug, enabled, targetPerWeek: target, preferredWeekdays: weekdays })}
-          disabled={!dirty}
-          className="ml-auto rounded-md border border-accent/40 bg-accent/10 px-2.5 py-1 text-[11px] text-accent transition hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Guardar
-        </button>
       </div>
     </div>
   );

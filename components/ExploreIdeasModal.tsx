@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { CadenceRow, type CadenceChannel, type CadenceCfg } from './CadenceRow';
 
 interface ExploredIdea {
   title: string;
@@ -39,12 +40,52 @@ export function ExploreIdeasModal({ channelSlug, channelName, onClose, onIdeasAd
   // Form manual
   const [manual, setManual] = useState({ title: '', description: '', tags: '' });
 
+  // Cadencia de publicación del canal (misma store que el calendario)
+  const [cadence, setCadence] = useState<CadenceChannel | null>(null);
+  const [cadenceSaved, setCadenceSaved] = useState(false);
+
   const stopPolling = useCallback(() => {
     if (pollTimer.current) clearTimeout(pollTimer.current);
     pollTimer.current = null;
   }, []);
 
   useEffect(() => stopPolling, [stopPolling]);
+
+  // Carga la cadencia actual del canal para el editor inline (fase idle).
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/calendar/cadence', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d?.ok) return;
+        const ch = (d.channels as CadenceChannel[]).find((c) => c.slug === channelSlug);
+        if (ch) setCadence(ch);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [channelSlug]);
+
+  const saveCadence = useCallback(async (patch: CadenceCfg) => {
+    setCadenceSaved(false);
+    try {
+      const r = await fetch('/api/calendar/cadence', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      });
+      const d = await r.json();
+      if (d?.ok) {
+        // Actualiza el registro guardado para que CadenceRow recalcule "dirty"
+        // (botón Guardar pasa a deshabilitado) sin remontar el componente.
+        setCadence((prev) => (prev ? { ...prev, cadence: d.cadence } : prev));
+        setCadenceSaved(true);
+      }
+    } catch {
+      // best-effort; el botón Guardar sigue disponible para reintentar
+    }
+  }, []);
 
   const launch = async () => {
     setError(null);
@@ -224,6 +265,25 @@ export function ExploreIdeasModal({ channelSlug, channelName, onClose, onIdeasAd
                   className={`${INPUT_CLS} w-24`}
                 />
               </div>
+
+              {/* Cadencia de publicación — mismo control y store que el calendario */}
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="mb-1 flex items-center justify-between">
+                  <label className="block text-[11px] uppercase tracking-label text-zinc-500">Cadencia de publicación</label>
+                  {cadenceSaved && <span className="text-[10px] text-emerald-400">✓ guardada</span>}
+                </div>
+                <p className="mb-3 text-[11px] leading-relaxed text-zinc-500">
+                  Cada cuánto publicar en este canal y en qué días (p. ej. 7/sem = 1 al día; 6/sem y marca los días
+                  preferidos para descansar uno). Es la misma cadencia que el calendario usa para repartir fechas y
+                  avisar de huecos.
+                </p>
+                {cadence ? (
+                  <CadenceRow ch={cadence} onSave={saveCadence} />
+                ) : (
+                  <p className="text-[11px] text-zinc-600">Cargando cadencia…</p>
+                )}
+              </div>
+
               <button onClick={launch} className="btn-gold w-full justify-center">
                 Explorar mi canal y proponer ideas
               </button>

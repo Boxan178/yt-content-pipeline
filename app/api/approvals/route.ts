@@ -21,6 +21,7 @@ interface CreateBody {
   options?: string[];
   imagePath?: string;
   statusAnchor?: string;
+  scheduleGate?: boolean;
   // Reanudación (override para flujos a medida / tests).
   resumeSkill?: string;
   resumePromptOverride?: string;
@@ -65,6 +66,7 @@ export async function POST(req: NextRequest) {
       options: body.options,
       imagePath,
       statusAnchor: body.statusAnchor,
+      scheduleGate: body.scheduleGate,
       resumeSkill: body.resumeSkill,
       resumePromptOverride: body.resumePromptOverride,
       resumeCwd,

@@ -128,11 +128,12 @@ export default function ChannelPage() {
   // VisualState = VideoState + 'scheduled' (columna virtual, no estado físico).
   // Un vídeo con scheduledUpload pendiente/subiendo se mueve VISUALMENTE a
   // 'scheduled' aunque físicamente esté en `ready` o `production`.
-  type VisualState = VideoState | 'scheduled' | 'ideas';
+  type VisualState = VideoState | 'scheduled' | 'ideas' | 'render_queue';
   const VISUAL_LABEL: Record<VisualState, string> = {
     ideas: 'Ideas',
     pending_locution: 'Pendiente locución',
     production: 'En producción',
+    render_queue: 'Cola de render',
     ready: 'Listos para subir',
     scheduled: 'Programados',
     uploaded: 'Subidos',
@@ -141,9 +142,24 @@ export default function ChannelPage() {
 
   const grouped = useMemo(() => {
     const g: Record<VisualState, VideoCardData[]> = {
-      ideas: [], pending_locution: [], production: [], ready: [], scheduled: [], uploaded: [], archived: [],
+      ideas: [], pending_locution: [], production: [], render_queue: [], ready: [], scheduled: [], uploaded: [], archived: [],
     };
     const q = search.trim().toLowerCase();
+    // Un vídeo de producción SIN job activo y con TODO el pre-edit hecho menos el
+    // render (packaging+guion+locución+brutos+miniatura ✓, renderPrincipal ✗) ya no
+    // se está "trabajando": está listo para renderizar. Lo separamos en "Cola de render".
+    const isRenderReady = (v: VideoCardData): boolean => {
+      const d = v.progress?.details;
+      return (
+        !!d &&
+        d.hasPackagingMd &&
+        d.scriptWritten &&
+        d.locucionReady &&
+        d.brutosVisuales &&
+        d.miniaturaFinal &&
+        !d.renderPrincipal
+      );
+    };
     for (const v of data?.videos ?? []) {
       // Filtros
       if (q && !v.title.toLowerCase().includes(q)) continue;
@@ -153,12 +169,15 @@ export default function ChannelPage() {
       // Override visual: hay JERARQUÍA de prioridad.
       //  1. Job claude activo → 'production' (rojo, está currando).
       //  2. Subida programada pending/uploading → 'scheduled' (azul).
-      //  3. Su estado físico real.
+      //  3. Producción + pre-edit completo sin render → 'render_queue' (cola de render).
+      //  4. Su estado físico real.
       let targetState: VisualState;
       if (v.activeJobs && v.activeJobs.length > 0) {
         targetState = 'production';
       } else if (v.scheduledUpload) {
         targetState = 'scheduled';
+      } else if (v.state === 'production' && isRenderReady(v)) {
+        targetState = 'render_queue';
       } else {
         targetState = v.state;
       }
@@ -168,7 +187,7 @@ export default function ChannelPage() {
   }, [data, search, filterMode]);
 
   const visibleStates: VisualState[] = useMemo(() => {
-    const order: VisualState[] = ['ideas', 'pending_locution', 'production', 'ready', 'scheduled', 'uploaded', 'archived'];
+    const order: VisualState[] = ['ideas', 'pending_locution', 'production', 'render_queue', 'ready', 'scheduled', 'uploaded', 'archived'];
     return order.filter((s) => {
       if (s === 'ideas') return showIdeas;
       if (s === 'archived') return showArchived;
@@ -241,6 +260,12 @@ export default function ChannelPage() {
         flashToast('La columna Ideas se llena con "Explorar ideas", no arrastrando vídeos.');
         return;
       }
+      // 'render_queue' es VIRTUAL: un vídeo entra ahí solo cuando su pre-edit está
+      // completo sin render. No se arrastra — soltar aquí no mueve nada físico.
+      if (toState === 'render_queue') {
+        flashToast('«Cola de render» se llena sola cuando un vídeo tiene todo menos el render.');
+        return;
+      }
       const raw = e.dataTransfer.getData('text/x-ytcp-video');
       if (!raw) return;
       let payload: { channel: string; title: string; fromState: VideoState };
@@ -273,6 +298,38 @@ export default function ChannelPage() {
     [flashToast, load],
   );
 
+  // Render MANUAL desde la columna «Cola de render»: lanza el render (LUIS) del
+  // primero de la cola. Respeta el gate secuencial (el endpoint da 409 si hay
+  // otro render en curso). Los renders van de uno en uno.
+  const [rendering, setRendering] = useState(false);
+  const renderFirstInQueue = useCallback(async () => {
+    const v = grouped.render_queue[0];
+    if (!v || rendering) return;
+    setRendering(true);
+    try {
+      const r = await fetch('/api/render/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channel: v.channel,
+          videoFolder: v.folderPath.replace(/\\/g, '/'),
+          title: v.title,
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok || !d.ok) {
+        flashToast(`Render: ${d.error || `HTTP ${r.status}`}`);
+      } else {
+        flashToast(`🎬 Render lanzado: ${v.title}`);
+        load();
+      }
+    } catch (err) {
+      flashToast(`Error: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setRendering(false);
+    }
+  }, [grouped, rendering, flashToast, load]);
+
   const totalVideos = data
     ? data.counts.pending_locution + data.counts.production + data.counts.ready + data.counts.uploaded + data.counts.archived
     : 0;
@@ -297,7 +354,10 @@ export default function ChannelPage() {
               {data.counts.pending_locution > 0 && (
                 <> · <span className="nums text-zinc-200">{data.counts.pending_locution}</span> pendiente locución</>
               )}
-              {' · '}<span className="nums text-zinc-200">{data.counts.production}</span> en producción
+              {' · '}<span className="nums text-zinc-200">{grouped.production.length}</span> en producción
+              {grouped.render_queue.length > 0 && (
+                <> · <span className="nums text-zinc-200">{grouped.render_queue.length}</span> en cola de render</>
+              )}
               {' · '}<span className="nums text-zinc-200">{data.counts.ready}</span> listos
               {grouped.scheduled.length > 0 && (
                 <> · <span className="nums text-zinc-200">{grouped.scheduled.length}</span> programados</>
@@ -530,6 +590,16 @@ export default function ChannelPage() {
                     >
                       ver lista →
                     </Link>
+                  )}
+                  {state === 'render_queue' && grouped.render_queue.length > 0 && (
+                    <button
+                      onClick={renderFirstInQueue}
+                      disabled={rendering}
+                      className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-[10px] text-amber-300 transition hover:bg-amber-500/20 disabled:opacity-50"
+                      title="Renderiza el primero de la cola (LUIS). Los renders van de uno en uno."
+                    >
+                      {rendering ? 'Lanzando…' : '🎬 Renderizar el 1º'}
+                    </button>
                   )}
                 </>
               }

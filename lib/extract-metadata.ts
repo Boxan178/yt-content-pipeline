@@ -47,8 +47,13 @@ export function extractMetadata(md: string): ExtractedMetadata {
         .replace(/\s+VidIQ\s+score.*$/i, '')
         .replace(/\s*_\([^)]*\)_\s*$/, '')
         .replace(/\s*\(\d{1,2}\/\d{1,2}\/\d{2,4}[^)]*\)\s*$/, '')
+        // BUG-A defensa: quita la coletilla "— aprobado por Pablo vía Telegram"
+        // que ficheros antiguos ya tienen escrita dentro del ELEGIDO.
+        .replace(/\s*[—–\-]\s*aprobado\s+por\s+Pablo.*$/i, '')
         .replace(/^\s*(?:\d+-[A-Za-z]|[A-Za-z]-\d+|Plan\s+[A-Za-z]|Tentativo[^:：]*)\s*[:：]\s*/i, '');
       const c = cleanValue(t);
+      // "Aprobado" suelto NO es un título (gate aprobado sin selección concreta).
+      if (/^aprobado$/i.test(c.trim())) return null;
       return c.length > 1 ? c : null;
     },
     () => {

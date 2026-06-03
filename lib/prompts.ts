@@ -51,6 +51,22 @@ CONTEXTO DE EJECUCIÓN EN COLA (vídeo de principio a fin): te ejecuto en una co
 - Si no pones marcador, el sistema medirá el progreso real en disco y te re-lanzará otro turno para seguir.
 NUNCA subas a YouTube. No esperes respuesta interactiva — la sesión muere al cerrar tu turno; deja cualquier bloqueo en el marcador.`;
 
+/**
+ * Variante "hasta ANTES de editar" (Fase 1 de la prueba de lava 2026-06-02): la cola
+ * corre SARA hasta dejar el vídeo LISTO PARA EDITAR (packaging + guion + locución +
+ * miniatura), SIN renderizar. El render lo dispara Pablo después, vídeo a vídeo, tras
+ * dar luz verde por Telegram. Se appendea en lugar de QUEUE_COMPLETION_INSTRUCTION.
+ */
+export const QUEUE_PREEDIT_COMPLETION_INSTRUCTION = `
+
+---
+
+CONTEXTO DE EJECUCIÓN EN COLA (vídeo HASTA ANTES DE EDITAR): te ejecuto en una cola que NO avanza al siguiente vídeo hasta que ESTE esté LISTO PARA EDITAR. Avanza este vídeo lo más lejos posible SIN entrar en edición. Al cerrar, termina con UNA línea de estado EXACTA:
+- \`<<<VIDEO_READY_FOR_EDIT>>>\` SOLO si están HECHOS packaging, guion, locución y **miniatura 16:9 landscape REAL** (TODO menos el render). Si la miniatura es cuadrada/vertical o no existe, NO pongas este marcador: regénerala en 16:9 con \`mcp__algrow__generate_image\` primero. NO renderices.
+- \`<<<VIDEO_BLOCKED: motivo>>>\` si NO puedes avanzar más sin una decisión mía o por un fallo que requiere intervención humana (motivo en una frase).
+- Si no pones marcador, el sistema medirá el progreso real en disco y te re-lanzará otro turno.
+NUNCA renderices (tools/render_project.py), NUNCA edites con LUÍS, NUNCA subas a YouTube. No esperes respuesta interactiva — la sesión muere al cerrar tu turno; deja cualquier bloqueo en el marcador.`;
+
 /** Bloque común que se appendea a un prompt para activar el patrón "loop". */
 export const LOOP_INSTRUCTION = `
 
@@ -187,10 +203,19 @@ Aplica tu flujo de review: hook (primeros 30s), packaging visual, muestra del cu
 
 // ── SARA — Orquestadora, retomar pipeline desde donde esté ───────────────
 
-export function buildSaraResume(v: VideoContext): BuiltPrompt {
+export function buildSaraResume(v: VideoContext, opts: { stopBeforeRender?: boolean } = {}): BuiltPrompt {
   const progress = progressSummary(v.progress);
   // Detectamos canal estoico para que SARA sepa el routing desde el primer momento
   const isStoic = v.channel === 'moderni-stoici' || v.channel === 'moderno-estoico';
+  const stopBeforeRender = opts.stopBeforeRender === true;
+  // Fase 2 estoica: ORWELL (inglés) / CERVANTES (español) corrige el guion según el
+  // informe de ELENA (petición de Pablo 2026-06-02). Antes ORWELL solo aparecía en audio.
+  const fase2Line = `   - Fase 2: ${isStoic ? 'MARCO AURELIO' : 'VÍCTOR'} → ELENA${isStoic ? ' → ORWELL (inglés) / CERVANTES (español): corrige el guion aplicando el informe de ELENA' : ''} → refinado${isStoic ? ' → MARCUS HALE (gate)' : ''}`;
+  // stopBeforeRender (Fase 1): SARA hace TODO menos editar/renderizar/subir.
+  const editPostLines = stopBeforeRender
+    ? `   - **Fase 3a — Descripción SEO (BORRADOR v1):** genera la PRIMERA versión de la descripción de YouTube con \`youtube-seo-optimizer\` (descripción + keywords/hashtags + sección CHAPTERS con timestamps ESTIMADOS desde el guion). Guárdala en \`_PACKAGING/descripcion-seo.md\`. NO verifiques los timestamps contra el vídeo (aún no hay render) — eso es el paso FINAL tras editar.
+   - **PARA AQUÍ — NO entres en edición.** NO actives LUÍS, NO renderices (tools/render_project.py), NO subas a YouTube, y NO hagas la verificación final de \`chapters\` (es DESPUÉS del render). Deja el vídeo "listo para editar": packaging + guion + locución + **miniatura 16:9 (Algrow \`generate_image\`; ⚠️ VERIFICA las dimensiones REALES en disco — si es CUADRADA 1:1 o vertical, REGENÉRALA, no te fíes de que packaging.md ponga "GENERADA")** + **descripción SEO v1 (con chapters estimados)**. El render lo lanzo yo después, uno a uno, tras tu luz verde; los chapters se cuadran con el vídeo real al final.`
+    : `   - Fase Edición: LUÍS (render vía tools/render_project.py — NUNCA el MCP mcp__premiere-pro__*, es nuevo y sin probar)\n   - Fase 3 Pre-publicación: youtube-seo-optimizer → chapters (con timestamps reales sobre MP4)`;
   return {
     cwd: JARVIS_ROOT,
     timeoutMs: LONG_TIMEOUT_MS,
@@ -203,7 +228,7 @@ CONTEXTO QUE YA TENGO:
 - Estado físico según filesystem: ${v.state} (production / ready / uploaded / archived)
 - Vídeo: long-form
 ${progress}
-
+${stopBeforeRender ? '\n⚠️ OBJETIVO DE ESTE TURNO (modo "hasta antes de editar"): deja el vídeo HECHO al ~90% — TODO menos la edición/render. NO ejecutes LUÍS, NO renderices, NO subas. Cuando packaging + guion + locución + miniatura estén listos y aprobados, PARA y dilo con el marcador.\n' : ''}
 TU TRABAJO (en este orden):
 
 1. **Luna Media OS — pipeline_item_id**. ANTES de delegar a cualquier agente, localiza el \`pipeline_item_id\` (UUID) de este vídeo en Supabase (proyecto trnlcfkomjljypzpxejt). Usa la query:
@@ -224,11 +249,10 @@ TU TRABAJO (en este orden):
 
 4. **Ejecuta lo que puedas autónomamente**. Activa las skills en el orden canónico del pipeline:
    - Fase 1: MARCOS → NORA → IRIS${isStoic ? ' → MARCUS HALE (gate)' : ''}
-   - Fase 2: ${isStoic ? 'MARCO AURELIO' : 'VÍCTOR'} → ELENA → refinado${isStoic ? ' → MARCUS HALE (gate)' : ''}
+${fase2Line}
    ${isStoic ? '- Fase Visual: IRIS (image_prompts) → CIRO (video_prompts)' : ''}
    - Fase Audio: ${isStoic ? 'CERVANTES/ORWELL' : 'CERVANTES'} → CICERÓN → CALIOPE
-   - Fase Edición: LUÍS (render vía tools/render_project.py — NUNCA el MCP mcp__premiere-pro__*, es nuevo y sin probar)
-   - Fase 3 Pre-publicación: youtube-seo-optimizer → chapters (con timestamps reales sobre MP4)
+${editPostLines}
 
 5. **Escribe el output de cada agente en Luna Media OS** según tu protocolo (MARCOS → pipeline_items_titles, NORA → pipeline_items_thumbnail_prompts con brief, IRIS → UPDATE image_prompt, ${isStoic ? 'MARCO AURELIO' : 'VÍCTOR'} → pipeline_items.script_content). Verifica con SELECT que cada apartado quedó escrito antes de pasar al siguiente.
 
@@ -354,27 +378,26 @@ Carpeta destino para las imágenes: ${miniaturesDir}
 
 Flujo (en este orden):
 
-1. **NORA** (skill agente-miniaturas) — lee el packaging.md, mira las miniaturas previas en _PACKAGING/MINIATURAS/, propón concepto visual nuevo o iteración. Entrega NORA_SCORE, NORA_VEREDICTO y brief estructurado para IRIS.
+1. **NORA** (skill agente-miniaturas) — lee el packaging.md y mira las miniaturas previas en _PACKAGING/MINIATURAS/. **Aplica tu PASO 2.5 — INVESTIGACIÓN DE OUTLIERS**: lee tu swipe file (\`swipe-file-outliers.md\` en tu carpeta de skill); y si NO tienes un concepto claramente ganador (o vas a usar el Formato D), **mina outliers reales vía MCP** — \`vidiq_outliers\`, \`mcp__algrow__search_viral_videos\` y \`mcp__algrow__get_video_thumbnail\` (para VER de verdad la miniatura ganadora) — en nichos ADYACENTES (psicología, autoconocimiento, historia, mitología, productividad), identifica EL MOTOR que la hace funcionar, **adáptalo al estoicismo** (persona → figura/busto estoico, conservando composición + gancho + texto + contraste) y **AÑADE el patrón a tu swipe file** para que compounde. Después propón el concepto (o iteración). Entrega NORA_SCORE, NORA_VEREDICTO y brief estructurado para IRIS.
 
 2. **IRIS** (skill nano-banana-iris) — recibe el brief de NORA. Construye el prompt técnico final. Entrega IRIS_SCORE, IRIS_VEREDICTO, prompt principal + 2 variantes A/B.
 
-${isStoic ? '3. **MARCUS HALE** (gate viewer-persona) — review rápido del concepto. Veredicto: "haría clic" / "haría clic con dudas" / "no haría clic" + qué cambiarías. Si destroza el concepto, vuelve a NORA antes de generar.\n\n' : ''}**EJECUCIÓN — Ruta A de IRIS: SIEMPRE vía MCP de Algrow (\`mcp__algrow__generate_thumbnail\`)**:
+${isStoic ? '3. **MARCUS HALE** (gate viewer-persona) — review rápido del concepto. Veredicto: "haría clic" / "haría clic con dudas" / "no haría clic" + qué cambiarías. Si destroza el concepto, vuelve a NORA antes de generar.\n\n' : ''}**EJECUCIÓN — Ruta A de IRIS: SIEMPRE vía MCP de Algrow (\`mcp__algrow__generate_image\`)**:
 
-Política fijada por Pablo el 2026-05-30: TODA miniatura de YouTube se genera con \`mcp__algrow__generate_thumbnail\`, **NUNCA con kie-bridge**. El flujo viejo (kie-bridge + nano-banana-2) devolvió miniaturas CUADRADAS (1:1) aunque se le pasara \`--aspect 16:9\`; \`generate_thumbnail\` fuerza el aspect ratio y elimina ese fallo. NO uses kie-bridge para la miniatura, NO uses el portapapeles, NO menciones Flow.
+Política fijada por Pablo el 2026-05-30: TODA miniatura de YouTube se genera con \`mcp__algrow__generate_image\`, **NUNCA con kie-bridge**. El flujo viejo (kie-bridge + nano-banana-2) devolvió miniaturas CUADRADAS (1:1) aunque se le pasara \`--aspect 16:9\`; \`generate_image\` fuerza el \`aspect_ratio\` (default 16:9) y elimina ese fallo. NO uses kie-bridge para la miniatura, NO uses el portapapeles, NO menciones Flow.
 
 Por cada una de las **3 variantes** (prompt principal + A + B) que cerró IRIS:
 
 1. Llama a la tool:
    \`\`\`
-   mcp__algrow__generate_thumbnail(
-     prompt       = "<prompt de IRIS en inglés, CON el texto on-image incluido>",
+   mcp__algrow__generate_image(
+     prompt       = "<prompt de IRIS en inglés, CON el texto on-image incluido entre comillas>",
      aspect_ratio = "16:9",          # SIEMPRE 16:9 para este vídeo long-form (9:16 solo si fuera un Short). NUNCA 1:1.
-     resolution   = "2K",
-     model        = "gpt-image-2",    # default fiable para texto on-image; sube a seedream-5.0-lite / nano-banana-pro si el realismo CGI no convence
-     style_preset = "faceless"        # estatuas CGI / objetos simbólicos (formatos A/C/D/E). Usa "person_focal" solo si hay un rostro humano real protagonista
+     model        = "nano-banana-2"   # default fiable para texto on-image; sube a seedream-5.0-lite / nano-banana-pro si el realismo CGI no convence
    )
+   # Parámetros REALES de generate_image: prompt, aspect_ratio, model, reference_image_url. NO existen resolution / style_preset / check_thumbnail_status.
    \`\`\`
-2. La tool devuelve un \`task_id\`. **Estás en una sesión headless (\`claude -p\`) — NO hay widget inline que haga el polling por ti.** Haz polling tú mismo con \`mcp__algrow__check_thumbnail_status(task_id=...)\` cada pocos segundos hasta que el render esté listo y obtengas la URL del resultado.
+2. \`generate_image\` es async pero **se auto-polinea**: devuelve el resultado (preview inline + URL de la imagen). NO existe \`check_thumbnail_status\` ni hay \`task_id\` que pollear a mano — espera a que la tool te devuelva la URL.
 3. Descarga esa URL al disco con \`Invoke-WebRequest\` (NO con kie-bridge) a su propio archivo en ${miniaturesDir}/, con el patrón \`v<YYYY-MM-DD_HHmmss>-<principal|varA|varB>.jpg\` para no sobrescribir. Ejemplo: \`v2026-05-30_174530-principal.jpg\`.
 4. Verifica que el archivo descargado es 16:9 (landscape, ≈1280×720 o equivalente, NUNCA cuadrado). Si por lo que sea saliera cuadrado, NO lo des por bueno: reintenta el mismo prompt o cambia de \`model\`.
 
@@ -487,15 +510,125 @@ Packaging.md (si existe): ${v.folderPath.replace(/\\/g, '/')}/_PACKAGING/packagi
 Sigue tu metodología:
 1. Lee el packaging.md para entender la promesa central, el ángulo y el mercado.
 2. Si no hay packaging o no tiene la idea clara, deduce la promesa central a partir del título de la carpeta + cualquier guion en youtube-os/youtube/${v.channel}/guiones/<slug>/.
-3. Genera 4 rutas de título (curiosidad / search / tensión / híbrido). Para cada una:
+3. Genera **EXACTAMENTE 3** opciones de título (las 3 mejores; elige entre curiosidad / search / tensión / híbrido). Ni una más. Para cada una:
    - Título exacto (máx 70 chars, idealmente <60).
    - Por qué funciona (1-2 líneas).
    - Cuál es la fuente de tráfico prioritaria (browse / search / suggested).
    - Tipo de espectador al que atrapa.
-4. RECOMIENDA una de las 4 con razón explícita.
+4. RECOMIENDA una de las 3 con razón explícita.
 5. Si el packaging tiene un título actual, dilo y compáralo con las 4 propuestas — di si es mejor o peor.
 
 Formato de salida: markdown con tabla o lista clara. Termina con un bloque "RECOMENDADO:" en negrita.`,
+  };
+}
+
+// ── MARCOS — Re-titular con la skill ACTUALIZADA (regenera opciones) ─────
+
+/**
+ * Regenera SOLO las opciones de título de un vídeo con la skill MARCOS actualizada
+ * y las deja en packaging.md como "PENDIENTE ELECCIÓN DE PABLO" → dispara un gate de
+ * título nuevo. No toca nada más. Pensado para cuando Pablo mejora MARCOS y quiere
+ * re-elegir títulos de vídeos que ya tenían uno. Job directo (rápido, no pasa por la
+ * cola pre-edit).
+ */
+export function buildMarcosRetitle(v: VideoContext): BuiltPrompt {
+  const folder = v.folderPath.replace(/\\/g, '/');
+  return {
+    cwd: JARVIS_ROOT,
+    timeoutMs: DEFAULT_TIMEOUT_MS,
+    model: 'sonnet',
+    prompt: `MARCOS, REGENERA las opciones de TÍTULO del vídeo "${v.title}" del canal ${v.channel} con tu metodología ACTUALIZADA (Pablo acaba de mejorar tu skill y quiere ver y elegir entre tus títulos nuevos).
+
+Carpeta del proyecto: ${v.folderPath}
+Packaging: ${folder}/_PACKAGING/packaging.md
+
+PASOS:
+1. Lee el packaging.md (promesa central, ángulo, descripción) y el guion del vídeo (en ${YOUTUBE_OS_ROOT}/youtube/${v.channel}/guiones/<slug>/ o el guion del proyecto) para entender el vídeo a fondo. El slug suele estar en el packaging.
+2. Genera **EXACTAMENTE 3** opciones de título NUEVAS (las 3 mejores, ni una más) aplicando tu skill actualizada. DESCARTA el título anterior — Pablo quiere re-elegir con tu versión nueva.
+3. SOBRESCRIBE por completo la sección de título (la que empiece por "## Título" o "## Titulo") del packaging.md con EXACTAMENTE este formato (respeta la tabla y las dos últimas líneas tal cual):
+
+## Título (MARCOS)
+
+| # | Título | Estrategia | Score |
+|---|--------|-----------|-------|
+| 1 | <título 1> | <curiosidad/search/tensión/híbrido> | <n>/10 |
+| 2 | <título 2> | ... | ... |
+| ... | ... | ... | ... |
+
+**Recomendación MARCOS: #<n>**
+
+**Estado:** ⏳ PENDIENTE ELECCIÓN DE PABLO
+
+4. NO toques NINGUNA otra sección del packaging (miniatura, guion, locución…) NI ningún otro archivo. SOLO la sección de título.
+5. Cierra confirmando cuántas opciones escribiste y cuál recomiendas (y por qué, en 1 línea).
+
+IMPORTANTE: sesión no-interactiva (\`claude -p\`). Escribe directamente en el packaging.md con tus tools (Edit/Write). No esperes respuesta mía.`,
+  };
+}
+
+// ── SEO — Descripción YouTube BORRADOR v1 (Fase 3a, pre-render) ──────────
+
+/**
+ * Genera la PRIMERA versión (borrador v1) de la descripción SEO de YouTube +
+ * chapters ESTIMADOS → _PACKAGING/descripcion-seo.md, con la skill youtube-seo-optimizer.
+ * Mismo formato que las que SARA produce en Fase 3a del pre-edit. Para rellenar vídeos
+ * hechos antes de que ese paso existiera. Los timestamps REALES se hacen DESPUÉS del
+ * render (paso final, re-viendo el MP4 con youtube-seo-optimizer /chapters).
+ */
+export function buildSeoDescriptionDraft(v: VideoContext): BuiltPrompt {
+  const folder = v.folderPath.replace(/\\/g, '/');
+  return {
+    cwd: JARVIS_ROOT,
+    timeoutMs: DEFAULT_TIMEOUT_MS,
+    model: 'sonnet',
+    prompt: `Genera la PRIMERA versión (BORRADOR v1) de la descripción SEO de YouTube para el vídeo "${v.title}" del canal ${v.channel}, con la skill \`youtube-seo-optimizer\`.
+
+Carpeta del proyecto: ${v.folderPath}
+Packaging: ${folder}/_PACKAGING/packaging.md
+Guion: en ${YOUTUBE_OS_ROOT}/youtube/${v.channel}/guiones/<slug>/ (el slug está en el packaging) o el guion del proyecto si vive en la carpeta.
+
+PASOS:
+1. Lee el packaging.md (título final, ángulo, promesa) y el GUION del vídeo a fondo.
+2. **COHERENCIA DE FORMATO (obligatorio):** abre una \`descripcion-seo.md\` de OTRO vídeo del MISMO canal que YA exista (carpeta hermana en _EN PRODUCCIÓN, p.ej. «The Moment You Stop Asking…» o «Seneca…») y REPLICA SU ESTRUCTURA EXACTA: cabecera \`# YouTube Description — SEO v1 (DRAFT — timestamps ESTIMATED)\`, el bloque \`> **STATUS: PRE-EDIT DRAFT**\` con el aviso de verificar timestamps con \`/chapters\` antes de publicar, \`## Description\` (hook + cuerpo + bullets "In this video, you'll discover…") y un bloque \`CHAPTERS (ESTIMATED)\`.
+3. Escribe la descripción REAL desde el contenido del guion (en INGLÉS para Moderni Stoici): hook que pare el scroll + cuerpo + bullets de lo que se aprende + keywords/hashtags al pie.
+4. **CHAPTERS (ESTIMATED):** divide el vídeo en capítulos con timestamps ESTIMADOS según el ritmo del guion (~130 wpm). Deja claro en el encabezado que son ESTIMADOS.
+5. **NO verifiques los timestamps contra ningún MP4** — aún no hay render. La verificación con timestamps REALES es el paso FINAL (mañana, tras editar y auditar).
+6. Guarda en \`${folder}/_PACKAGING/descripcion-seo.md\` (sobrescribe si existe). NO toques NINGÚN otro archivo.
+7. Cierra confirmando que escribiste el fichero y cuántos capítulos estimaste.
+
+Sesión no-interactiva (\`claude -p\`). Escribe con tus tools (Write), no esperes respuesta mía.`,
+  };
+}
+
+// ── SEO — Chapters FINALES con timestamps REALES (post-render) ───────────
+
+/**
+ * Paso FINAL tras editar+auditar el render: re-ve el MP4, transcribe con Whisper y
+ * sustituye los chapters ESTIMADOS de descripcion-seo.md por timestamps REALES. Marca
+ * la descripción como FINAL. Es la segunda mitad del enfoque en dos partes de Pablo:
+ * borrador v1 (pre-edit) → chapters reales (post-render, sobre la versión definitiva).
+ */
+export function buildChaptersFinal(v: VideoContext): BuiltPrompt {
+  const folder = v.folderPath.replace(/\\/g, '/');
+  return {
+    cwd: JARVIS_ROOT,
+    timeoutMs: LONG_TIMEOUT_MS,
+    model: 'sonnet',
+    prompt: `Finaliza la descripción del vídeo "${v.title}" del canal ${v.channel}: sustituye los chapters ESTIMADOS por timestamps REALES verificados contra el MP4 ya renderizado y auditado.
+
+Carpeta: ${v.folderPath}
+Render (MP4 final): ${folder}/RENDER/
+Descripción borrador: ${folder}/_PACKAGING/descripcion-seo.md
+
+PASOS:
+1. Verifica que existe el MP4 PRINCIPAL en RENDER/ (>50 MB, NO un "Short N"). Si no hay render, PARA y dilo — este paso es POST-render.
+2. Re-ve / transcribe el MP4 con Whisper (skill \`youtube-seo-optimizer\` y/o \`/chapters\`, sobre el audio REAL del render, NO el guion). Localiza dónde empieza cada sección del vídeo.
+3. Abre \`descripcion-seo.md\` y SUSTITUYE el bloque \`CHAPTERS (ESTIMATED)\` por un bloque \`CHAPTERS\` con los timestamps REALES.
+4. Cambia la cabecera de \`SEO v1 (DRAFT — timestamps ESTIMATED)\` a \`SEO FINAL — timestamps VERIFICADOS (Whisper)\` y ELIMINA el aviso \`STATUS: PRE-EDIT DRAFT\`. NO cambies el texto de la descripción (solo chapters + cabecera).
+5. Reglas YouTube para capítulos: el PRIMERO debe ser \`0:00\`; mínimo 3 capítulos; cada capítulo ≥10 s; en orden ascendente.
+6. Cierra confirmando cuántos capítulos finalizaste y el timestamp del último (debe ser ≈ la duración del vídeo).
+
+Sesión no-interactiva (\`claude -p\`). Escribe con tus tools (Edit/Write), no esperes respuesta mía.`,
   };
 }
 

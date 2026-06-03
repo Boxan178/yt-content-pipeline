@@ -6,6 +6,7 @@ import { deriveLevel, titleForLevel, type Stats } from '@/lib/gamification-types
 import { NotificationBell } from './NotificationBell';
 import { XPBar } from './XPBar';
 import { WorkingModeToggle } from './WorkingModeToggle';
+import { RenderModeToggle } from './RenderModeToggle';
 
 /**
  * Barra superior — Liquid Glass refresh 2026-05-27.
@@ -55,6 +56,7 @@ export function TopBar() {
           )}
         </div>
         <div className="flex items-center gap-3">
+          <RenderModeToggle />
           <WorkingModeToggle />
           <XPBar />
           <NotificationBell />

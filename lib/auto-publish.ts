@@ -13,7 +13,7 @@
 
 import 'server-only';
 import { readFile, readdir, stat } from 'node:fs/promises';
-import { existsSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, writeFileSync, mkdirSync, statSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { CHANNELS, type Channel } from './channels';
@@ -31,6 +31,9 @@ import type { PlannedItem } from './calendar-types';
 const MARKER = '.auto-published.json';
 /** Marcador de "saltado" (p.ej. sin título extraíble) para no spamear avisos. */
 const SKIP_MARKER = '.auto-publish-skipped';
+/** Marcador de "listo pero SIN fecha de publicación" (throttle del aviso al CEO).
+ *  NO bloquea: cada tick reintenta y, en cuanto hay fecha en el calendario, sube. */
+const PENDING_MARKER = '.pending-schedule';
 /** El render debe llevar quieto este tiempo (no estar a medio escribir). */
 const RENDER_STABLE_MS = 90 * 1000;
 const RENDER_MIN_BYTES = 50 * 1024 * 1024;
@@ -67,7 +70,7 @@ export interface AutoPublishResult {
   channel: string;
   videoTitle: string;
   videoFolder: string;
-  action: 'enqueued' | 'skipped-no-title' | 'dry-run' | 'scheduled' | 'overdue-reschedule';
+  action: 'enqueued' | 'skipped-no-title' | 'dry-run' | 'scheduled' | 'overdue-reschedule' | 'pending-schedule';
   uploadId?: string;
   title?: string;
   /** Si se programó nativo en YouTube: ISO (UTC) en que sale público. */
@@ -287,12 +290,13 @@ async function considerVideo(
   const thumb = await pickThumbnail(packagingDir);
   if (!thumb) return null; // por seguridad (miniaturaFinal era true)
 
-  // ── ¿Está en el calendario? → programación NATIVA de YouTube ─────────────
-  // Si hay un planificado con fecha FUTURA, se sube como PÚBLICO PROGRAMADO
-  // (publishAt): YouTube lo hace público solo a esa hora, sin PC encendido. Si la
-  // fecha ya pasó → red de seguridad (no publicar a deshora + avisar). Si NO está
-  // en el calendario → OCULTO (unlisted), comportamiento por defecto seguro.
-  let privacy: Privacy = 'unlisted';
+  // ── Programación NATIVA de YouTube desde el calendario editorial ──────────
+  // NUEVA ARQUITECTURA (Bug C): YA NO se sube a OCULTO por defecto. Un vídeo solo
+  // se sube cuando tiene FECHA de publicación asignada (privado + publishAt →
+  // YouTube lo hace público solo a esa hora). "Programar desde la idea" asigna el
+  // hueco al arrancar el pipeline, así que para cuando el render termina la fecha
+  // ya existe. Si la fecha pasó → red de seguridad (no publicar a deshora). Sin
+  // fecha futura → NO se sube: se avisa al CEO para que le dé hueco en el calendario.
   let publishAt: string | undefined;
   let matchedPlan: PlannedItem | null = null;
   if (calendarScheduleEnabled()) {
@@ -300,7 +304,6 @@ async function considerVideo(
     if (plan && plan.date) {
       const utc = plannedDateToUtc(plan.date, channel.slug);
       if (utc && Date.parse(utc) > Date.now() + OVERDUE_MARGIN_MS) {
-        privacy = 'public';
         publishAt = utc;
         matchedPlan = plan;
       } else if (utc) {
@@ -316,6 +319,36 @@ async function considerVideo(
       }
     }
   }
+
+  // Sin fecha futura → NO subir (nada de oculto). Avisar al CEO como mucho cada 6h
+  // y reintentar cada tick: en cuanto el calendario tenga fecha, se programa solo.
+  if (!publishAt) {
+    const pendPath = path.join(packagingDir, PENDING_MARKER);
+    const recentlyWarned =
+      existsSync(pendPath) && Date.now() - statSync(pendPath).mtimeMs < 6 * 60 * 60 * 1000;
+    if (!isDryRun() && !recentlyWarned) {
+      try {
+        writeFileSync(
+          pendPath,
+          JSON.stringify({ at: new Date().toISOString(), reason: 'no-schedule', title: meta.title }, null, 2),
+          'utf-8',
+        );
+      } catch {}
+      await sendTelegram(
+        `📅 <b>${escapeHtml(name)}</b> (${escapeHtml(channel.name)}) está listo pero NO tiene fecha de ` +
+          `publicación asignada. Dale un hueco en el calendario y se programará solo.`,
+      );
+    }
+    return {
+      channel: channel.slug,
+      videoTitle: name,
+      videoFolder: normFolder,
+      action: 'pending-schedule',
+      title: meta.title,
+    };
+  }
+
+  const privacy: Privacy = 'public'; // siempre programado: private + publishAt en YouTube
 
   if (isDryRun()) {
     return {
@@ -380,10 +413,65 @@ async function considerVideo(
   };
 }
 
-/** ¿El vídeo está completo para subir? render principal + miniatura + packaging.md. */
+/** Rango de timestamps tipo (0:00–0:45): andamiaje seguro, jamás texto narrable. */
+const SCAFFOLD_TIMESTAMP = /\(\s*\d{1,2}:\d{2}\s*[–—-]\s*\d{1,2}:\d{2}\s*\)/;
+/** Corchetes con contenido: [PAUSE], [1]... tags que no se narran. */
+const SCAFFOLD_BRACKET = /\[[^\]]+\]/;
+
+/** Audita on-the-fly los subtítulos quemados (.ass) buscando andamiaje del guion.
+ *  Fallback cuando no hay sello .render-qa.json (vídeos renderizados ANTES del gate
+ *  de core/qa_subs.py). Replica el discriminador fiable: timestamps + corchetes.
+ *  Devuelve true solo si está LIMPIO. */
+async function assSubsClean(renderDir: string): Promise<boolean> {
+  let files: string[];
+  try {
+    files = await readdir(renderDir);
+  } catch {
+    return false;
+  }
+  const ass = files.find((f) => f.toLowerCase().endsWith('.ass'));
+  if (!ass) return false; // sin subtítulos no se puede verificar → no apto
+  let content: string;
+  try {
+    content = await readFile(path.join(renderDir, ass), 'utf-8');
+  } catch {
+    return false;
+  }
+  for (const line of content.split(/\r?\n/)) {
+    if (!line.startsWith('Dialogue:')) continue;
+    const parts = line.slice('Dialogue:'.length).split(',');
+    if (parts.length < 10) continue;
+    const text = parts.slice(9).join(',').replace(/\{[^}]*\}/g, '');
+    if (SCAFFOLD_TIMESTAMP.test(text) || SCAFFOLD_BRACKET.test(text)) return false;
+  }
+  return true;
+}
+
+/** ¿El render pasó la QA de subtítulos? Fuente primaria: RENDER/.render-qa.json
+ *  (lo escribe el motor auto-edit vía core/qa_subs.py al final de cada render).
+ *  Si no hay sello, auditamos el .ass al vuelo. Conservador: sin sello y sin .ass
+ *  legible → NO apto (no subir lo no verificado). Bug que lo motiva: 2026-06-01,
+ *  andamiaje del guion quemado en pantalla. Ver PLAN-AUTOAUDIT-2026-06-02.md. */
+async function renderQaPassed(videoFolder: string): Promise<boolean> {
+  const renderDir = path.join(videoFolder, 'RENDER');
+  try {
+    const raw = await readFile(path.join(renderDir, '.render-qa.json'), 'utf-8');
+    const data = JSON.parse(raw) as { passed?: boolean };
+    return data?.passed === true;
+  } catch {
+    // Sin sello legible → fallback: auditar el .ass directamente.
+    return assSubsClean(renderDir);
+  }
+}
+
+/** ¿El vídeo está completo para subir? render principal + miniatura + packaging.md
+ *  + QA de subtítulos OK (sin andamiaje del guion quemado en pantalla). */
 async function isComplete(videoFolder: string): Promise<boolean> {
   const prog = await computeProgress(videoFolder);
-  return !!(prog.details.renderPrincipal && prog.details.miniaturaFinal && prog.details.hasPackagingMd);
+  if (!(prog.details.renderPrincipal && prog.details.miniaturaFinal && prog.details.hasPackagingMd)) {
+    return false;
+  }
+  return renderQaPassed(videoFolder);
 }
 
 /**
