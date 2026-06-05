@@ -259,14 +259,23 @@ async function considerVideo(
   const render = await newestRender(videoFolder);
   if (!render || Date.now() - render.mtimeMs < RENDER_STABLE_MS) return null;
 
-  // Metadata: título + miniatura viven en packaging.md; descripción + tags suelen
-  // vivir en seo-package.md / descripcion-seo.md (raíz del vídeo). Combinamos ambos
-  // (packaging primero → su título ELEGIDO gana) para que extractMetadata saque todo.
+  // Metadata: título + miniatura viven en packaging.md; descripción + tags viven en
+  // descripcion-seo.md / seo-package.md DENTRO de _PACKAGING/ (convención real del
+  // pipeline). Combinamos ambos (packaging primero → su título ELEGIDO gana) para
+  // que extractMetadata saque todo.
+  // FIX C2/B5 (auditoría 2026-06-05): el SEO real vive en `_PACKAGING/descripcion-seo.md`,
+  // NO en la raíz del videoFolder. Antes esto buscaba en la raíz → la auto-subida
+  // perdía descripción y tags (vídeos publicados SIN SEO). Buscamos en _PACKAGING/
+  // primero y caemos a la raíz como fallback (vídeos antiguos), con búsqueda
+  // multi-nombre (descripcion-seo.md y seo-package.md).
   const packagingMd = await readFile(path.join(packagingDir, 'packaging.md'), 'utf-8').catch(() => '');
   let seoMd = '';
-  for (const fname of ['seo-package.md', 'descripcion-seo.md', 'seo.md']) {
-    const s = await readFile(path.join(videoFolder, fname), 'utf-8').catch(() => '');
-    if (s) { seoMd = s; break; }
+  for (const dir of [packagingDir, videoFolder]) {
+    for (const fname of ['descripcion-seo.md', 'seo-package.md', 'seo.md']) {
+      const s = await readFile(path.join(dir, fname), 'utf-8').catch(() => '');
+      if (s) { seoMd = s; break; }
+    }
+    if (seoMd) break;
   }
   const meta = extractMetadata(seoMd ? `${packagingMd}\n\n${seoMd}` : packagingMd);
   if (!meta.title || meta.title.trim().length < 3) {

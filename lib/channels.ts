@@ -81,6 +81,12 @@ export const CHANNELS: Channel[] = [
       'PENDIENTE DE REVISAR',
       'Biblioteca de Brutos',
       '_REFERENCIA-THUMBNAILS-YOUTUBE',
+      // auditoría 2026-06-05 (M2): re-empaquetado por video-ID, no es un estado del kanban.
+      '_REPACKAGING',
+      // auditoría 2026-06-05 (M1/M2): carpeta MOJIBAKE (CP1252) duplicada de
+      // '_EN PRODUCCIÓN' — la 'Ó' quedó como 'Ã' + U+201C ("). Está vacía; se ignora
+      // para que el scanner no la trate como un estado/vídeo fantasma.
+      '_EN PRODUCCIÃ“N',
     ],
     scriptsRoot: channelScriptsRoot('moderni-stoici'),
     sharedBrutosLibrary: H_YOUTUBE + '/CANALES ESTOICISMO/MODERNI STOICI/Biblioteca de Brutos',
@@ -114,7 +120,11 @@ export const CHANNELS: Channel[] = [
     // será historias breves y narrativas (sleep stories podría ser un subset).
     slug: 'vaultman',
     name: 'The Vaultman',
-    enabled: true,
+    // desactivado por auditoría 2026-06-05: rootPath/scriptsRoot inexistentes
+    // (no existe H:/YOUTUBE/THE VAULTMAN ni youtube/vaultman/guiones; la carpeta
+    // real de la vault es the-vaultman). Reactivar cuando se cree el disco y se
+    // alinee el slug con la carpeta de la vault.
+    enabled: false,
     rootPath: H_YOUTUBE + '/THE VAULTMAN',
     stateFolders: {
       pending_locution: '_PENDIENTE LOCUCION',
@@ -132,9 +142,12 @@ export const CHANNELS: Channel[] = [
   },
   {
     // Canal de historias narrativas cortas (en español). Activado 2026-05-27.
+    // desactivado por auditoría 2026-06-05: rootPath/scriptsRoot inexistentes
+    // (scriptsRoot apunta a youtube/uncharted-history/guiones, que no existe en la
+    // vault — solo hay index.md + estilo-visual.md). Reactivar cuando exista guiones/.
     slug: 'uncharted-history',
     name: 'Uncharted History',
-    enabled: true,
+    enabled: false,
     rootPath: H_YOUTUBE + '/UNCHARTED HISTORY',
     stateFolders: {
       pending_locution: '_PENDIENTE LOCUCION',
