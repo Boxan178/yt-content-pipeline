@@ -1,20 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { spawn } from 'node:child_process';
-import { stat } from 'node:fs/promises';
-import path from 'node:path';
 import { getChannel } from '@/lib/channels';
+import { resolveVideoFolder } from '@/lib/video-folders';
 import { isSafePathSegment } from '@/lib/config';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-async function tryStat(p: string) {
-  try {
-    return await stat(p);
-  } catch {
-    return null;
-  }
-}
 
 /**
  * POST /api/channels/[channel]/videos/[video]/open-folder
@@ -43,19 +34,11 @@ export async function POST(
   if (!isSafePathSegment(videoTitle)) {
     return NextResponse.json({ error: 'Invalid video name' }, { status: 400 });
   }
-  const stateDirs = Object.values(channel.stateFolders);
-  let videoDir: string | null = null;
-  for (const sf of stateDirs) {
-    const cand = path.join(channel.rootPath, sf, videoTitle);
-    const s = await tryStat(cand);
-    if (s && s.isDirectory()) {
-      videoDir = cand;
-      break;
-    }
-  }
-  if (!videoDir) {
+  const resolved = await resolveVideoFolder(channel, videoTitle);
+  if (!resolved) {
     return NextResponse.json({ error: 'Video folder not found' }, { status: 404 });
   }
+  const videoDir = resolved.absolute;
 
   try {
     // Path para Explorer.exe: barras backslash

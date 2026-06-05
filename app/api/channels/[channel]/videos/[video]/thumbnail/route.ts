@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { getChannel } from '@/lib/channels';
+import { resolveVideoFolder } from '@/lib/video-folders';
 import { isSafePathSegment } from '@/lib/config';
 
 export const runtime = 'nodejs';
@@ -22,19 +23,6 @@ async function tryStat(p: string) {
   }
 }
 
-/**
- * Encuentra la carpeta del vídeo dentro del canal probando los 4 estados.
- * Devuelve null si no existe en ninguno.
- */
-async function findVideoFolder(channelRoot: string, stateFolders: string[], videoTitle: string) {
-  for (const sf of stateFolders) {
-    const candidate = path.join(channelRoot, sf, videoTitle);
-    const s = await tryStat(candidate);
-    if (s && s.isDirectory()) return candidate;
-  }
-  return null;
-}
-
 export async function GET(
   _req: NextRequest,
   { params }: { params: { channel: string; video: string } },
@@ -48,11 +36,11 @@ export async function GET(
   if (!isSafePathSegment(videoTitle)) {
     return NextResponse.json({ error: 'Invalid video name' }, { status: 400 });
   }
-  const stateDirs = Object.values(channel.stateFolders);
-  const videoDir = await findVideoFolder(channel.rootPath, stateDirs, videoTitle);
-  if (!videoDir) {
+  const resolved = await resolveVideoFolder(channel, videoTitle);
+  if (!resolved) {
     return NextResponse.json({ error: 'Video not found' }, { status: 404 });
   }
+  const videoDir = resolved.absolute;
 
   const minisDir = path.join(videoDir, '_PACKAGING', 'MINIATURAS');
   let entries: string[];

@@ -3,6 +3,7 @@ import { createReadStream, type ReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import { getChannel } from '@/lib/channels';
+import { resolveVideoFolder } from '@/lib/video-folders';
 import { isSafePathSegment } from '@/lib/config';
 
 /**
@@ -102,23 +103,16 @@ export async function GET(
     });
   }
 
-  // Buscar la carpeta del vídeo en cualquiera de los 4 estados
-  const stateDirs = Object.values(channel.stateFolders);
-  let videoDir: string | null = null;
-  for (const sf of stateDirs) {
-    const cand = path.join(channel.rootPath, sf, videoTitle);
-    const s = await tryStat(cand);
-    if (s && s.isDirectory()) {
-      videoDir = cand;
-      break;
-    }
-  }
-  if (!videoDir) {
+  // Buscar la carpeta del vídeo, prefiriendo la que tiene material real
+  // (evita la carpeta "fantasma" homónima que solo tiene .claude-jobs).
+  const resolved = await resolveVideoFolder(channel, videoTitle);
+  if (!resolved) {
     return new Response(JSON.stringify({ error: 'Video folder not found' }), {
       status: 404,
       headers: { 'Content-Type': 'application/json' },
     });
   }
+  const videoDir = resolved.absolute;
 
   // Resolver el path absoluto y validar que está dentro de videoDir
   const absFile = path.resolve(videoDir, fileQuery);

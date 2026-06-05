@@ -72,13 +72,18 @@ async function sleepStoryHasScript(videoFolder: string): Promise<boolean> {
 }
 
 /**
- * ¿Hay un guion escrito como `guion*.md` (guion.md, guion-v2.md, guion-narration.md…)
- * en la raíz del video folder o en _PACKAGING? SARA lo escribe ahí en el pipeline de
- * ideas (verificado empíricamente: ~50KB). Cubre el caso de sleep stories cuyo texto
- * largo es el guion y cuyo packaging.md puede ser fino (<2KB).
+ * ¿Hay un guion escrito como `guion*.md` (guion.md, guion-v2.md, guion-final.md…)
+ * en la raíz del video folder, en _PACKAGING o en _GUION? SARA/MARCO lo escriben en
+ * alguno de esos sitios según el pipeline (verificado empíricamente). Cubre sleep
+ * stories cuyo texto largo es el guion y cuyo packaging.md puede ser fino (<2KB), y
+ * los vídeos cuyo guion vive en `_GUION/guion-final.md` (convención Moderni Stoici).
  */
 async function folderHasGuion(videoFolder: string): Promise<boolean> {
-  for (const dir of [videoFolder, path.join(videoFolder, '_PACKAGING')]) {
+  for (const dir of [
+    videoFolder,
+    path.join(videoFolder, '_PACKAGING'),
+    path.join(videoFolder, '_GUION'),
+  ]) {
     const files = await safeReaddir(dir);
     for (const f of files) {
       if (/^guion[\w.-]*\.md$/i.test(f)) {

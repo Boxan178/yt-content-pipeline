@@ -162,7 +162,7 @@ export default function ChannelPage() {
     };
     for (const v of data?.videos ?? []) {
       // Filtros
-      if (q && !v.title.toLowerCase().includes(q)) continue;
+      if (q && !`${v.title} ${v.displayTitle ?? ''}`.toLowerCase().includes(q)) continue;
       if (filterMode === 'compilation' && !v.isCompilation) continue;
       if (filterMode === 'working' && (!v.activeJobs || v.activeJobs.length === 0)) continue;
       if (filterMode === 'incomplete' && v.progress.percent === 100) continue;

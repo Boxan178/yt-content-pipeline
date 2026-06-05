@@ -19,6 +19,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, statSy
 import os from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { CHANNELS, getChannel } from './channels';
 import { parsePabloDecisions, extractTitleOptions } from './parse-pablo-decisions';
 import { voicePrefix } from './agent-voices';
@@ -38,7 +40,7 @@ import { startJob, listActiveJobsForFolder, type StartJobOptions } from './claud
 import { enqueuePreEditResume } from './job-queue';
 import { regenerateMiniatura } from './miniatura-regen';
 import { buildSaraResume, type VideoContext } from './prompts';
-import { JARVIS_ROOT } from './config';
+import { JARVIS_ROOT, YOUTUBE_UPLOADER_DIR, YOUTUBE_UPLOADER_PY, YOUTUBE_UPLOADER_PYTHON } from './config';
 import { trackAndNotifyCompletions } from './completion-notify';
 
 const DIR = path.join(os.homedir(), '.yt-content-pipeline');
@@ -75,6 +77,10 @@ export interface ApprovalRequest {
   payload?: { title?: string; options?: string[] };
   /** Si está, se manda como FOTO (preview de miniatura) en vez de texto. */
   imagePath?: string;
+  /** Modo REPACKAGING: al aprobar, aplicar por API a un vídeo YA PUBLICADO
+   *  (upload.py --update: videos.update preservando desc+tags / thumbnails.set),
+   *  en vez de relanzar SARA. */
+  repackage?: { videoId: string; channel: string; kind: 'title' | 'thumbnail' };
   /** Línea "PENDIENTE ELECCIÓN DE PABLO" exacta a resolver vía applyDecision. */
   statusAnchor?: string;
   // — gobierno del re-lanzado —
@@ -535,6 +541,161 @@ async function detectAndSend(s: ApprovalState): Promise<number> {
   return sent;
 }
 
+// ── Modo REPACKAGING (vídeos YA publicados) ─────────────────────────────────
+// Vía AISLADA del flujo de producción: escanea <rootPath>/_REPACKAGING/<video_id>/
+// (NO _EN PRODUCCIÓN → invisible para SARA y para auto-publish). Manda las mismas
+// tarjetas (título 3 botones + miniatura ✅/❌) y, al aprobar, aplica por API con
+// `upload.py --update` (videos.update preservando descripción+tags / thumbnails.set)
+// en lugar de relanzar SARA. La miniatura vive en <folder>/_PACKAGING/MINIATURAS/
+// para reutilizar pickThumbnailCandidate() y el .selected-thumb de resolve().
+
+const execFileAsync = promisify(execFile);
+
+interface RepackageFile {
+  video_id: string;
+  channel?: string;
+  currentTitle?: string;
+  options?: string[];
+  recommended?: string;
+  status?: 'pending' | 'sent' | 'applied';
+}
+
+function makeRepackageRequest(
+  folder: string,
+  channelSlug: string,
+  videoId: string,
+  kind: 'title' | 'thumbnail',
+  opts: { videoTitle?: string; options?: string[]; title?: string; imagePath?: string; question: string },
+): ApprovalRequest {
+  return {
+    id: randomUUID(),
+    token: shortToken(),
+    createdAt: new Date().toISOString(),
+    videoFolder: normFolder(folder),
+    channel: channelSlug,
+    videoTitle: opts.videoTitle,
+    skill: kind === 'title' ? 'marcos' : 'nora',
+    label: kind === 'title' ? 'Título (repackaging)' : 'Miniatura (repackaging)',
+    kind: 'approve_reject',
+    question: opts.question,
+    payload: { title: opts.title, options: opts.options },
+    imagePath: opts.imagePath,
+    repackage: { videoId, channel: channelSlug, kind },
+    status: 'open',
+  };
+}
+
+/** Aplica el repackaging APROBADO al vídeo publicado vía `upload.py --update`
+ *  (título preservando descripción+tags, o miniatura). Edita el mensaje de Telegram
+ *  con el resultado. El rechazo no aplica nada (la regeneración se hace aparte). */
+async function applyRepackage(req: ApprovalRequest, choice: ApprovalChoice): Promise<void> {
+  if (!req.repackage || choice !== 'approved') return;
+  const { videoId, channel, kind } = req.repackage;
+  const args = [YOUTUBE_UPLOADER_PY, '--channel', channel, '--update', videoId];
+  if (kind === 'title') {
+    if (!req.payload?.title) return;
+    args.push('--title', req.payload.title);
+  } else {
+    if (!req.imagePath || !existsSync(req.imagePath)) return;
+    args.push('--thumbnail', req.imagePath);
+  }
+  let ok = false;
+  let detail = '';
+  try {
+    const { stdout } = await execFileAsync(YOUTUBE_UPLOADER_PYTHON, args, {
+      cwd: YOUTUBE_UPLOADER_DIR,
+      windowsHide: true,
+      timeout: 120_000,
+      maxBuffer: 1024 * 1024,
+    });
+    ok = /Updated\s|Thumbnail updated|youtu\.be\//i.test(stdout);
+    detail = ok ? 'aplicado' : (stdout.trim().split('\n').pop() ?? 'sin confirmación');
+  } catch (e) {
+    const err = e as { stderr?: string; message?: string };
+    detail = (err.stderr || err.message || String(e)).toString().trim().split('\n').pop() ?? 'error';
+  }
+  if (req.chatId != null && req.messageId) {
+    const what = kind === 'title' ? `Título: «${escapeHtml(req.payload?.title ?? '')}»` : 'Miniatura';
+    const head = `${voicePrefix(req.skill, req.label)} · ${ok ? '✅ Aplicado a YouTube' : '⚠️ No se pudo aplicar'}`;
+    const tail = ok ? `https://youtu.be/${videoId}` : escapeHtml(detail);
+    await telegramEditMessageText({ chatId: req.chatId, messageId: req.messageId, text: `${head}\n${what}\n${tail}` }).catch(() => {});
+  }
+}
+
+/** Escanea <rootPath>/_REPACKAGING/<video_id>/repackage.json por canal y manda las
+ *  tarjetas (título + miniatura) aún no enviadas. Idempotente: marca el JSON 'sent'. */
+async function detectRepackaging(s: ApprovalState): Promise<number> {
+  const existing = new Set(
+    s.items
+      .filter((r) => (r.status === 'open' || r.status === 'sent') && r.repackage)
+      .map((r) => `${normFolder(r.videoFolder)}::${r.repackage!.kind}`),
+  );
+  let sent = 0;
+  for (const channel of CHANNELS) {
+    if (!channel.enabled || !channel.rootPath) continue;
+    const base = path.join(channel.rootPath, '_REPACKAGING');
+    let ids: string[];
+    try {
+      ids = readdirSync(base);
+    } catch {
+      continue; // el canal no tiene carpeta _REPACKAGING
+    }
+    for (const id of ids) {
+      const folder = path.join(base, id);
+      const jsonPath = path.join(folder, 'repackage.json');
+      if (!existsSync(jsonPath)) continue;
+      let data: RepackageFile;
+      try {
+        data = JSON.parse(readFileSync(jsonPath, 'utf-8')) as RepackageFile;
+      } catch {
+        continue;
+      }
+      if (data.status && data.status !== 'pending') continue;
+      const videoId = (data.video_id || id).trim();
+      const videoTitle = data.currentTitle || id;
+
+      const titleKey = `${normFolder(folder)}::title`;
+      const options = Array.isArray(data.options) ? data.options.filter(Boolean).slice(0, 3) : [];
+      if (!existing.has(titleKey) && options.length >= 2) {
+        const req = makeRepackageRequest(folder, channel.slug, videoId, 'title', {
+          videoTitle,
+          options,
+          title: data.recommended && options.includes(data.recommended) ? data.recommended : options[0],
+          question: '¿Qué título eliges?',
+        });
+        await sendRequest(req);
+        s.items.push(req);
+        existing.add(titleKey);
+        if (req.status === 'sent') sent++;
+      }
+
+      const thumbKey = `${normFolder(folder)}::thumbnail`;
+      if (!existing.has(thumbKey)) {
+        const img = pickThumbnailCandidate(folder);
+        if (img) {
+          const req = makeRepackageRequest(folder, channel.slug, videoId, 'thumbnail', {
+            videoTitle,
+            imagePath: img,
+            question: '¿Apruebas esta miniatura?',
+          });
+          await sendRequest(req);
+          s.items.push(req);
+          existing.add(thumbKey);
+          if (req.status === 'sent') sent++;
+        }
+      }
+
+      // Marca 'sent' para no re-mandar cada tick (se regenera 'pending' si Pablo
+      // quiere repreguntar editando el JSON a mano).
+      try {
+        data.status = 'sent';
+        writeFileSync(jsonPath, JSON.stringify(data, null, 2), 'utf-8');
+      } catch {}
+    }
+  }
+  return sent;
+}
+
 // ── Resolución de una solicitud ─────────────────────────────────────────────
 
 async function resolve(req: ApprovalRequest, choice: ApprovalChoice, notes?: string): Promise<void> {
@@ -583,6 +744,13 @@ async function resolve(req: ApprovalRequest, choice: ApprovalChoice, notes?: str
       messageId: req.messageId,
       text: `${voicePrefix(req.skill, req.label)} · ${verdict}\n«${escapeHtml(title)}»${notesLine}`,
     });
+  }
+
+  // Repackaging de un vídeo ya publicado: aplicar por API (upload.py --update),
+  // NO relanzar SARA (no hay producción que continuar).
+  if (req.repackage) {
+    await applyRepackage(req, choice);
+    return;
   }
 
   // Reanudar el flujo (re-lanzar el job con la decisión inyectada).
@@ -745,6 +913,12 @@ export async function runTelegramPoll(): Promise<PollResult> {
         detected = await detectAndSend(s);
       } catch {
         // un canal problemático no debe tumbar el tick
+      }
+      // Repackaging: detectar _REPACKAGING/<id>/ y mandar sus tarjetas (aislado).
+      try {
+        detected += await detectRepackaging(s);
+      } catch {
+        // un repackaging problemático no debe tumbar el tick
       }
       // Avisos de "algo acabó" (cola + subidas), solo si está "Fuera del PC".
       try {

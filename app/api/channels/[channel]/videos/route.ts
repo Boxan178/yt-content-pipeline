@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readdir, stat } from 'node:fs/promises';
+import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { getChannel, type VideoState } from '@/lib/channels';
 import { computeProgress, type Progress } from '@/lib/progress';
+import { extractMetadata } from '@/lib/extract-metadata';
 import { listActiveJobsForFolder, type ClaudeJob } from '@/lib/claude-jobs';
 import { diffAndUpdate, type Transition } from '@/lib/seen-states';
 import { readSchedule, tickScheduler, type ScheduledUpload } from '@/lib/upload-schedule';
@@ -19,6 +20,8 @@ const AUTO_PUBLISH_BACKSTOP_GAP_MS = 60_000;
 interface VideoDTO {
   channel: string;
   title: string;
+  /** Título de YouTube elegido (del packaging.md). La UI lo muestra en vez del nombre de carpeta. */
+  displayTitle: string | null;
   state: VideoState;
   folderPath: string;
   thumbnailUrl: string | null;
@@ -133,6 +136,17 @@ async function inspectVideoFolder(
 
   const progress = await computeProgress(folderPath, { sharedBrutosAvailable });
 
+  // Título de YouTube elegido (packaging.md → ELEGIDO de MARCOS). Se muestra en
+  // las tarjetas/modal en vez del nombre de carpeta interno. null si no hay.
+  let displayTitle: string | null = null;
+  if (hasPackaging) {
+    try {
+      const pkgMd = await readFile(path.join(folderPath, '_PACKAGING', 'packaging.md'), 'utf-8');
+      const t = extractMetadata(pkgMd).title?.trim();
+      if (t && t !== folderName) displayTitle = t;
+    } catch {}
+  }
+
   // Detección de recopilación: existe _PACKAGING/compilation.json
   let isCompilation = false;
   let compilationSources: number | undefined;
@@ -161,6 +175,7 @@ async function inspectVideoFolder(
   return {
     channel: channelSlug,
     title: folderName,
+    displayTitle,
     state,
     folderPath,
     thumbnailUrl,

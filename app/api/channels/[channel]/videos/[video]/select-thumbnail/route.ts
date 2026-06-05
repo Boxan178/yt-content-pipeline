@@ -3,6 +3,7 @@ import { stat, writeFile, unlink, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { getChannel } from '@/lib/channels';
+import { resolveVideoFolder } from '@/lib/video-folders';
 import { isSafePathSegment } from '@/lib/config';
 
 export const runtime = 'nodejs';
@@ -16,15 +17,6 @@ async function tryStat(p: string) {
   } catch {
     return null;
   }
-}
-
-async function findVideoFolder(channelRoot: string, stateFolders: string[], videoTitle: string) {
-  for (const sf of stateFolders) {
-    const candidate = path.join(channelRoot, sf, videoTitle);
-    const s = await tryStat(candidate);
-    if (s && s.isDirectory()) return candidate;
-  }
-  return null;
 }
 
 /**
@@ -59,11 +51,11 @@ export async function POST(
   if (!isSafePathSegment(videoTitle)) {
     return NextResponse.json({ ok: false, error: 'Invalid video name' }, { status: 400 });
   }
-  const stateDirs = Object.values(channel.stateFolders);
-  const videoDir = await findVideoFolder(channel.rootPath, stateDirs, videoTitle);
-  if (!videoDir) {
+  const resolved = await resolveVideoFolder(channel, videoTitle);
+  if (!resolved) {
     return NextResponse.json({ ok: false, error: 'Video folder not found' }, { status: 404 });
   }
+  const videoDir = resolved.absolute;
   const minisDir = path.join(videoDir, '_PACKAGING', 'MINIATURAS');
   const minisStat = await tryStat(minisDir);
   if (!minisStat || !minisStat.isDirectory()) {
@@ -107,9 +99,9 @@ export async function GET(
   }
   const videoTitle = decodeURIComponent(params.video);
   if (!isSafePathSegment(videoTitle)) return NextResponse.json({ ok: true, selected: null });
-  const stateDirs = Object.values(channel.stateFolders);
-  const videoDir = await findVideoFolder(channel.rootPath, stateDirs, videoTitle);
-  if (!videoDir) return NextResponse.json({ ok: true, selected: null });
+  const resolved = await resolveVideoFolder(channel, videoTitle);
+  if (!resolved) return NextResponse.json({ ok: true, selected: null });
+  const videoDir = resolved.absolute;
   const selectedPath = path.join(videoDir, '_PACKAGING', 'MINIATURAS', SELECTED_FILE);
   if (!existsSync(selectedPath)) return NextResponse.json({ ok: true, selected: null });
   try {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { getChannel } from '@/lib/channels';
+import { resolveVideoFolder } from '@/lib/video-folders';
 import { isSafePathSegment } from '@/lib/config';
 
 export const runtime = 'nodejs';
@@ -21,15 +22,6 @@ async function safeReaddir(p: string): Promise<string[]> {
   } catch {
     return [];
   }
-}
-
-async function findVideoFolder(channelRoot: string, stateFolders: string[], videoTitle: string) {
-  for (const sf of stateFolders) {
-    const candidate = path.join(channelRoot, sf, videoTitle);
-    const s = await tryStat(candidate);
-    if (s && s.isDirectory()) return { absolute: candidate, stateFolder: sf };
-  }
-  return null;
 }
 
 interface FileEntry {
@@ -84,8 +76,7 @@ export async function GET(
   if (!isSafePathSegment(videoTitle)) {
     return NextResponse.json({ error: 'Invalid video name' }, { status: 400 });
   }
-  const stateDirs = Object.values(channel.stateFolders);
-  const folder = await findVideoFolder(channel.rootPath, stateDirs, videoTitle);
+  const folder = await resolveVideoFolder(channel, videoTitle);
   if (!folder) {
     return NextResponse.json({ error: 'Video not found' }, { status: 404 });
   }
@@ -97,6 +88,16 @@ export async function GET(
     packagingMd = await readFile(packagingPath, 'utf-8');
   } catch {
     packagingMd = null;
+  }
+
+  // descripcion-seo.md: la descripción REAL de YouTube (prosa + chapters), que el
+  // packaging.md no contiene. El form de subida la prefiere sobre el packaging.
+  const descripcionSeoPath = path.join(folder.absolute, '_PACKAGING', 'descripcion-seo.md');
+  let descripcionSeoMd: string | null = null;
+  try {
+    descripcionSeoMd = await readFile(descripcionSeoPath, 'utf-8');
+  } catch {
+    descripcionSeoMd = null;
   }
 
   // Listado completo de archivos relevantes (videos/audios/imágenes)
@@ -125,6 +126,7 @@ export async function GET(
     folderPath: folder.absolute,
     stateFolder: folder.stateFolder,
     packagingMd,
+    descripcionSeoMd,
     counts: {
       videos: videos.length,
       audios: audios.length,

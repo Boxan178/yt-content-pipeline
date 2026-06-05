@@ -3,12 +3,13 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { extractMetadata } from '@/lib/extract-metadata';
+import { extractMetadata, extractSeoDescription } from '@/lib/extract-metadata';
 
 interface DetailResponse {
   ok?: boolean;
   folderPath?: string;
   packagingMd?: string | null;
+  descripcionSeoMd?: string | null;
   images?: Array<{ name: string; relPath: string; size: number; ext: string; mtime: string }>;
   renderPrincipal?: string | null;
   progress?: { percent: number; hits: number; total: number };
@@ -111,16 +112,16 @@ function UploadPage() {
       );
       const data = (await r.json()) as DetailResponse;
       setDetail(data);
-      // Pre-rellenar
-      if (data.packagingMd) {
-        const meta = extractMetadata(data.packagingMd);
-        if (meta.title) setTitle(meta.title);
-        else setTitle(videoTitle);
-        if (meta.description) setDescription(meta.description);
-        if (meta.tags.length > 0) setTags(meta.tags.join(', '));
-      } else {
-        setTitle(videoTitle);
-      }
+      // Pre-rellenar. Título: del packaging (ELEGIDO de MARCOS) → fallback al
+      // nombre de carpeta. Descripción + tags: PREFERIR descripcion-seo.md (tiene
+      // la descripción real con chapters); el packaging.md no la lleva.
+      const meta = data.packagingMd ? extractMetadata(data.packagingMd) : null;
+      setTitle(meta?.title || videoTitle);
+      const seo = data.descripcionSeoMd ? extractSeoDescription(data.descripcionSeoMd) : null;
+      const desc = seo?.description || meta?.description || '';
+      const tagList = (seo?.tags && seo.tags.length > 0 ? seo.tags : meta?.tags) ?? [];
+      if (desc) setDescription(desc);
+      if (tagList.length > 0) setTags(tagList.join(', '));
       // Cargar miniatura actual (la marcada con .selected-thumb o la última)
       try {
         const sr = await fetch(

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { rename, stat, cp, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { getChannel, type VideoState } from '@/lib/channels';
+import { resolveVideoFolder } from '@/lib/video-folders';
 import { isSafePathSegment } from '@/lib/config';
 import { readSettings } from '@/lib/settings';
 
@@ -59,21 +60,15 @@ export async function POST(
   if (!isSafePathSegment(videoTitle)) {
     return NextResponse.json({ ok: false, error: 'Invalid video name' }, { status: 400 });
   }
-  let src: string | null = null;
-  let fromState: VideoState | null = null;
-  for (const [s, f] of Object.entries(channel.stateFolders) as [VideoState, string][]) {
-    if (!f) continue;
-    const cand = path.join(channel.rootPath, f, videoTitle);
-    const st = await tryStat(cand);
-    if (st && st.isDirectory()) {
-      src = cand;
-      fromState = s;
-      break;
-    }
-  }
-  if (!src) {
+  // Resuelve la carpeta REAL del vídeo (prefiere la que tiene material; ignora
+  // la "fantasma" homónima que solo tiene .claude-jobs). Así move-state mueve el
+  // vídeo de verdad, no un esqueleto vacío.
+  const resolved = await resolveVideoFolder(channel, videoTitle);
+  if (!resolved) {
     return NextResponse.json({ ok: false, error: 'Video folder no encontrado en ningún estado' }, { status: 404 });
   }
+  const src = resolved.absolute;
+  const fromState = resolved.state;
   if (fromState === toState) {
     return NextResponse.json({ ok: true, noop: true, message: 'ya está en ese estado' });
   }

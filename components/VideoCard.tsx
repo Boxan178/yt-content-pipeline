@@ -15,6 +15,7 @@ export interface ActiveJob {
 export interface VideoCardData {
   channel: string;
   title: string;
+  displayTitle?: string | null;
   state: VideoState;
   folderPath: string;
   thumbnailUrl: string | null;
@@ -197,7 +198,7 @@ export function VideoCard({ video, onArchived, onOpen, celebrate }: Props) {
 
       <div className="p-3">
         <h3 className="line-clamp-2 text-sm font-medium leading-tight text-white" title={video.title}>
-          {video.title}
+          {video.displayTitle || video.title}
         </h3>
         <p className="mt-1 text-[11px] text-muted">{relTime(video.mtime)}</p>
 

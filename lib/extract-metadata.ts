@@ -159,3 +159,59 @@ export function extractMetadata(md: string): ExtractedMetadata {
 
   return { title, description, tags: Array.from(tags) };
 }
+
+/**
+ * Extrae la descripción de YouTube lista-para-pegar (prosa + chapters) y los tags
+ * de un `descripcion-seo.md` / `seo-package.md`. A diferencia de packaging.md,
+ * este fichero SÍ tiene la descripción real. Soporta los dos formatos que conviven:
+ *   A) "## Descripción" con los chapters ya incrustados (header "⏱ CHAPTERS").
+ *   B) "## Descripción YouTube" sin chapters + "## CHAPTERS" en sección aparte.
+ */
+export function extractSeoDescription(md: string): { description: string; tags: string[] } {
+  md = md.replace(/\r\n?/g, '\n');
+  const stripHr = (s: string) => s.replace(/\n\s*-{3,}\s*$/, '').trim();
+
+  // ── Descripción ────────────────────────────────────────────────────
+  let description = '';
+  const descSec =
+    md.match(/^##\s+[^\n]*?Descripci[oó]n[^\n]*\n+([\s\S]+?)(?=^##\s|(?![\s\S]))/im) ??
+    md.match(/^##\s+[^\n]*?Description[^\n]*\n+([\s\S]+?)(?=^##\s|(?![\s\S]))/im);
+  if (descSec) {
+    let body = descSec[1].trim();
+    const code = body.match(/```(?:[\w-]+)?\n([\s\S]+?)```/);
+    body = code ? code[1].trim() : body.replace(/<!--[\s\S]*?-->/g, '');
+    description = stripHr(body);
+  }
+  // Si la descripción no trae chapters incrustados, añadirlos desde "## CHAPTERS".
+  const hasInlineChapters = /(^|\n)\s*\d{1,2}:\d{2}\b/.test(description);
+  if (!hasInlineChapters) {
+    const chSec = md.match(/^##\s+[^\n]*?(?:CHAPTERS|Cap[ií]tulos)[^\n]*\n+([\s\S]+?)(?=^##\s|(?![\s\S]))/im);
+    if (chSec) {
+      const lines = stripHr(chSec[1])
+        .split('\n')
+        .map((l) => l.trim())
+        .filter((l) => /^\d{1,2}:\d{2}(:\d{2})?\b/.test(l));
+      if (lines.length > 0) {
+        description = description ? `${description}\n\n${lines.join('\n')}` : lines.join('\n');
+      }
+    }
+  }
+
+  // ── Tags ───────────────────────────────────────────────────────────
+  const tags: string[] = [];
+  const tagSec = md.match(/^##\s+[^\n]*?(?:Tags|Keywords)[^\n]*\n+([\s\S]+?)(?=^##\s|(?![\s\S]))/im);
+  if (tagSec) {
+    let body = stripHr(tagSec[1].trim());
+    const code = body.match(/```(?:[\w-]+)?\n([\s\S]+?)```/);
+    if (code) body = code[1].trim();
+    body
+      .split(/[,\n;]/)
+      .map((t) => cleanValue(t).replace(/^#/, ''))
+      .filter((t) => t.length > 1 && t.length < 50 && !/^-+$/.test(t))
+      .forEach((t) => {
+        if (!tags.includes(t)) tags.push(t);
+      });
+  }
+
+  return { description, tags };
+}

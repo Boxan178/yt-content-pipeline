@@ -145,7 +145,7 @@ export function VideoDetailModal({ video, onClose }: Props) {
               {STATE_LABEL[video.state] ?? video.state}{detail?.stateFolder ? ` · ${detail.stateFolder}` : ''}
             </p>
             <h1 className="mt-1.5 font-display text-2xl font-semibold tracking-display text-white">
-              {video.title}
+              {video.displayTitle || video.title}
             </h1>
             {detail?.folderPath && (
               <button
