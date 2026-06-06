@@ -33,11 +33,6 @@ const ICONS = {
       <path d="M7 3v18M17 3v18M3 7.5h18M3 12h18M3 16.5h18" />
     </svg>
   ),
-  sleepStories: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
-    </svg>
-  ),
   queue: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 6.5l1.5 1.5L8.5 5M4 12.5l1.5 1.5L8.5 11M4 18.5l1.5 1.5L8.5 17M13 7h7M13 13h7M13 19h7" />
@@ -104,7 +99,6 @@ const NAV: NavItem[] = [
   { href: '/', icon: ICONS.channels, label: 'Canales', isActive: (p) => p === '/' || p.startsWith('/channels') },
   { href: '/calendar', icon: ICONS.calendar, label: 'Calendario', isActive: (p) => p.startsWith('/calendar') },
   { href: '/automator', icon: ICONS.automator, label: 'Automator', isActive: (p) => p.startsWith('/automator') },
-  { href: '/sleep-stories', icon: ICONS.sleepStories, label: 'Sleep Stories', isActive: (p) => p.startsWith('/sleep-stories') },
   { href: '/queue', icon: ICONS.queue, label: 'Cola', isActive: (p) => p.startsWith('/queue') },
   { href: '/visual-lab', icon: ICONS.visualLab, label: 'Visual Lab', isActive: (p) => p.startsWith('/visual-lab') },
   { href: '/scheduled', icon: ICONS.scheduled, label: 'Subidas programadas', isActive: (p) => p.startsWith('/scheduled') },

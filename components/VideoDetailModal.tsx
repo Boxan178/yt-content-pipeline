@@ -5,7 +5,7 @@ import { PackagingSections } from './PackagingSections';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { VideoCardData } from './VideoCard';
-import { STATE_LABEL } from '@/lib/channels';
+import { STATE_LABEL, STATE_ORDER, type VideoState } from '@/lib/channels';
 import { ChecklistPanel } from './ChecklistPanel';
 import { PabloDecisionsPanel } from './PabloDecisionsPanel';
 import { VerifyLocucionButton } from './VerifyLocucionButton';
@@ -64,8 +64,36 @@ export function VideoDetailModal({ video, onClose }: Props) {
   const [audioIdx, setAudioIdx] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  // Estado manual: override del estado auto-detectado. Mueve la carpeta en disco
+  // (move-state) para mitigar errores de clasificación. `movedState` pisa la
+  // etiqueta tras un movimiento OK sin necesitar refresco del kanban padre.
+  const [movedState, setMovedState] = useState<VideoState | null>(null);
+  const [movingState, setMovingState] = useState(false);
+  const effectiveState: VideoState = movedState ?? video.state;
 
   const reloadDetail = () => setReloadKey((k) => k + 1);
+
+  const moveState = async (toState: VideoState) => {
+    if (toState === effectiveState || movingState) return;
+    setMovingState(true);
+    try {
+      const r = await fetch(
+        `/api/channels/${encodeURIComponent(video.channel)}/videos/${encodeURIComponent(video.title)}/move-state`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ toState }) },
+      );
+      const d = await r.json();
+      if (!r.ok || !d.ok) {
+        setToast(d.error || `No se pudo mover a ${STATE_LABEL[toState]}`);
+      } else {
+        setMovedState(toState);
+        setToast(d.noop ? 'Ya estaba en ese estado' : `Movido a ${STATE_LABEL[toState]}`);
+        reloadDetail();
+      }
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : 'Error moviendo de estado');
+    }
+    setMovingState(false);
+  };
 
   useEffect(() => {
     const enc = (s: string) => encodeURIComponent(s);
@@ -141,9 +169,23 @@ export function VideoDetailModal({ video, onClose }: Props) {
         {/* Header */}
         <header className="flex items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-medium uppercase tracking-label text-zinc-500">
-              {STATE_LABEL[video.state] ?? video.state}{detail?.stateFolder ? ` · ${detail.stateFolder}` : ''}
-            </p>
+            <div className="flex items-center gap-2">
+              <select
+                value={effectiveState}
+                disabled={movingState}
+                onChange={(e) => moveState(e.target.value as VideoState)}
+                title="Cambiar el estado del vídeo a mano (mueve la carpeta en disco)"
+                className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-medium uppercase tracking-label text-zinc-300 transition hover:border-white/25 hover:text-white focus:border-accent/60 focus:outline-none disabled:opacity-50"
+              >
+                {STATE_ORDER.map((s) => (
+                  <option key={s} value={s} className="bg-zinc-900 normal-case">{STATE_LABEL[s]}</option>
+                ))}
+              </select>
+              {movingState && <span className="text-[10px] text-zinc-500">moviendo…</span>}
+              {detail?.stateFolder && !movingState && (
+                <span className="text-[10px] uppercase tracking-label text-zinc-600">· {detail.stateFolder}</span>
+              )}
+            </div>
             <h1 className="mt-1.5 font-display text-2xl font-semibold tracking-display text-white">
               {video.displayTitle || video.title}
             </h1>

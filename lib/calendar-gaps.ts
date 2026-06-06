@@ -11,6 +11,7 @@ import { readSchedule } from './upload-schedule';
 import { readContentCalendar, addPlanned, updatePlanned } from './content-calendar';
 import { readCadence, getCadence } from './channel-cadence';
 import { getChannel, channelColor } from './channels';
+import { getOccupiedYouTubeDates } from './youtube-schedule';
 import type { CalendarGapWeek, CalendarGapDay } from './calendar-types';
 
 /** Lunes 00:00 local de la semana que contiene `d`. */
@@ -52,6 +53,14 @@ function occupiedDatesByChannel(): Map<string, Date[]> {
   for (const p of readContentCalendar().items) {
     if (p.videoFolder && uploadFolderBases.has(baseOf(p.videoFolder))) continue;
     push(p.channel, p.date);
+  }
+  // Horario REAL del canal de YouTube (RSS publicados + API programados privados).
+  // Es la fuente que arregla los huecos "falsos": un día con vídeo ya publicado o
+  // programado nativamente en YouTube (fuera de la app) deja de contar como hueco.
+  for (const [channel, dates] of getOccupiedYouTubeDates()) {
+    const arr = map.get(channel) ?? [];
+    for (const d of dates) arr.push(d);
+    map.set(channel, arr);
   }
   return map;
 }

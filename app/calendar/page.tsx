@@ -89,6 +89,8 @@ export default function CalendarPage() {
   const [showPlanner, setShowPlanner] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [ytStatus, setYtStatus] = useState<Record<string, { status: string; fetchedAt: string; count: number; scheduled: number }>>({});
+  const [ytSyncing, setYtSyncing] = useState(false);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -122,14 +124,49 @@ export default function CalendarPage() {
       .catch(() => {});
   }, []);
 
+  const loadYtStatus = useCallback(() => {
+    fetch('/api/youtube/schedule', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => { if (d?.ok) setYtStatus(d.status ?? {}); })
+      .catch(() => {});
+  }, []);
+
+  // Sincroniza el horario REAL de YouTube (RSS publicados + API programados) y
+  // refresca calendario + huecos. `silent` para el auto-sync de montaje.
+  const syncYouTube = useCallback(async (silent = false) => {
+    setYtSyncing(true);
+    try {
+      const r = await fetch('/api/youtube/schedule', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      const d = await r.json();
+      if (d?.ok) {
+        setYtStatus(d.status ?? {});
+        loadItems();
+        loadGaps();
+        if (!silent) {
+          const auth = Object.values(d.status ?? {}).some((s) => (s as { status: string }).status === 'auth_required');
+          setNotice(auth
+            ? 'YouTube sincronizado (publicados). Para ver los PROGRAMADOS privados, hay que reconectar YouTube (login).'
+            : 'Calendario sincronizado con YouTube.');
+        }
+      } else if (!silent) {
+        setNotice('No pude sincronizar con YouTube.');
+      }
+    } catch {
+      if (!silent) setNotice('No pude sincronizar con YouTube.');
+    }
+    setYtSyncing(false);
+  }, [loadItems, loadGaps]);
+
   useEffect(() => {
     loadItems();
     loadBacklog();
     loadGaps();
     loadCadence();
+    loadYtStatus();
+    syncYouTube(true); // auto-sync al abrir el calendario (decisión: auto + botón)
     const id = setInterval(() => { loadItems(); loadGaps(); }, REFRESH_MS);
     return () => clearInterval(id);
-  }, [loadItems, loadBacklog, loadGaps, loadCadence]);
+  }, [loadItems, loadBacklog, loadGaps, loadCadence, loadYtStatus, syncYouTube]);
 
   // Canales seleccionables: unión de los que aparecen en el calendario, en el
   // banco de ideas y en los vídeos listos. Antes salía solo de `items`, así que
@@ -287,15 +324,18 @@ export default function CalendarPage() {
             o pulsa <span className="text-zinc-200">+</span> en un día para planificar a mano.
           </p>
         </div>
-        <button
-          onClick={() => setShowPlanner((v) => !v)}
-          className="glass glass-hover flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm text-zinc-300"
-        >
-          Cadencia y huecos
-          {totalMissing > 0 && (
-            <span className="rounded-full bg-amber-500/20 px-1.5 text-[10px] font-medium text-amber-300">{totalMissing}</span>
-          )}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <YouTubeSyncButton status={ytStatus} syncing={ytSyncing} onSync={() => syncYouTube(false)} />
+          <button
+            onClick={() => setShowPlanner((v) => !v)}
+            className="glass glass-hover flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm text-zinc-300"
+          >
+            Cadencia y huecos
+            {totalMissing > 0 && (
+              <span className="rounded-full bg-amber-500/20 px-1.5 text-[10px] font-medium text-amber-300">{totalMissing}</span>
+            )}
+          </button>
+        </div>
       </div>
 
       {notice && (
@@ -388,6 +428,51 @@ export default function CalendarPage() {
         />
       )}
     </main>
+  );
+}
+
+/* ─────────────── Botón de sync con YouTube ─────────────── */
+function YouTubeSyncButton({
+  status,
+  syncing,
+  onSync,
+}: {
+  status: Record<string, { status: string; fetchedAt: string; count: number; scheduled: number }>;
+  syncing: boolean;
+  onSync: () => void;
+}) {
+  const entries = Object.values(status);
+  const needsAuth = entries.some((s) => s.status === 'auth_required');
+  const lastSync = entries
+    .map((s) => s.fetchedAt)
+    .filter(Boolean)
+    .sort()
+    .pop();
+  const lastLabel = lastSync
+    ? new Date(lastSync).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+    : null;
+  return (
+    <button
+      onClick={onSync}
+      disabled={syncing}
+      className={`glass glass-hover flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm transition disabled:opacity-60 ${
+        needsAuth ? 'text-amber-300' : 'text-zinc-300'
+      }`}
+      title={
+        needsAuth
+          ? 'Sincronizado lo publicado por RSS. Los vídeos PROGRAMADOS privados necesitan reconectar YouTube (login del dueño).'
+          : 'Lee el horario real del canal (publicados + programados) y actualiza el calendario y los huecos.'
+      }
+    >
+      <span className={syncing ? 'animate-spin' : ''} aria-hidden>↻</span>
+      {syncing ? 'Sincronizando…' : 'Sincronizar YouTube'}
+      {needsAuth && !syncing && (
+        <span className="rounded-full bg-amber-500/20 px-1.5 text-[10px] font-medium text-amber-300">reconectar</span>
+      )}
+      {!needsAuth && lastLabel && !syncing && (
+        <span className="text-[10px] text-zinc-500">{lastLabel}</span>
+      )}
+    </button>
   );
 }
 

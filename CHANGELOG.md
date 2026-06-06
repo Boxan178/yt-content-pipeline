@@ -2,7 +2,7 @@
 
 Registro **único** de versiones de la app de escritorio. Fuente de verdad para no dispersarnos: cada vez que se publica una release nueva, se añade aquí su entrada.
 
-- **Versión vigente (Latest):** `v0.7.5` — publicada 2026-06-06.
+- **Versión vigente (Latest):** `v0.7.6` — publicada 2026-06-06.
 - **Versión "oficial-escritorio" histórica intocable:** `v0.6.0` (referida así en `CLAUDE.md` / `ACCESO-WEB.md`).
 - **Distribución:** GitHub Releases (`Boxan178/yt-content-pipeline`, repo público) → installer NSIS + portable + `latest.yml`. Proceso en `RELEASE.md`.
 - **Auto-update:** la app comprueba **solo al arrancar** y cada 4h. Para forzar la pastilla (UpdateToast): cerrar y reabrir la app instalada. El portable NO se autoactualiza. Kill-switch: arrancar con `YTCP_UPDATER_ENABLED=0`.
@@ -11,7 +11,13 @@ Convención de columnas: ✅ = release publicada en GitHub · 🏷️ = solo tag
 
 ---
 
-## v0.7.5 — 2026-06-06 ✅ (Latest)
+## v0.7.6 — 2026-06-06 ✅ (Latest)
+- **Calendario sincronizado con el horario REAL de YouTube**: nuevo sync que lee el canal por RSS público (vídeos publicados, sin auth) + YouTube Data API (vídeos PROGRAMADOS privados, token de lectura del skill SEO). Los "huecos" dejan de ser falsos: un día con vídeo ya publicado/programado en YouTube (aunque se subiera fuera de la app) ya no cuenta como hueco. Botón "Sincronizar YouTube" + auto-sync al abrir el calendario; los vídeos del canal se pintan en la vista mes. `lib/youtube-schedule.ts`, `scripts/youtube_schedule.py`, `/api/youtube/schedule`. Solo Moderni Stoici hoy (único con token de lectura); resto preparado.
+  - Nota: los PROGRAMADOS privados requieren reconectar YouTube (login del dueño) — el token de lectura caducó; mientras, los publicados se reflejan por RSS y la UI muestra "reconectar".
+- **Estado del vídeo manual**: selector en el detalle del vídeo para forzar su estado (mueve la carpeta en disco vía `move-state`), además de la detección automática — para mitigar errores de clasificación.
+- **Eliminada la pestaña "Sleep Stories"** (sidebar + acceso rápido + página + API) — estaba vacía y sin uso.
+
+## v0.7.5 — 2026-06-06 ✅
 - `fix(ui)`: DecisionModal vía `createPortal` — sin solape con el modal de detalle.
 - `fix(audit)`: C2 auto-publish lee la descripción SEO de `_PACKAGING/` (fallback a raíz, multi-nombre) → los vídeos auto-publicados recuperan descripción + tags.
 - `chore`: `vaultman` y `uncharted-history` quedan `enabled:false` (rootPath/scriptsRoot inexistentes); `_REPACKAGING` + carpeta mojibake añadidas a `ignoreFolders`.

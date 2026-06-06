@@ -92,6 +92,8 @@ export const CHANNELS: Channel[] = [
     sharedBrutosLibrary: H_YOUTUBE + '/CANALES ESTOICISMO/MODERNI STOICI/Biblioteca de Brutos',
     autoPipeline: true,
     autoPublishUnlisted: true,
+    // ID real del canal (RSS público + Data API). Sync del horario real → calendario.
+    youtubeChannelId: 'UCpDsZiNeI-Pi4gqQGqq8JYg',
   },
   // Placeholders — completar rootPath y stateFolders cuando se activen.
   {

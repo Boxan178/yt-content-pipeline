@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readSchedule } from '@/lib/upload-schedule';
 import { readContentCalendar, addPlanned } from '@/lib/content-calendar';
+import { readScheduleCache } from '@/lib/youtube-schedule';
 import { CHANNELS, getChannel, channelColor } from '@/lib/channels';
 import type { CalendarItem } from '@/lib/calendar-types';
 
@@ -66,13 +67,40 @@ export async function GET(req: NextRequest) {
       ideaId: p.ideaId,
     }));
 
+  // 3) Horario REAL de YouTube (RSS publicados + API programados privados). Es la
+  //    fuente que refleja lo que de verdad hay en el canal, aunque se subiera/
+  //    programara fuera de la app. Dedup por youtubeVideoId contra las subidas
+  //    (auto-publish ya las registra con su videoId → no duplicar chip).
+  const uploadVideoIds = new Set(scheduleItems.map((u) => u.youtubeVideoId).filter(Boolean) as string[]);
+  const ytCache = readScheduleCache();
+  const youtubeItems: CalendarItem[] = [];
+  for (const [slug, entry] of Object.entries(ytCache.channels)) {
+    if (!matchesChannel(slug)) continue;
+    if (entry.status === 'error' || entry.status === 'unconfigured') continue;
+    for (const it of entry.items) {
+      if (it.videoId && uploadVideoIds.has(it.videoId)) continue;
+      youtubeItems.push({
+        id: `yt:${slug}:${it.videoId ?? it.date}`,
+        channel: slug,
+        channelName: getChannel(slug)?.name ?? slug,
+        channelColor: channelColor(slug),
+        title: it.title ?? '(sin título)',
+        date: it.date,
+        status: it.kind === 'scheduled' ? 'scheduled' : 'done',
+        source: 'youtube' as const,
+        nativeSchedule: it.kind === 'scheduled',
+        youtubeVideoId: it.videoId,
+      });
+    }
+  }
+
   const channels = CHANNELS.filter((c) => c.enabled).map((c) => ({
     slug: c.slug,
     name: c.name,
     color: channelColor(c.slug),
   }));
 
-  return NextResponse.json({ ok: true, items: [...uploadItems, ...plannedItems], channels });
+  return NextResponse.json({ ok: true, items: [...uploadItems, ...plannedItems, ...youtubeItems], channels });
 }
 
 /**

@@ -13,8 +13,10 @@ export type CalendarItemStatus = 'pending' | 'uploading' | 'done' | 'failed' | '
 export type PlannedStatus = 'planned' | 'scheduled';
 
 /** Origen del item del calendario. 'upload' = scheduled-uploads.json (subidas
- *  reales/programadas). 'planned' = content-calendar.json (plan editorial). */
-export type CalendarItemSource = 'upload' | 'planned';
+ *  reales/programadas). 'planned' = content-calendar.json (plan editorial).
+ *  'youtube' = horario REAL leído del canal (RSS publicados + API programados),
+ *  lib/youtube-schedule.ts. */
+export type CalendarItemSource = 'upload' | 'planned' | 'youtube';
 
 export interface CalendarItem {
   id: string;

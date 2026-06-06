@@ -98,6 +98,15 @@ export const YOUTUBE_UPLOADER_DIR = `${LAB_ROOT}/youtube-uploader`;
 export const YOUTUBE_UPLOADER_PY = `${YOUTUBE_UPLOADER_DIR}/upload.py`;
 export const YOUTUBE_UPLOADER_PYTHON = `${YOUTUBE_UPLOADER_DIR}/.venv/Scripts/python.exe`;
 
+/** Skill youtube-seo-optimizer: token de LECTURA por canal (scope youtube.readonly)
+ *  + venv con google-api-python-client. Lo usa lib/youtube-schedule.ts para leer
+ *  el horario REAL del canal (publicados + programados privados) y volcarlo al
+ *  calendario. La clave del canal en SU channels.json (p.ej. 'moderni-stoici')
+ *  puede diferir del slug interno; ver SEO_CHANNEL_KEY en channels. */
+export const SEO_SKILL_DIR = `${JARVIS_ROOT}/.claude/skills/youtube-seo-optimizer`;
+export const SEO_SCRIPTS_DIR = `${SEO_SKILL_DIR}/scripts`;
+export const SEO_PYTHON = `${SEO_SKILL_DIR}/.venv/Scripts/python.exe`;
+
 /** Prefijos válidos para CWD / videoFolder en endpoints API. */
 export const ALLOWED_PATH_PREFIXES = [JARVIS_ROOT, H_YOUTUBE_PREFIX];
 
