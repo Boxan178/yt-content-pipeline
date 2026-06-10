@@ -7,6 +7,7 @@ import { channelScriptsRoot, H_YOUTUBE } from './config';
 export type VideoState =
   | 'pending_locution'
   | 'production'
+  | 'review'
   | 'ready'
   | 'uploaded'
   | 'archived';
@@ -14,6 +15,13 @@ export type VideoState =
 export interface ChannelStateFolders {
   pending_locution: string;
   production: string;
+  /**
+   * Carpeta donde LUÍS deja los renders TERMINADOS a la espera de revisión
+   * humana (`PENDIENTE DE REVISAR`). Opcional: solo los canales que usan el
+   * flujo de LUÍS la tienen. Antes estaba en `ignoreFolders` → los vídeos que
+   * LUÍS terminaba DESAPARECÍAN del kanban. Ahora es un estado visible.
+   */
+  review?: string;
   ready: string;
   uploaded: string;
   archived: string;
@@ -73,12 +81,12 @@ export const CHANNELS: Channel[] = [
     stateFolders: {
       pending_locution: '_PENDIENTE LOCUCION',
       production: '_EN PRODUCCIÓN',
+      review: 'PENDIENTE DE REVISAR',
       ready: '_LISTOS PARA SUBIR',
       uploaded: '_SUBIDOS',
       archived: '_ARCHIVO',
     },
     ignoreFolders: [
-      'PENDIENTE DE REVISAR',
       'Biblioteca de Brutos',
       '_REFERENCIA-THUMBNAILS-YOUTUBE',
       // auditoría 2026-06-05 (M2): re-empaquetado por video-ID, no es un estado del kanban.
@@ -104,13 +112,12 @@ export const CHANNELS: Channel[] = [
     stateFolders: {
       pending_locution: '_PENDIENTE LOCUCION',
       production: '_EN PRODUCCIÓN',
+      review: 'PENDIENTE DE REVISAR',
       ready: '_LISTOS PARA SUBIR',
       uploaded: '_SUBIDOS',
       archived: '_ARCHIVO',
     },
-    ignoreFolders: [
-      'PENDIENTE DE REVISAR',
-    ],
+    ignoreFolders: [],
     scriptsRoot: channelScriptsRoot('moderno-estoico'),
     // Réplica española de Moderni Stoici: comparte su misma biblioteca de brutos
     // (no tiene una propia en disco).
@@ -186,12 +193,12 @@ export const CHANNELS: Channel[] = [
     stateFolders: {
       pending_locution: '_PENDIENTE LOCUCION',
       production: '_EN PRODUCCIÓN',
+      review: 'PENDIENTE DE REVISAR',
       ready: '_LISTOS PARA SUBIR',
       uploaded: '_SUBIDOS',
       archived: '_ARCHIVO',
     },
     ignoreFolders: [
-      'PENDIENTE DE REVISAR',
       'Biblioteca de Brutos',
       '_PACKAGING',
       'branding',
@@ -208,12 +215,12 @@ export const CHANNELS: Channel[] = [
     stateFolders: {
       pending_locution: '_PENDIENTE LOCUCION',
       production: '_EN PRODUCCIÓN',
+      review: 'PENDIENTE DE REVISAR',
       ready: '_LISTOS PARA SUBIR',
       uploaded: '_SUBIDOS',
       archived: '_ARCHIVO',
     },
     ignoreFolders: [
-      'PENDIENTE DE REVISAR',
       'Biblioteca de Brutos',
       '_PACKAGING',
       'branding',
@@ -229,12 +236,12 @@ export const CHANNELS: Channel[] = [
     stateFolders: {
       pending_locution: '_PENDIENTE LOCUCION',
       production: '_EN PRODUCCIÓN',
+      review: 'PENDIENTE DE REVISAR',
       ready: '_LISTOS PARA SUBIR',
       uploaded: '_SUBIDOS',
       archived: '_ARCHIVO',
     },
     ignoreFolders: [
-      'PENDIENTE DE REVISAR',
       'Biblioteca de Brutos',
       '_PACKAGING',
       'branding',
@@ -255,12 +262,13 @@ export function getChannel(slug: string): Channel | undefined {
 export const STATE_LABEL: Record<VideoState, string> = {
   pending_locution: 'Pendiente locución',
   production: 'En producción',
+  review: 'Pendiente de revisar',
   ready: 'Listos para subir',
   uploaded: 'Subidos',
   archived: 'Archivados',
 };
 
-export const STATE_ORDER: VideoState[] = ['pending_locution', 'production', 'ready', 'uploaded', 'archived'];
+export const STATE_ORDER: VideoState[] = ['pending_locution', 'production', 'review', 'ready', 'uploaded', 'archived'];
 
 /**
  * Color de marca por canal (hex) para la UI editorial: calendario, badges,

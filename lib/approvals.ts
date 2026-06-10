@@ -23,6 +23,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { CHANNELS, getChannel } from './channels';
 import { parsePabloDecisions, extractTitleOptions } from './parse-pablo-decisions';
+import { ensureVaultPackagingSynced } from './vault-sync';
 import { voicePrefix } from './agent-voices';
 import {
   escapeHtml,
@@ -457,6 +458,10 @@ async function detectAndSend(s: ApprovalState): Promise<number> {
     for (const name of names) {
       if (channel.ignoreFolders.includes(name)) continue;
       const folder = path.join(base, name);
+      // Sync vault → _PACKAGING (no destructivo): garantiza packaging.md + titulos.md
+      // en H: para que el gate dispare con opciones aunque el pipeline solo escribiera
+      // en la vault (causa raíz de los gates rotos del 2026-06-08).
+      ensureVaultPackagingSynced(channel.slug, folder);
       const packaging = path.join(folder, '_PACKAGING', 'packaging.md');
       if (!existsSync(packaging)) continue;
       let md: string;
@@ -497,6 +502,23 @@ async function detectAndSend(s: ApprovalState): Promise<number> {
               }
             } catch {
               // fichero ausente/ilegible → seguimos con lo que haya
+            }
+          }
+          // Fallback robusto: si seguimos sin ≥2 opciones, leemos titulos.md de
+          // _PACKAGING/ directamente (sincronizado desde la vault por
+          // ensureVaultPackagingSynced). Cubre los packagings cuyo título remite a
+          // titulos.md sin un cue parseable — antes salía el gate a 1 opción.
+          if (options.length < 2) {
+            try {
+              const ext = extractTitleOptions(
+                readFileSync(path.join(folder, '_PACKAGING', 'titulos.md'), 'utf-8'),
+              );
+              if (ext.options.length >= 2) {
+                options = ext.options;
+                recommended = ext.recommended || recommended;
+              }
+            } catch {
+              // sin titulos.md → seguimos con lo que haya
             }
           }
           // El recomendado debe estar en la lista para poder marcarlo con ⭐.

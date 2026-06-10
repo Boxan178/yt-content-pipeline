@@ -57,12 +57,30 @@ function sanitize(input: Partial<ChannelCadence> & { channel: string }): Channel
     ? Array.from(new Set(input.preferredWeekdays.map((n) => Math.round(Number(n))).filter((n) => n >= 0 && n <= 6))).sort((a, b) => a - b)
     : undefined;
   const hour = input.hour == null ? 12 : Math.max(0, Math.min(23, Math.round(Number(input.hour))));
+  // slots "HH:MM" → normaliza, valida y deduplica; descarta entradas inválidas.
+  let slots: string[] | undefined;
+  if (Array.isArray(input.slots)) {
+    const seen = new Set<string>();
+    slots = [];
+    for (const raw of input.slots) {
+      const mm = String(raw).match(/^\s*(\d{1,2}):(\d{2})\s*$/);
+      if (!mm) continue;
+      const h = Math.max(0, Math.min(23, Number(mm[1])));
+      const m = Math.max(0, Math.min(59, Number(mm[2])));
+      const norm = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      if (seen.has(norm)) continue;
+      seen.add(norm);
+      slots.push(norm);
+    }
+    slots = slots.length ? slots.sort() : undefined;
+  }
   return {
     channel: input.channel,
     enabled: input.enabled !== false,
     targetPerWeek: target,
     preferredWeekdays: weekdays && weekdays.length ? weekdays : undefined,
     hour,
+    slots,
   };
 }
 

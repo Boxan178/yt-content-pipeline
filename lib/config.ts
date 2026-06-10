@@ -146,7 +146,10 @@ export function isSafePathSegment(seg: string | undefined | null): boolean {
   return true;
 }
 
-/** Path estándar de los guiones de un canal dentro de youtube-os. */
+/** Path estándar de la carpeta de vídeos de un canal dentro de youtube-os.
+ *  Convención canónica `videos/<slug>/` (antes `guiones/<slug>/`) — ver
+ *  youtube-os/resources/convencion-carpetas-video.md. El nombre de la función se
+ *  conserva por compatibilidad; el campo `scriptsRoot` de cada canal apunta aquí. */
 export function channelScriptsRoot(slug: string): string {
-  return `${YOUTUBE_OS_ROOT}/youtube/${slug}/guiones`;
+  return `${YOUTUBE_OS_ROOT}/youtube/${slug}/videos`;
 }

@@ -17,7 +17,7 @@ async function tryStat(p: string) {
   }
 }
 
-const VALID: VideoState[] = ['pending_locution', 'production', 'ready', 'uploaded', 'archived'];
+const VALID: VideoState[] = ['pending_locution', 'production', 'review', 'ready', 'uploaded', 'archived'];
 
 /**
  * POST /api/channels/[channel]/videos/[video]/move-state

@@ -283,7 +283,7 @@ export async function GET(
 
   allVideos.sort((a, b) => (a.mtime < b.mtime ? 1 : -1));
 
-  const counts: Record<VideoState, number> = { pending_locution: 0, production: 0, ready: 0, uploaded: 0, archived: 0 };
+  const counts: Record<VideoState, number> = { pending_locution: 0, production: 0, review: 0, ready: 0, uploaded: 0, archived: 0 };
   for (const v of allVideos) counts[v.state]++;
 
   // Detección de transiciones de estado para gamificación. Primera carga

@@ -134,6 +134,7 @@ export default function ChannelPage() {
     pending_locution: 'Pendiente locución',
     production: 'En producción',
     render_queue: 'Cola de render',
+    review: 'Pendiente de revisar',
     ready: 'Listos para subir',
     scheduled: 'Programados',
     uploaded: 'Subidos',
@@ -142,7 +143,7 @@ export default function ChannelPage() {
 
   const grouped = useMemo(() => {
     const g: Record<VisualState, VideoCardData[]> = {
-      ideas: [], pending_locution: [], production: [], render_queue: [], ready: [], scheduled: [], uploaded: [], archived: [],
+      ideas: [], pending_locution: [], production: [], render_queue: [], review: [], ready: [], scheduled: [], uploaded: [], archived: [],
     };
     const q = search.trim().toLowerCase();
     // Un vídeo de producción SIN job activo y con TODO el pre-edit hecho menos el
@@ -187,7 +188,7 @@ export default function ChannelPage() {
   }, [data, search, filterMode]);
 
   const visibleStates: VisualState[] = useMemo(() => {
-    const order: VisualState[] = ['ideas', 'pending_locution', 'production', 'render_queue', 'ready', 'scheduled', 'uploaded', 'archived'];
+    const order: VisualState[] = ['ideas', 'pending_locution', 'production', 'render_queue', 'review', 'ready', 'scheduled', 'uploaded', 'archived'];
     return order.filter((s) => {
       if (s === 'ideas') return showIdeas;
       if (s === 'archived') return showArchived;
@@ -331,7 +332,7 @@ export default function ChannelPage() {
   }, [grouped, rendering, flashToast, load]);
 
   const totalVideos = data
-    ? data.counts.pending_locution + data.counts.production + data.counts.ready + data.counts.uploaded + data.counts.archived
+    ? data.counts.pending_locution + data.counts.production + data.counts.review + data.counts.ready + data.counts.uploaded + data.counts.archived
     : 0;
 
   return (

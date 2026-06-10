@@ -12,7 +12,13 @@ import { readContentCalendar, addPlanned, updatePlanned } from './content-calend
 import { readCadence, getCadence } from './channel-cadence';
 import { getChannel, channelColor } from './channels';
 import { getOccupiedYouTubeDates } from './youtube-schedule';
-import type { CalendarGapWeek, CalendarGapDay } from './calendar-types';
+import { cadenceSlots, type CalendarGapWeek, type CalendarGapDay, type ChannelCadence } from './calendar-types';
+
+/** Franjas del canal con fallback al default histórico (19:30, USA prime). */
+function slotsFor(cad: Pick<ChannelCadence, 'hour' | 'slots'> | null): Array<{ h: number; m: number }> {
+  const s = cad ? cadenceSlots(cad) : [];
+  return s.length ? s : [{ h: 19, m: 30 }];
+}
 
 /** Lunes 00:00 local de la semana que contiene `d`. */
 function weekStart(d: Date): Date {
@@ -82,17 +88,29 @@ function folderBase(f?: string): string {
  * hueco más cercano libre, llenando del más próximo al más lejano.
  */
 export function nextFreeSlotForChannel(channel: string): string {
-  const occupied = new Set((occupiedDatesByChannel().get(channel) ?? []).map(ymdLocal));
-  const cad = getCadence(channel);
-  const hh = cad?.hour != null ? String(Math.max(0, Math.min(23, cad.hour))).padStart(2, '0') : '19';
-  const mm = cad?.hour != null ? '00' : '30'; // sin cadencia → 19:30 por defecto (tarde, público USA)
+  // Ocupación a nivel (día, HORA): así un canal con 2 franjas/día (p.ej. 10:00 y
+  // 17:30) puede colocar DOS vídeos el mismo día sin pisarse. Antes la ocupación
+  // era por día → solo cabía 1/día aunque la cadencia pidiera 2.
+  const occByDay = new Map<string, Set<number>>();
+  for (const d of occupiedDatesByChannel().get(channel) ?? []) {
+    const k = ymdLocal(d);
+    const set = occByDay.get(k) ?? new Set<number>();
+    set.add(d.getHours());
+    occByDay.set(k, set);
+  }
+  const slots = slotsFor(getCadence(channel));
+  const fmt = (d: Date, s: { h: number; m: number }) =>
+    `${ymdLocal(d)}T${String(s.h).padStart(2, '0')}:${String(s.m).padStart(2, '0')}:00`;
   const today = new Date();
   let d = addDays(new Date(today.getFullYear(), today.getMonth(), today.getDate()), 1); // mañana
   for (let i = 0; i < 400; i++) {
-    if (!occupied.has(ymdLocal(d))) return `${ymdLocal(d)}T${hh}:${mm}:00`;
+    const taken = occByDay.get(ymdLocal(d));
+    for (const s of slots) {
+      if (!taken || !taken.has(s.h)) return fmt(d, s);
+    }
     d = addDays(d, 1);
   }
-  return `${ymdLocal(d)}T${hh}:${mm}:00`;
+  return fmt(d, slots[0]);
 }
 
 export interface EnsureSlotInput {
@@ -164,18 +182,26 @@ export function computeGaps(weeks = 4): CalendarGapWeek[] {
 
       const gapDays: CalendarGapDay[] = [];
       if (missing > 0 && cad.preferredWeekdays?.length) {
-        const hour = cad.hour ?? 12;
+        const slots = slotsFor(cad);
         for (const wd of cad.preferredWeekdays) {
           if (gapDays.length >= missing) break;
           const day = addDays(ws, wd); // wd: 0=Lun
-          if (day < today0) continue; // hueco en el pasado: no accionable
-          // ¿Ya hay algo ese día concreto?
-          const taken = inWeek.some(
-            (d) => d.getFullYear() === day.getFullYear() && d.getMonth() === day.getMonth() && d.getDate() === day.getDate(),
-          );
-          if (taken) continue;
-          const dd = new Date(day.getFullYear(), day.getMonth(), day.getDate(), hour, 0, 0);
-          gapDays.push({ date: dd.toISOString(), channel: cad.channel, channelName, channelColor: color });
+          if (day < today0) continue; // día en el pasado: no accionable
+          for (const s of slots) {
+            if (gapDays.length >= missing) break;
+            // ¿Ya hay algo ese día a esa franja (misma hora)?
+            const taken = inWeek.some(
+              (d) =>
+                d.getFullYear() === day.getFullYear() &&
+                d.getMonth() === day.getMonth() &&
+                d.getDate() === day.getDate() &&
+                d.getHours() === s.h,
+            );
+            if (taken) continue;
+            const dd = new Date(day.getFullYear(), day.getMonth(), day.getDate(), s.h, s.m, 0);
+            if (dd < now) continue; // franja de hoy ya pasada: no accionable
+            gapDays.push({ date: dd.toISOString(), channel: cad.channel, channelName, channelColor: color });
+          }
         }
       }
 

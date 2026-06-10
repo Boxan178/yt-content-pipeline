@@ -11,6 +11,22 @@ export interface ExtractedMetadata {
   tags: string[];
 }
 
+/**
+ * ¿El valor parece un NOMBRE DE ARCHIVO (típicamente una miniatura) en vez de un
+ * título de YouTube? El gate de decisión a veces contamina el "✅ ELEGIDO:" del
+ * bloque Título con el filename del PNG de la miniatura (caso real: el vídeo de
+ * los 90 días se encoló con título "B-REACT-DAY1-DAY90-v1.png"). Un título así
+ * NUNCA es válido → se descarta y se cae al siguiente candidato. Detecta:
+ *  - extensiones de imagen/vídeo (.png/.jpg/.webp/.mp4…)
+ *  - patrón de slug de asset de un solo token tipo "B-REACT-DAY1-DAY90-v1".
+ */
+export function looksLikeFilename(s: string): boolean {
+  const t = s.trim();
+  if (/\.(png|jpe?g|webp|gif|mp4|mov|mkv)$/i.test(t)) return true;
+  if (/^[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)*-v\d+$/.test(t)) return true; // un solo token, sin espacios
+  return false;
+}
+
 /** Limpia un valor: quita backticks, comillas externas, ** bold markers y espacios. */
 export function cleanValue(s: string): string {
   return s
@@ -27,6 +43,11 @@ export function extractMetadata(md: string): ExtractedMetadata {
   // asumen \n (sobre todo el code-block ```\n...```). Sin esto, la descripción se
   // quedaba con las ``` incrustadas y los tags del code-block no se extraían.
   md = md.replace(/\r\n?/g, '\n');
+  // Quitar el frontmatter YAML: sus campos son metadatos del DOCUMENTO, no del
+  // vídeo. La línea `tags: [youtube, seo, descripcion, …]` del frontmatter de la
+  // vault se colaba como tags de YouTube (subida real 2026-06-10 con tags
+  // "[youtube", "long-form]"). Ninguna estrategia de título lee el frontmatter.
+  md = md.replace(/^﻿?---\n[\s\S]+?\n---\n?/, '');
   // ── TÍTULO ─────────────────────────────────────────────────────────
   // Orden:
   //  1. "🏆 ELEGIDO: <título>" (formato MARCOS, el más fiable cuando existe)
@@ -54,6 +75,8 @@ export function extractMetadata(md: string): ExtractedMetadata {
       const c = cleanValue(t);
       // "Aprobado" suelto NO es un título (gate aprobado sin selección concreta).
       if (/^aprobado$/i.test(c.trim())) return null;
+      // Un filename de miniatura colado en el ELEGIDO NO es un título.
+      if (looksLikeFilename(c)) return null;
       return c.length > 1 ? c : null;
     },
     () => {
@@ -61,7 +84,7 @@ export function extractMetadata(md: string): ExtractedMetadata {
       const m = md.match(/^\|\s*🏆\s*([^|]+?)\s*\|/m);
       const c = m ? cleanValue(m[1]) : null;
       // Mismo piso de longitud que la estrategia #1: una celda casi vacía no es título.
-      return c && c.length > 1 ? c : null;
+      return c && c.length > 1 && !looksLikeFilename(c) ? c : null;
     },
     () => {
       const m = md.match(/\*\*T[ií]tulo\s+(?:FINAL|YouTube|ELEGIDO|v\d+)[^*:\n]*\*\*\s*[:：]\s*([^\n]+)/i);
@@ -69,7 +92,17 @@ export function extractMetadata(md: string): ExtractedMetadata {
     },
     () => {
       const m = md.match(/^T[ií]tulo\s*[:：]\s*([^\n]+)/im);
-      return m ? cleanValue(m[1]) : null;
+      const c = m ? cleanValue(m[1]) : null;
+      return c && !looksLikeFilename(c) ? c : null;
+    },
+    () => {
+      // "**Working title:** X" — borrador de MARCOS. Fallback cuando el ELEGIDO
+      // estaba contaminado con un filename: al menos recuperamos el título de
+      // trabajo (mejor que caer al H1 "Packaging — …").
+      // Tolera el ':' dentro o fuera del bold: "**Working title:**" y "**Working title**:".
+      const m = md.match(/Working title\**\s*[:：]\s*\**\s*([^\n]+)/i);
+      const c = m ? cleanValue(m[1]) : null;
+      return c && c.length > 1 && !looksLikeFilename(c) ? c : null;
     },
     () => {
       // Primer # H1 que no contenga la palabra "Packaging" (esa es prosa interna)
@@ -169,6 +202,8 @@ export function extractMetadata(md: string): ExtractedMetadata {
  */
 export function extractSeoDescription(md: string): { description: string; tags: string[] } {
   md = md.replace(/\r\n?/g, '\n');
+  // Mismo motivo que en extractMetadata: el frontmatter es metadata del doc.
+  md = md.replace(/^﻿?---\n[\s\S]+?\n---\n?/, '');
   const stripHr = (s: string) => s.replace(/\n\s*-{3,}\s*$/, '').trim();
 
   // ── Descripción ────────────────────────────────────────────────────

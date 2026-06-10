@@ -20,17 +20,24 @@ import { CHANNELS, type Channel } from './channels';
 import { computeProgress, THUMB_MIN_ASPECT } from './progress';
 import { readImageSize } from './image-size';
 import { listActiveJobsForFolder } from './claude-jobs';
-import { extractMetadata } from './extract-metadata';
+import { extractMetadata, looksLikeFilename } from './extract-metadata';
+import { getVaultSeo } from './vault-seo';
+import { ensureVaultPackagingSynced } from './vault-sync';
 import { addUpload, hasUploadForFolder, type Privacy } from './upload-schedule';
+import { readScheduleCache } from './youtube-schedule';
 import { sendTelegram, escapeHtml } from './notify';
 import { readContentCalendar, updatePlanned } from './content-calendar';
 import { getCadence } from './channel-cadence';
-import type { PlannedItem } from './calendar-types';
+import { cadenceSlots, type PlannedItem } from './calendar-types';
 
 /** Marcador (en _PACKAGING/) de que el vídeo ya se encoló para auto-subida. */
 const MARKER = '.auto-published.json';
 /** Marcador de "saltado" (p.ej. sin título extraíble) para no spamear avisos. */
 const SKIP_MARKER = '.auto-publish-skipped';
+/** Marcador "listo pero SIN descripción SEO" (throttle del aviso, NO bloquea:
+ *  cada tick reintenta y, en cuanto aparezca el SEO, se sube). Evita publicar
+ *  público un vídeo sin descripción/tags (caso real: 90 días, 2026-06-08). */
+const NO_SEO_MARKER = '.pending-seo.json';
 /** Marcador de "listo pero SIN fecha de publicación" (throttle del aviso al CEO).
  *  NO bloquea: cada tick reintenta y, en cuanto hay fecha en el calendario, sube. */
 const PENDING_MARKER = '.pending-schedule';
@@ -70,7 +77,7 @@ export interface AutoPublishResult {
   channel: string;
   videoTitle: string;
   videoFolder: string;
-  action: 'enqueued' | 'skipped-no-title' | 'dry-run' | 'scheduled' | 'overdue-reschedule' | 'pending-schedule';
+  action: 'enqueued' | 'skipped-no-title' | 'skipped-no-seo' | 'skipped-already-on-youtube' | 'dry-run' | 'scheduled' | 'overdue-reschedule' | 'pending-schedule';
   uploadId?: string;
   title?: string;
   /** Si se programó nativo en YouTube: ISO (UTC) en que sale público. */
@@ -149,6 +156,39 @@ async function pickThumbnail(packagingDir: string): Promise<string | null> {
   return best?.name ?? null;
 }
 
+// ── Anti-duplicado contra YouTube ────────────────────────────────────────────
+
+/** Clave de título normalizada para comparar contra YouTube (sin acentos ni
+ *  puntuación, espacios colapsados). */
+function ytTitleKey(s: string): string {
+  return s
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+/** ¿Existe ya en el canal un vídeo con alguno de estos títulos? Compara contra el
+ *  cache real de YouTube (RSS + Data API, lib/youtube-schedule.ts). Red de
+ *  seguridad contra RE-SUBIR un vídeo ya publicado (caso real 2026-06-10: Pablo
+ *  movió a "_LISTOS PARA SUBIR" un vídeo ya en YouTube y la app subió un
+ *  duplicado). Cache vacío/no sincronizado → no bloquea (no inventa). */
+function alreadyOnYouTube(channelSlug: string, candidates: Array<string | undefined>): string | null {
+  const entry = readScheduleCache().channels[channelSlug];
+  if (!entry || !entry.items.length) return null;
+  const published = new Map<string, string>();
+  for (const it of entry.items) {
+    if (it.title) published.set(ytTitleKey(it.title), it.title);
+  }
+  for (const c of candidates) {
+    if (!c) continue;
+    const k = ytTitleKey(c);
+    if (k.length >= 8 && published.has(k)) return published.get(k) ?? c;
+  }
+  return null;
+}
+
 // ── Programación calendar-aware (publishAt NATIVO de YouTube) ───────────────
 
 /** Clave de título normalizada (sin caracteres ilegales de carpeta, minúsculas)
@@ -165,8 +205,8 @@ function plannedDateToUtc(dateStr: string, channelSlug: string): string | null {
   if (!s) return null;
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
     const cad = getCadence(channelSlug);
-    const hour = cad?.hour ?? 12;
-    s = `${s}T${String(hour).padStart(2, '0')}:00:00`; // local, sin tz
+    const slot = cadenceSlots(cad ?? {}).at(0) ?? { h: 12, m: 0 };
+    s = `${s}T${String(slot.h).padStart(2, '0')}:${String(slot.m).padStart(2, '0')}:00`; // local, sin tz
   }
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return null;
@@ -246,6 +286,10 @@ async function considerVideo(
   if (existsSync(path.join(packagingDir, MARKER))) return null; // ya encolado
   if (existsSync(path.join(packagingDir, SKIP_MARKER))) return null; // saltado antes
 
+  // Sync vault → _PACKAGING (no destructivo): asegura packaging.md + descripcion-seo.md
+  // en H: antes de leer metadata, por si el pipeline solo escribió en la vault.
+  ensureVaultPackagingSynced(channel.slug, videoFolder);
+
   const normFolder = videoFolder.replace(/\\/g, '/');
   if (hasUploadForFolder(normFolder)) return null; // ya hay subida para esta carpeta
 
@@ -277,8 +321,27 @@ async function considerVideo(
     }
     if (seoMd) break;
   }
-  const meta = extractMetadata(seoMd ? `${packagingMd}\n\n${seoMd}` : packagingMd);
-  if (!meta.title || meta.title.trim().length < 3) {
+  let meta = extractMetadata(seoMd ? `${packagingMd}\n\n${seoMd}` : packagingMd);
+
+  // ── Fallback a la VAULT ───────────────────────────────────────────────────
+  // El SEO definitivo (título final + descripción + tags) lo escribe SARA en la
+  // vault, no siempre en `_PACKAGING/`. Si el título parece basura (filename de
+  // miniatura colado en el ELEGIDO) o falta la descripción, resolvemos el SEO de
+  // la vault por pipeline_item_id. Ver lib/vault-seo.ts. Bug raíz: 90 días, 2026-06-08.
+  const titleBad = !meta.title || meta.title.trim().length < 3 || looksLikeFilename(meta.title);
+  const descMissing = !meta.description || meta.description.trim().length < 20;
+  if (titleBad || descMissing) {
+    const vault = getVaultSeo(channel.slug, videoFolder);
+    if (vault) {
+      meta = {
+        title: titleBad ? (vault.title || meta.title) : meta.title,
+        description: descMissing ? (vault.description || meta.description) : meta.description,
+        tags: meta.tags.length ? meta.tags : vault.tags,
+      };
+    }
+  }
+
+  if (!meta.title || meta.title.trim().length < 3 || looksLikeFilename(meta.title)) {
     // Degradación segura: avisar UNA vez y no volver a intentarlo.
     if (!isDryRun()) {
       try {
@@ -290,10 +353,68 @@ async function considerVideo(
       } catch {}
       await sendTelegram(
         `⚠️ <b>${escapeHtml(name)}</b> (${escapeHtml(channel.name)}) está listo para subir pero no pude ` +
-          `extraer el título del packaging.md. Súbelo a mano desde la app.`,
+          `extraer un título válido (ni del packaging ni de la vault). Súbelo a mano desde la app.`,
       );
     }
     return { channel: channel.slug, videoTitle: name, videoFolder: normFolder, action: 'skipped-no-title' };
+  }
+
+  // RED DE SEGURIDAD: el vídeo (mismo título) YA está en YouTube → marcar con el
+  // MARKER y no volver a considerarlo NUNCA. Compara el título extraído Y el
+  // nombre de carpeta contra el cache real del canal.
+  const dupTitle = alreadyOnYouTube(channel.slug, [meta.title, name]);
+  if (dupTitle) {
+    if (!isDryRun()) {
+      try {
+        writeFileSync(
+          path.join(packagingDir, MARKER),
+          JSON.stringify(
+            { baseline: true, reason: `already-on-youtube: ${dupTitle}`, at: new Date().toISOString() },
+            null,
+            2,
+          ),
+          'utf-8',
+        );
+      } catch {}
+      await sendTelegram(
+        `🛑 <b>${escapeHtml(name)}</b> (${escapeHtml(channel.name)}) NO se sube: en YouTube ya existe ` +
+          `un vídeo con ese título ("${escapeHtml(dupTitle)}"). Lo marco para no reintentarlo. ` +
+          `Si de verdad quieres subirlo otra vez, borra _PACKAGING/${MARKER} y cámbiale el título.`,
+      );
+    }
+    return {
+      channel: channel.slug,
+      videoTitle: name,
+      videoFolder: normFolder,
+      action: 'skipped-already-on-youtube',
+      title: meta.title,
+    };
+  }
+
+  // RED DE SEGURIDAD: nunca publicar PÚBLICO un vídeo sin descripción SEO. Antes
+  // esto subía con descripción vacía (vídeo público sin SEO). NO es permanente:
+  // se avisa como mucho cada 6h y se reintenta cada tick — en cuanto el SEO
+  // aparezca (en _PACKAGING o en la vault), se sube solo.
+  if (!meta.description || meta.description.trim().length < 20) {
+    if (!isDryRun()) {
+      const noSeoPath = path.join(packagingDir, NO_SEO_MARKER);
+      const recentlyWarned =
+        existsSync(noSeoPath) && Date.now() - statSync(noSeoPath).mtimeMs < 6 * 60 * 60 * 1000;
+      if (!recentlyWarned) {
+        try {
+          writeFileSync(
+            noSeoPath,
+            JSON.stringify({ at: new Date().toISOString(), reason: 'no-seo', title: meta.title }, null, 2),
+            'utf-8',
+          );
+        } catch {}
+        await sendTelegram(
+          `📝 <b>${escapeHtml(name)}</b> (${escapeHtml(channel.name)}) está listo pero NO tiene descripción SEO ` +
+            `(ni en _PACKAGING ni en la vault). No lo publico sin descripción. Genera el SEO o súbelo a mano.`,
+        );
+      }
+    }
+    return { channel: channel.slug, videoTitle: name, videoFolder: normFolder, action: 'skipped-no-seo', title: meta.title };
   }
 
   const thumb = await pickThumbnail(packagingDir);

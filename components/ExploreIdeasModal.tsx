@@ -227,7 +227,7 @@ export function ExploreIdeasModal({ channelSlug, channelName, onClose, onIdeasAd
         <header className="flex items-center justify-between border-b border-white/10 px-6 py-4">
           <div>
             <h2 className="font-display text-lg font-semibold tracking-display text-white">Explorar ideas</h2>
-            <p className="text-xs text-zinc-400">{channelName} · MARIO analiza tu canal y propone ideas replicables</p>
+            <p className="text-xs text-zinc-400">{channelName} · MARIO explora el mercado y propone ideas nuevas con el packaging correcto</p>
           </div>
           <button onClick={onClose} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-zinc-400 hover:text-white">
             ✕
@@ -285,7 +285,7 @@ export function ExploreIdeasModal({ channelSlug, channelName, onClose, onIdeasAd
               </div>
 
               <button onClick={launch} className="btn-gold w-full justify-center">
-                Explorar mi canal y proponer ideas
+                Explorar el mercado y proponer ideas
               </button>
 
               {/* Alta manual */}
@@ -330,7 +330,7 @@ export function ExploreIdeasModal({ channelSlug, channelName, onClose, onIdeasAd
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-sm text-zinc-300">
                 <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-accent" />
-                MARIO está analizando {channelName}… (puede tardar unos minutos)
+                MARIO está explorando el mercado para {channelName}… (puede tardar unos minutos)
               </div>
               {tail && (
                 <pre className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/40 p-3 text-[10px] leading-relaxed text-zinc-400">
@@ -383,7 +383,7 @@ export function ExploreIdeasModal({ channelSlug, channelName, onClose, onIdeasAd
                             <p className="mt-1 text-xs leading-relaxed text-zinc-400">{idea.description}</p>
                             {idea.angle && <p className="mt-1 text-[11px] text-zinc-500">Ángulo: {idea.angle}</p>}
                             {idea.sourceVideoTitle && (
-                              <p className="mt-1 text-[10px] text-zinc-500">↺ replica de: {idea.sourceVideoTitle}</p>
+                              <p className="mt-1 text-[10px] text-zinc-500">↗ patrón de mercado: {idea.sourceVideoTitle}</p>
                             )}
                           </div>
                         </div>

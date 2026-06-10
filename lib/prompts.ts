@@ -428,7 +428,7 @@ Carpeta del proyecto: ${v.folderPath}
 
 Aplica tu flujo end-to-end completo (skill luis):
 
-1. STATE 1 — Captura y validación. Verifica que existen guion (en ${YOUTUBE_OS_ROOT}/youtube/${v.channel}/guiones/<slug>/guion-v2.md o guion.md como fallback), locución (01_BRUTOS/_LOCUCION/ con al menos 3 MP3s), biblioteca de brutos del canal y biblioteca de música.
+1. STATE 1 — Captura y validación. Verifica que existen guion (en ${YOUTUBE_OS_ROOT}/youtube/${v.channel}/videos/<slug>/guion-v2.md o guion.md como fallback), locución (01_BRUTOS/_LOCUCION/ con al menos 3 MP3s), biblioteca de brutos del canal y biblioteca de música.
 2. STATE 2 — Si el proyecto está en _PENDIENTE LOCUCION/ y la locución está hecha, muévelo a _EN PRODUCCIÓN/ antes de renderizar.
 3. STATE 3 — Lanza el render en background con tools/render_project.py (tu método NORMAL: venv C:\\.venvs\\auto-edit). Monitoriza el log. Tiempo típico 18-25 min para long-form. **NO uses el MCP de Premiere Pro (mcp__premiere-pro__*) — es nuevo, sin probar, y bloquea el render. El render normal NO pasa por Premiere.**
 4. STATE 4 — Auto-audit visual con /watch sobre el MP4 final (24 frames). Verifica capa oscura, subs 1 línea, sin asteriscos visibles, último frame limpio.
@@ -459,7 +459,7 @@ export function buildMarcoAurelioRewrite(
     prompt: `MARCO AURELIO, reescribe el guion del vídeo "${v.title}" del canal ${v.channel}.
 
 Carpeta del proyecto: ${v.folderPath}
-El guion actual debería estar en ${YOUTUBE_OS_ROOT}/youtube/${v.channel}/guiones/<slug>/guion-v2.md (o guion.md como fallback). El slug está en el packaging.md del proyecto.
+El guion actual debería estar en ${YOUTUBE_OS_ROOT}/youtube/${v.channel}/videos/<slug>/guion-v2.md (o guion.md como fallback). El slug está en el packaging.md del proyecto.
 
 ${ref}
 
@@ -509,7 +509,7 @@ Packaging.md (si existe): ${v.folderPath.replace(/\\/g, '/')}/_PACKAGING/packagi
 
 Sigue tu metodología:
 1. Lee el packaging.md para entender la promesa central, el ángulo y el mercado.
-2. Si no hay packaging o no tiene la idea clara, deduce la promesa central a partir del título de la carpeta + cualquier guion en youtube-os/youtube/${v.channel}/guiones/<slug>/.
+2. Si no hay packaging o no tiene la idea clara, deduce la promesa central a partir del título de la carpeta + cualquier guion en youtube-os/youtube/${v.channel}/videos/<slug>/.
 3. Genera **EXACTAMENTE 3** opciones de título (las 3 mejores; elige entre curiosidad / search / tensión / híbrido). Ni una más. Para cada una:
    - Título exacto (máx 70 chars, idealmente <60).
    - Por qué funciona (1-2 líneas).
@@ -543,7 +543,7 @@ Carpeta del proyecto: ${v.folderPath}
 Packaging: ${folder}/_PACKAGING/packaging.md
 
 PASOS:
-1. Lee el packaging.md (promesa central, ángulo, descripción) y el guion del vídeo (en ${YOUTUBE_OS_ROOT}/youtube/${v.channel}/guiones/<slug>/ o el guion del proyecto) para entender el vídeo a fondo. El slug suele estar en el packaging.
+1. Lee el packaging.md (promesa central, ángulo, descripción) y el guion del vídeo (en ${YOUTUBE_OS_ROOT}/youtube/${v.channel}/videos/<slug>/ o el guion del proyecto) para entender el vídeo a fondo. El slug suele estar en el packaging.
 2. Genera **EXACTAMENTE 3** opciones de título NUEVAS (las 3 mejores, ni una más) aplicando tu skill actualizada. DESCARTA el título anterior — Pablo quiere re-elegir con tu versión nueva.
 3. SOBRESCRIBE por completo la sección de título (la que empiece por "## Título" o "## Titulo") del packaging.md con EXACTAMENTE este formato (respeta la tabla y las dos últimas líneas tal cual):
 
@@ -585,7 +585,7 @@ export function buildSeoDescriptionDraft(v: VideoContext): BuiltPrompt {
 
 Carpeta del proyecto: ${v.folderPath}
 Packaging: ${folder}/_PACKAGING/packaging.md
-Guion: en ${YOUTUBE_OS_ROOT}/youtube/${v.channel}/guiones/<slug>/ (el slug está en el packaging) o el guion del proyecto si vive en la carpeta.
+Guion: en ${YOUTUBE_OS_ROOT}/youtube/${v.channel}/videos/<slug>/ (el slug está en el packaging) o el guion del proyecto si vive en la carpeta.
 
 PASOS:
 1. Lee el packaging.md (título final, ángulo, promesa) y el GUION del vídeo a fondo.

@@ -28,10 +28,12 @@ interface PostBody {
 /**
  * POST /api/channels/[channel]/ideas/explore
  *
- * Lanza un job MARIO + Algrow/vidiq MCP que analiza el canal de Pablo, detecta
- * sus vídeos top y propone ideas NUEVAS replicables. Mismo patrón que el
- * research del /lab: el cliente polleia con GET .../explore/[jobId] y al
- * terminar parsea el bloque IDEAS_JSON.
+ * Lanza un job MARIO + Algrow/vidiq MCP de Fase 0 (exploración de MERCADO):
+ * usa el canal de Pablo solo como señal de audiencia/formato y mina outliers
+ * del mercado abierto (cross-niche) para proponer ideas NUEVAS con el packaging
+ * correcto — NO replica el propio catálogo. Mismo patrón que el research del
+ * /lab: el cliente polleia con GET .../explore/[jobId] y al terminar parsea el
+ * bloque IDEAS_JSON.
  */
 export async function POST(req: NextRequest, ctx: Ctx) {
   const channel = getChannel(ctx.params.channel);
@@ -58,18 +60,22 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     ? `Su channelId de YouTube es \`${channel.youtubeChannelId}\` (úsalo directamente con las herramientas que lo acepten).`
     : `No tengo el channelId guardado: resuélvelo por NOMBRE/handle con \`mcp__algrow__resolve_handle\` o \`mcp__algrow__youtube_search\` antes de pedir sus vídeos.`;
 
-  const prompt = `MARIO, quiero IDEAS NUEVAS de vídeo para mi canal **${channel.name}** (faceless YouTube), replicando lo que ya me funciona.
+  const prompt = `MARIO, necesito IDEAS NUEVAS de vídeo para mi canal **${channel.name}** (faceless YouTube). Esto es tu **Fase 0 — exploración de MERCADO**, NO repackaging y NO "replicar mi canal".
+
+REGLA DE ORO: NO me propongas variaciones de mis propios vídeos. Mi catálogo sirve SOLO para entender a MI AUDIENCIA (a qué deseo/dolor responde) y mi firma de formato — NUNCA como cantera de ideas. Las ideas nuevas salen de outliers del MERCADO ABIERTO de YouTube, incluso de OTROS nichos, reencuadrados a mi canal. Si una idea es "mi vídeo X con otro título", deséchala.
+
+EL ÁNGULO ESTOICO/FILOSÓFICO ES OPCIONAL, no obligatorio. No hace falta hablar de Marco Aurelio, Séneca ni Epicteto en cada vídeo. Un topic potente de disciplina, rutina, transformación personal, mentalidad o alto rendimiento encaja perfectamente si conecta con el deseo de mi audiencia. Lo innegociable: que encaje con MI AUDIENCIA y su promesa, y que lleve el packaging correcto para llamar al clic.
 
 CONTEXTO:
 - Canal: ${channel.name} (slug interno: ${channel.slug}).
 - ${channelIdHint}
 ${focus ? `- Enfoque que pido para esta tanda: ${focus}` : ''}
 
-PROCESO (usa las herramientas Algrow/vidiq MCP — mcp__algrow__* y mcp__vidiq__*):
-1. Localiza el canal y trae sus vídeos (\`mcp__algrow__get_channel_videos\` o \`mcp__vidiq__vidiq_channel_videos\`).
-2. Detecta sus TOP performers reales por views/VPH (no por antigüedad). Identifica el PATRÓN que funciona: tipo de promesa, ángulo, formato, hook, packaging.
-3. Para profundizar, mira outliers del nicho con \`mcp__vidiq__vidiq_outliers\` / \`mcp__algrow__search_viral_videos\` y cruza con lo que ya le funciona al canal.
-4. Propón **${count}** ideas NUEVAS replicables: mismo formato ganador pero ángulo fresco (no recalcar el mismo vídeo). Cada idea debe ser accionable como vídeo long-form del canal.
+PROCESO (Fase 0 — usa las herramientas Algrow/vidiq MCP — mcp__algrow__* y mcp__vidiq__*):
+1. SEÑAL DE MI CANAL (solo para ENTENDER, no para copiar): trae mis vídeos (\`mcp__algrow__get_channel_videos\` o \`mcp__vidiq__vidiq_channel_videos\`), detecta mis top reales por views/VPH y quédate con DOS cosas: (a) quién es mi audiencia y qué promesa le resuena, (b) mi firma de formato/packaging. NO propongas variaciones de estos vídeos.
+2. MINA EL MERCADO ABIERTO (el corazón de la Fase 0): busca outliers REALES fuera de mi catálogo — en mi nicho Y en nichos adyacentes o distintos (disciplina, hábitos, psicología, mentalidad, productividad, alto rendimiento, motivación, masculinidad sana...). Usa \`mcp__algrow__search_viral_videos\`, \`mcp__algrow__youtube_search\` (order viewCount + ventana de fecha) y \`mcp__vidiq__vidiq_outliers\`. Para cada outlier fuerte anota: título exacto, miniatura (descrita), canal, nicho, views vs mediana (xN) y el MOTOR (por qué petó, en una frase).
+3. FUSIONA (Type 4 controlado): cruza 1 topic-outlier de un nicho × 1 packaging-outlier de otro → una idea NUEVA reencuadrada a mi audiencia, con título y concepto de miniatura que roben la ESTRUCTURA del outlier, nunca sus frases ni su composición exacta. Diferénciate en la superficie, converge en la estructura. El cruce debe ser inédito en mi nicho.
+4. Propón **${count}** ideas así, accionables como vídeo long-form. Cada una referida al OUTLIER DE MERCADO del que sale el patrón (de OTRO canal/nicho), NUNCA a un vídeo mío.
 
 ENTREGA FINAL (OBLIGATORIO): un bloque con header IDEAS_JSON seguido del JSON (array), así:
 
@@ -77,19 +83,19 @@ IDEAS_JSON
 ─────────────────────────────────────────
 [
   {
-    "title": "Título tentativo del vídeo (estilo del canal)",
-    "description": "2-4 frases: de qué va y por qué encaja con lo que funciona.",
-    "angle": "El ángulo/gancho diferencial.",
-    "whyItWorks": "Qué patrón propio replica y por qué debería rendir.",
-    "sourceVideoTitle": "Título del vídeo propio que la inspira (o '')",
-    "sourceVideoUrl": "URL del vídeo fuente (o '')",
+    "title": "Título tentativo del vídeo (con el packaging robado del outlier, a la voz del canal)",
+    "description": "2-4 frases: de qué va, a qué deseo/dolor de mi audiencia apela, y de qué nicho/outlier de mercado sale el patrón.",
+    "angle": "El ángulo/gancho diferencial (puede ser no-filosófico).",
+    "whyItWorks": "El MOTOR del outlier de mercado que replica (patrón portable) + por qué encaja con mi audiencia.",
+    "sourceVideoTitle": "Título del OUTLIER DE MERCADO que modela la idea/packaging (de OTRO canal/nicho, NUNCA un vídeo mío) (o '')",
+    "sourceVideoUrl": "URL de ese outlier de mercado (o '')",
     "tags": ["tag1", "tag2"],
     "priority": 3
   }
 ]
 ─────────────────────────────────────────
 
-Reglas: \`priority\` 1-5 (5 = apuesta más fuerte). Devuelve EXACTAMENTE ${count} ideas. No incluyas nada después del cierre del bloque salvo la línea final.
+Reglas: \`priority\` 1-5 (5 = apuesta más fuerte, mayor probabilidad de outlier × viabilidad). Devuelve EXACTAMENTE ${count} ideas. NO repliques mis vídeos. No incluyas nada después del cierre del bloque salvo la línea final.
 
 Cuando termines, escribe la línea exacta:
 <<<DONE>>>`;

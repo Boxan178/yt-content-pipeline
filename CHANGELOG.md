@@ -2,7 +2,7 @@
 
 Registro **único** de versiones de la app de escritorio. Fuente de verdad para no dispersarnos: cada vez que se publica una release nueva, se añade aquí su entrada.
 
-- **Versión vigente (Latest):** `v0.7.6` — publicada 2026-06-06.
+- **Versión vigente (Latest):** `v0.7.9` — publicada 2026-06-10.
 - **Versión "oficial-escritorio" histórica intocable:** `v0.6.0` (referida así en `CLAUDE.md` / `ACCESO-WEB.md`).
 - **Distribución:** GitHub Releases (`Boxan178/yt-content-pipeline`, repo público) → installer NSIS + portable + `latest.yml`. Proceso en `RELEASE.md`.
 - **Auto-update:** la app comprueba **solo al arrancar** y cada 4h. Para forzar la pastilla (UpdateToast): cerrar y reabrir la app instalada. El portable NO se autoactualiza. Kill-switch: arrancar con `YTCP_UPDATER_ENABLED=0`.
@@ -11,7 +11,30 @@ Convención de columnas: ✅ = release publicada en GitHub · 🏷️ = solo tag
 
 ---
 
-## v0.7.6 — 2026-06-06 ✅ (Latest)
+## v0.7.9 — 2026-06-10 ✅ (Latest)
+Sesión "la app no puede volver a subir un duplicado". Causa raíz del susto de hoy: Pablo movió a `_LISTOS PARA SUBIR` un vídeo que YA estaba en YouTube y el auto-publish lo re-subió (quedó privado, cancelado a mano).
+- **Guard anti-resubida contra YouTube** (`lib/auto-publish.ts`): antes de encolar, compara el título extraído Y el nombre de carpeta (normalizados) contra el cache real del canal (`youtube-schedule.json`, RSS + Data API). Si ya existe → escribe el marker `.auto-published.json` (no se reintenta nunca) + aviso por Telegram con instrucciones para forzar si fuera deliberado. Cache vacío → no bloquea.
+- **Contención en datos** (operación manual de hoy, sin código): los 24 vídeos de `_ARCHIVO` + el publicado que seguía en producción quedaron marcados con `.auto-published.json` — moverlos de columna ya no puede dispararles una subida.
+- **Tags basura del frontmatter** (`lib/extract-metadata.ts`): `extractMetadata` y `extractSeoDescription` ahora quitan el frontmatter YAML antes de parsear — la línea `tags: [youtube, seo, …]` de la vault se colaba como tags de YouTube (subida real de hoy con tags `"[youtube"`, `"long-form]"`).
+- Consolida en git el código fuente de v0.7.7 + v0.7.8 (publicadas desde working tree sin commitear).
+
+## v0.7.8 — 2026-06-08 ✅
+Sesión "arregla TODO lo que pueda causar problemas" — cierra la familia de bugs vault↔H: que rompía gates y SEO.
+- **Sync vault → `_PACKAGING/` (no destructivo)** — nuevo `lib/vault-sync.ts` + resolver compartido `lib/vault-resolve.ts` (casa carpeta de H: con la de la vault por `slug` → `pipeline_item_id` → match por título). Garantiza que `_PACKAGING/` tenga packaging.md + titulos.md + descripcion-seo.md aunque el pipeline solo escribiera en la vault. Es la **cura de raíz** de:
+  - **Gate de título que llegaba con 1 sola opción** (o no llegaba): las 8 opciones de MARCOS viven en la vault; ahora se sincronizan a H: y el gate las parsea. Fallback extra en `approvals.ts`: si aún hay <2 opciones, lee `_PACKAGING/titulos.md` directo. (Caso real: vídeo de los 90 días subido sin que Pablo eligiera título de verdad.)
+  - **Gate de miniatura que no disparaba** cuando el `packaging.md` solo estaba en la vault (caso real: vídeo de la arena).
+- **`getVaultSeo` robusto** — usa el resolver compartido y lee el título de frontmatter `video:` **o** `title:` (era inconsistente entre vídeos). Cableado el sync también en auto-publish.
+- **Cadencia 2 vídeos/día** — `ChannelCadence.slots: ["10:00","17:30"]` (HH:MM, soporta minutos); `nextFreeSlotForChannel` y `computeGaps` ahora colocan/cuentan por franja, no por día (antes solo cabía 1/día). Moderni Stoici pasa a 14/semana en 2 franjas.
+
+## v0.7.7 — 2026-06-08 ✅
+- **Columna "Pendiente de revisar" en el kanban**: `PENDIENTE DE REVISAR/` (donde LUÍS deja los renders terminados a la espera de revisión) era un `ignoreFolder` → los vídeos que LUÍS terminaba **desaparecían del tablero**. Ahora es un estado visible (`review` en `lib/channels.ts`), entre "Cola de render" y "Listos para subir", con drag-drop. Aplicado a Moderni/Moderno Estoico + los 3 canales sleep.
+- **Auto-publish: fin de las subidas con metadata basura**. Tres fallos encadenados arreglados:
+  - El título podía salir como el **nombre de la miniatura** (`B-REACT-...-v1.png`) si el gate contaminaba el "✅ ELEGIDO". `extractMetadata` ahora descarta valores que parecen un filename y cae a "Working title" (`lib/extract-metadata.ts`).
+  - El SEO real (título final + descripción + tags) vive en la **vault** (`youtube-os/.../videos/<slug>/descripcion-seo.md`), no siempre en `_PACKAGING/`. Nuevo `lib/vault-seo.ts` resuelve la carpeta de la vault por `pipeline_item_id` y recupera el SEO cuando falta en `_PACKAGING`.
+  - **Red de seguridad**: la auto-publicación ya **no programa público un vídeo sin descripción SEO** — avisa por Telegram (throttle 6h) y reintenta hasta que el SEO aparece. Antes subía con descripción vacía.
+- **Caso real cubierto**: vídeo "90 Days of Stoic Discipline" — render OK pero la auto-subida se encoló con título=miniatura y sin SEO, y el upload se colgó al cerrar la app. Resuelto a mano (programado público hoy 17:30Z con el SEO correcto) y prevenido en código.
+
+## v0.7.6 — 2026-06-06 ✅
 - **Calendario sincronizado con el horario REAL de YouTube**: nuevo sync que lee el canal por RSS público (vídeos publicados, sin auth) + YouTube Data API (vídeos PROGRAMADOS privados, token de lectura del skill SEO). Los "huecos" dejan de ser falsos: un día con vídeo ya publicado/programado en YouTube (aunque se subiera fuera de la app) ya no cuenta como hueco. Botón "Sincronizar YouTube" + auto-sync al abrir el calendario; los vídeos del canal se pintan en la vista mes. `lib/youtube-schedule.ts`, `scripts/youtube_schedule.py`, `/api/youtube/schedule`. Solo Moderni Stoici hoy (único con token de lectura); resto preparado.
   - Nota: los PROGRAMADOS privados requieren reconectar YouTube (login del dueño) — el token de lectura caducó; mientras, los publicados se reflejan por RSS y la UI muestra "reconectar".
 - **Estado del vídeo manual**: selector en el detalle del vídeo para forzar su estado (mueve la carpeta en disco vía `move-state`), además de la detección automática — para mitigar errores de clasificación.

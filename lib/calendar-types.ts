@@ -100,8 +100,41 @@ export interface ChannelCadence {
    * semanal. Longitud típica === targetPerWeek, pero no se fuerza.
    */
   preferredWeekdays?: number[];
-  /** Hora local sugerida de publicación (0-23). Default 12. */
+  /** Hora local sugerida de publicación (0-23). Default 12. Se usa cuando no hay
+   *  `slots` (compatibilidad: 1 publicación/día). */
   hour?: number;
+  /**
+   * Franjas locales de publicación del día, en "HH:MM" (ej. ["10:00","17:30"]).
+   * Si tiene ≥2 entradas → ese canal publica VARIAS veces al día (una por franja).
+   * Tiene prioridad sobre `hour`. Permite cadencias tipo 2/día.
+   */
+  slots?: string[];
+}
+
+/**
+ * Franjas horarias de publicación de un canal, normalizadas y ordenadas.
+ * Prioriza `slots` ("HH:MM"); cae a `hour` (1 franja); si no hay nada devuelve [].
+ * Browser-safe (lógica pura). El caller decide el default si vuelve vacío.
+ */
+export function cadenceSlots(cad: Pick<ChannelCadence, 'hour' | 'slots'>): Array<{ h: number; m: number }> {
+  if (Array.isArray(cad.slots) && cad.slots.length) {
+    const seen = new Set<string>();
+    const out: Array<{ h: number; m: number }> = [];
+    for (const raw of cad.slots) {
+      const mm = String(raw).match(/^\s*(\d{1,2}):(\d{2})\s*$/);
+      if (!mm) continue;
+      const h = Math.max(0, Math.min(23, Number(mm[1])));
+      const m = Math.max(0, Math.min(59, Number(mm[2])));
+      const key = `${h}:${m}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ h, m });
+    }
+    out.sort((a, b) => a.h - b.h || a.m - b.m);
+    if (out.length) return out;
+  }
+  if (cad.hour != null) return [{ h: Math.max(0, Math.min(23, Math.round(cad.hour))), m: 0 }];
+  return [];
 }
 
 /** Un día concreto donde la cadencia pide contenido y no hay nada planificado. */

@@ -104,7 +104,7 @@ export function IdeaCard({ idea, channelSlug, autoPipeline, onChanged, onToast }
 
       {idea.sourceVideoTitle && (
         <p className="mt-2 truncate text-[10px] text-zinc-500" title={idea.sourceVideoTitle}>
-          ↺ replica de: {idea.sourceVideoUrl ? (
+          ↗ patrón de mercado: {idea.sourceVideoUrl ? (
             <a
               href={idea.sourceVideoUrl}
               target="_blank"
